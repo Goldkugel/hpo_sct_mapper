@@ -1,0 +1,75 @@
+adapter:
+  hpo:
+    input_folder: "./data/input/hpo/"
+    input_files:
+      - "hp.owl"
+    output_folder: "./data/output/transformed/hpo/"
+    output_file: "hpo.csv"
+    skip_if_present: True
+  sct:
+    input_folder: "./data/input/sct/"
+    input_files:
+      - "der2_sRefset_SimpleMapFull_INT_20260701.txt"
+      - "sct2_Concept_Full_INT_20260701.txt"
+      - "sct2_Description_Full-en_INT_20260701.txt"
+      - "sct2_sRefset_OWLExpressionFull_INT_20260701.txt"
+      - "sct2_Relationship_Full_INT_20260701.txt"
+      - "sct2_RelationshipConcreteValues_Full_INT_20260701.txt"
+      - "sct2_Identifier_Full_INT_20260701.txt"
+      - "sct2_StatedRelationship_Full_INT_20260701.txt"
+      - "sct2_TextDefinition_Full-en_INT_20260701.txt"
+    output_folder: "./data/output/transformed/sct/"
+    output_file: "sct.csv"
+    skip_if_present: True
+    encoding: "utf-8"
+    separator: "\t"
+  umls:
+    input_folder: "./data/input/umls/"
+    input_files:
+      - "MRCONSO.RRF"
+      - "MRDEF.RRF"
+      - "MRRANK.RRF"
+      - "MRREL.RRF"
+      - "MRSAT.RRF"
+      - "MRSTY.RRF"
+    output_folder: "./data/output/transformed/umls/"
+    output_file: "umls.csv"
+    skip_if_present: True
+    encoding: "utf-8"
+    separator: "|"
+logger:
+  folder: "./data/logs/"
+  file_name: "output.log"
+  header_char: "-"
+  header_length: 60
+  log_runtime: True
+  format: "%Y-%m-%d %H:%M:%S"
+normalizer:
+  lower_case: True
+  lemmatizing: True
+  stemming: True
+  stop_word_removal: True
+llm:
+  model_id: 
+    - "google/medgemma-27b-text-it"
+  seed: 2898231092
+  temperature: 0.01
+  top_p: 0.95
+  max_model_len: 8192
+  max_num_batched_tokens: 16384
+  max_tokens: 2048
+  prompt_log_folder: "./data/logs/"
+  prompt_log_file: "prompts.log"
+embedder:
+  model_id:
+  - "cambridgeltl/SapBERT-from-PubMedBERT-fulltext"
+  device: "cpu"
+  batch_size: 128
+  max_seq_length: 128
+  normalization: True
+  dimensionality_reduction: False
+  n_components: 2
+  n_neighbors: 25
+  min_dist: 0.2
+  metric: "cosine"
+  random_state: 253
