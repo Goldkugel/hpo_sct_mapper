@@ -1,16 +1,82 @@
-from rich.progress  import Progress, BarColumn, TextColumn, TaskID
-from rich.progress  import TaskProgressColumn, TimeElapsedColumn
-from scipy.optimize import linprog
-from logger         import Logger
-import pandas       as pd
-import numpy        as np
+from rich.progress          import Progress, BarColumn, TextColumn, TaskID
+from rich.progress          import TaskProgressColumn, TimeElapsedColumn
+from adapter                import BaseAdapter
+from adapter                import HPOAdapter, SCTAdapter, UMLSAdapter
+from adapter                import exactSynonymClass, semanticClass, childrenClass
+from scipy.optimize         import linprog
+from logger                 import Logger
+import pandas               as pd
+import numpy                as np
 import torch
 import re
 import ast
 import os
 
+sct_id_column           = "sct_id"
+hpo_id_column           = "hpo_id"
+validity_column         = "validity"
+narrow_threshold        = 0.75 
+borad_threshold         = 0.85
+min_sources             = 2
+min_confidence          = 0.95
+hpo_sct_mappings        = "hpo_sct"
+hpo_umls_sct_mappings   = "hpo_umls_sct"
+umls_hpo_sct_mappings   = "umls_hpo_sct"
+embedding_mappings      = "embedding"
+jaccard_mappings        = "jaccard"
+confidence_column       = "confidence"
+attribute_column        = "attribute"
+accepted_column         = "accepted"
+
+threshold_cosine_similarity     = 0.75
+threshold_jaccard_similarity    = 0.95
+
+reference_methods = [
+    hpo_sct_mappings, 
+    hpo_umls_sct_mappings, 
+    #umls_hpo_sct_mappings
+]
+
+acceptableDomains = [
+    "disorder",
+    "finding",
+    "morphologic abnormality",
+    "contextual qualifier",
+    ""
+]
+
 progressBarColor        = "cyan"
 progressBarTextLength   = 40
+
+def isSCTDomainValid(terms: list[str]) -> bool:
+    ret = False
+    if terms is not None and len(terms) > 0 and any(extract_snomed_domain(pt) in acceptableDomains for pt in terms):
+        ret = True
+    return ret
+
+# Readable label for the audit trail: prefer a label with an acceptable domain, else the first available
+def getRepresentativeLabel(terms: list) -> str:
+    if not terms:
+        return None
+    for term in terms:
+        if term is not None and extract_snomed_domain(term) in acceptableDomains:
+            return term
+    return terms[0]
+
+def isChild(data: pd.DataFrame, id: str, child_id: str, recursive: bool, adapter: BaseAdapter) -> bool:
+    ret = False
+
+    if data is not None and len(data.index) > 0:
+        children = data[(data[adapter.config.attribute_column] == childrenClass) & (data[adapter.config.id_column] == id)]
+        if children is not None and len(children.index) > 0:
+            if child_id in children[adapter.config.value_column].tolist():
+                ret = True
+            elif recursive:
+                for c in children[adapter.config.value_column].tolist():
+                    if not ret:
+                        ret = isChild(data, c, child_id, True, adapter)
+                
+    return ret
 
 def newProgress() -> Progress:
     """
@@ -25,7 +91,6 @@ def newProgress() -> Progress:
         TextColumn("Elem.s: {task.completed}/{task.total}"),
     )
 
-
 def newTask(
     progress: Progress,
     iterations: int,
@@ -39,31 +104,20 @@ def newTask(
         total=iterations
     )
 
-def cosine_similarity(embedding1: list, embedding2: list) -> float:
-    """
-    Compute the cosine similarity between two embedding vectors.
+def dictToEAVDataFrame(data: dict, attribute: str, adapter: BaseAdapter) -> pd.DataFrame:
+    ids = []
+    values = []
 
-    Parameters
-    ----------
-    embedding1 : array-like
-        First embedding vector.
-    embedding2 : array-like
-        Second embedding vector.
+    for key in data.keys():
+        for element in data[key]:
+            ids.append(key)
+            values.append(element)
 
-    Returns
-    -------
-    float
-        Cosine similarity in the range [-1, 1].
-    """
-    ret = float("inf")
-
-    norm1 = np.linalg.norm(np.asarray(embedding1, dtype=np.float32))
-    norm2 = np.linalg.norm(np.asarray(embedding2, dtype=np.float32))
-
-    if norm1 != 0 and norm2 != 0:
-        ret = np.dot(embedding1, embedding2) / (norm1 * norm2)
-
-    return ret
+    return pd.DataFrame({
+        adapter.config.id_column        : ids,
+        adapter.config.attribute_column : [attribute] * len(ids),
+        adapter.config.value_column     : values
+    })
 
 def jaccard_similarity(tokens_a: list, tokens_b: list):
     """
@@ -87,32 +141,233 @@ def jaccard_similarity(tokens_a: list, tokens_b: list):
 
     return ret
 
-
-def overlap_coefficient(tokens_a: list, tokens_b: list) -> int:
+def loadOntologies(
+    separator: str = ";"
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, HPOAdapter, SCTAdapter, UMLSAdapter]:
     """
-    Compute the overlap coefficient between two lists of normalized tokens.
+    Loads, processes, and exports HPO, SNOMED CT, and UMLS ontology data.
 
-    Overlap = |A ∩ B| / min(|A|, |B|)
+    Processes adapters for each ontology to generate CSV files, then loads them
+    into DataFrames. Applies standard filtering (e.g., exact HPO synonyms) and
+    ID formatting (e.g., prefixing SNOMED CT IDs).
 
-    Lenient toward subset relationships, e.g. "hypertension" vs.
-    "essential hypertension" scores high despite differing lengths.
+    Parameters:
+        separator (str): Delimiter used for reading output CSV files. Defaults to ';'.
 
-    Returns
-    -------
-    float in [0, 1]. Returns 1.0 if both inputs are empty, 0.0 if only
-    one is empty.
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing (hpo, sct, umls)
+            DataFrames upon success, or (None, None, None) if loading fails for any adapter.
     """
-    ret = 0.0
-    set_a, set_b = set(tokens_a), set(tokens_b)
+    # Initialize custom logger
+    l = Logger()
 
-    if not set_a and not set_b:
-        ret = 1.0
-    elif not set_a or not set_b:
-        ret = 0.0
-    else:
-        ret = len(set_a & set_b) / min(len(set_a), len(set_b))
+    l.log("Loading necessary data from source files...")
+
+    # 1. Process and extract HPO (Human Phenotype Ontology) data
+    hpo_ontology = HPOAdapter()
+    if hpo_ontology.load() > 0:
+        hpo_ontology.to_csv()
+
+    # 2. Process and extract UMLS (Unified Medical Language System) data
+    umls_ontology = UMLSAdapter()
+    if umls_ontology.load() > 0:
+        umls_ontology.to_csv()
+
+    # 3. Process and extract SNOMED CT data
+    sct_ontology = SCTAdapter()
+    if sct_ontology.load() > 0:
+        sct_ontology.to_csv()
+
+    l.log("Loading necessary data from source files completed.")
+    l.log("Reading HPO, SNOMED CT, and UMLS data...")
+
+    # --- HPO PROCESSING ---
+    l.log("Reading HPO data...")
+    hpo_file_path = os.path.join(
+        hpo_ontology.config.output_folder, 
+        hpo_ontology.config.output_file
+    )
+    hpo = pd.read_csv(hpo_file_path, sep = separator, engine = "python")
+    
+    l.log("Keep only exact synonyms from HPO...")
+    
+    # Helper to parse dictionary entries if pandas imported them as 
+    # stringified dicts
+    def is_exact_synonym(entry):
+        if isinstance(entry, str):
+            try:
+                entry = ast.literal_eval(entry)
+            except (ValueError, SyntaxError):
+                return False
+        if isinstance(entry, dict):
+            if semanticClass in entry.keys():
+                return entry.get(semanticClass) == exactSynonymClass
+            else:
+                return True
+        return False
+
+    # Filter DataFrame to retain only exact synonyms
+    hpo = hpo[hpo[hpo_ontology.config.additional_column].apply(is_exact_synonym)]
+    l.log("Removing non exact synonyms completed.")
+    l.log("Reading HPO data completed.")
+
+    # --- SNOMED CT PROCESSING ---
+    l.log("Reading SNOMED CT data...")
+    sct_file_path = os.path.join(
+        sct_ontology.config.output_folder, 
+        sct_ontology.config.output_file
+    )
+    sct = pd.read_csv(sct_file_path, sep = separator, engine = "python")
+    
+    # Ensure value column is string type
+    sct[sct_ontology.config.value_column] = \
+        sct[sct_ontology.config.value_column].astype(str)
+    
+    l.log("Extending the ID of SNOMED CT concepts...")
+    # Standardize SNOMED CT IDs with standard ontology namespace 
+    # prefix (vectorized)
+    sct[sct_ontology.config.id_column] = "SNOMEDCT_US:" + \
+        sct[sct_ontology.config.id_column].astype(str)
+    l.log("Extending the ID of SNOMED CT concepts completed.")
+    l.log("Reading SNOMED CT data completed.")
+
+    # --- UMLS PROCESSING ---
+    l.log("Reading UMLS data...")
+    umls_file_path = os.path.join(
+        umls_ontology.config.output_folder, 
+        umls_ontology.config.output_file
+    )
+    umls = pd.read_csv(umls_file_path, sep = separator, engine = "python")
+    l.log("Reading UMLS data completed.")
+
+    l.log("Reading HPO, SNOMED CT, and UMLS data completed.")
+    
+    return hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology
+
+def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
+    """
+    Loads, cleans, and standardizes gold standard mapping data between HPO 
+    and SNOMED CT.
+
+    Parameters:
+        path (str): File path to the CSV dataset.
+        separator (str): Delimiter used in the CSV file. Defaults to ';'.
+
+    Returns:
+        pd.DataFrame: A cleaned DataFrame containing mapped 'hpo_id' and 
+            formatted 'sct_id'.
+    """
+    # Initialize the custom logging utility
+    l = Logger()
+
+    l.log("Reading gold standard data...")
+    
+    # 1. Load the raw dataset using the specified separator
+    ret = pd.read_csv(
+        path,
+        sep=separator,
+    )
+
+    # 2. Filter for specific matching criteria (keep only valid mappings)
+    ret = ret[ret["Match group"].isin([
+        "One to one match", 
+        "One to many"
+    ])]
+
+    # 3. Drop unneeded metadata columns to streamline the dataset
+    ret = ret.drop([
+        "Synonyms", 
+        "Preferred Label", 
+        "Definition", 
+        "HP Parent No", 
+        "HP Parent Term", 
+        "Match group", 
+        "Alternative expression", 
+        "Mapping Comment", 
+        "SNOMED term/exp"
+    ], axis=1)
+
+    # 4. Prepare 'canonical view' for extraction and initialize 'sct_id' column
+    ret["canonical view"] = ret["canonical view"].astype(str)
+    ret[sct_id_column] = -1
+
+    # 5. Extract numerical SNOMED CT IDs from the 'canonical view' string
+    for index, row in ret.iterrows():
+        # Handle cases where the ID is formatted in scientific notation (e.g., '1.2e+08') 
+        # or simple string numbers without complex mapping syntax (no ':' or '+')
+        val = str(row["canonical view"])
+        if ("e+" in val or 
+            (":" not in val and 
+            "+" not in val)):
+            try:
+                # Convert string -> float -> int to cleanly parse scientific notation
+                ret.loc[index, sct_id_column] = int(float(val))
+            except ValueError:
+                # Ignore values that cannot be parsed into numbers
+                ""
+        # Flag complex multi-mappings or composite terms with -2
+        elif "+" in val:
+            ret.loc[index, sct_id_column] = -2
+
+    # 6. Post-processing and column renaming
+    ret = ret.drop(["canonical view"], axis=1)
+    ret = ret.rename(columns={"HP_ID": hpo_id_column})
+    
+    # Keep only rows with valid, successfully extracted positive numeric IDs
+    ret = ret[ret[sct_id_column] > 0]
+    ret = ret.reset_index(drop = True)
+    
+    # 7. Prefix SNOMED CT IDs with standard ontology namespace format (e.g., 'SNOMEDCT_US:12345')
+    ret[sct_id_column] = ret[sct_id_column].astype(str)
+    for index, row in ret.iterrows():
+        ret.loc[index, sct_id_column] = "SNOMEDCT_US:" + row[sct_id_column]
+
+    # 8. Log completion and count unique HPO terms successfully mapped
+    l.log("Reading gold standard data completed.")
+    l.log(f"Mappings for {len(set(ret[hpo_id_column].tolist()))} Concepts found.")
 
     return ret
+
+def evaluation(data: pd.DataFrame, gold: pd.DataFrame, text: str, adapter: BaseAdapter) -> None:
+    l = Logger()
+
+    # Remove columns that are not relevant for evaluation
+    drop_cols = [
+        col for col in (confidence_column, attribute_column)
+        if col in data.columns
+    ]
+
+    eval = (
+        data
+        .drop(columns=drop_cols)
+        .drop_duplicates(ignore_index=True)
+    )
+
+    # Only the columns needed for matching
+    gold_pairs = gold[[hpo_id_column, sct_id_column]].drop_duplicates()
+
+    # Find which predictions are present in gold
+    matches = (
+        eval[[adapter.config.id_column, adapter.config.value_column]]
+        .merge(
+            gold_pairs,
+            left_on     = [adapter.config.id_column,    adapter.config.value_column],
+            right_on    = [hpo_id_column,               sct_id_column],
+            how         = "inner"
+        )
+    )
+
+    count = len(matches)
+
+    # Avoid division by zero
+    recall = count / len(gold) if len(gold) else 0
+    precision = count / len(eval) if len(eval) else 0
+
+    l.log(f"{text}")
+    l.log(f"Recall:                   {recall:.2f}")
+    l.log(f"Precision:                {precision:.2f}")
+    l.log(f"Concept Mapping Count: {eval[adapter.config.id_column].nunique():7}")
+    l.log(f"Mapping Count:         {len(eval):7}")
 
 def extract_snomed_label(term: str) -> str:
     """
@@ -124,189 +379,17 @@ def extract_snomed_label(term: str) -> str:
     """
     return re.sub(r"\s*\([^)]*\)$", "", term.strip())
 
-def write_embeddings_to_csv(
-    filepath: str,
-    terms: list[str],
-    embeddings: list[np.ndarray | list[float]],
-) -> int:
-    """Formats terms and embeddings into a DataFrame and writes them via
-
-    writeHugeCSV.
-
-    Parameters
-    ----------
-    filepath : str
-        Target CSV file path.
-    terms : list[str]
-        List of term labels.
-    embeddings : list[np.ndarray | list[float]]
-        List of 1D vector arrays corresponding to the terms.
-
-    Returns
-    -------
-    int
-        The number of rows written to the CSV file.
+def extract_snomed_domain(term: str) -> str:
     """
-    ret = 0
-
-    if len(terms) == len(embeddings):
-        # Convert NumPy arrays or lists to string representation for CSV storage
-        string_embeddings = [
-            str(emb.tolist() if isinstance(emb, np.ndarray) else emb)
-            for emb in embeddings
-        ]
-
-        # Construct DataFrame expected by writeHugeCSV
-        df = pd.DataFrame({"term": terms, "embedding": string_embeddings})
-
-        # Delegate CSV creation to the existing writeHugeCSV function
-        ret = writeHugeCSV(df, filepath)
-
-    return ret
-
-def read_embeddings_from_csv(
-    filepath: str,
-) -> tuple[list[str], list[np.ndarray]]:
-    """Reads a CSV file using pandas and returns parallel lists of terms and
-
-    embedding arrays.
-
-    Parameters
-    ----------
-    filepath : str
-        Source CSV file path.
-
-    Returns
-    -------
-    tuple[list[str], list[np.ndarray]]
-        A tuple containing (list_of_terms, list_of_numpy_embedding_arrays).
+    Extracts the trailing SNOMED CT semantic tag (domain) from a preferred term string.
+    
+    Examples:
+        "Ependymoma (disorder)" -> "disorder"
+        "Structure of bone of lower leg (body structure)" -> "body structure"
+        "Plain term with no tag" -> ""
     """
-    # Read CSV into a pandas DataFrame
-    df = pd.read_csv(filepath)
-
-    # Extract terms as a standard list
-    terms = df["term"].tolist()
-
-    # Reconstruct lists of floats from string representations and cast to NumPy arrays
-    embeddings = [
-        np.array(ast.literal_eval(emb_str), dtype=np.float32)
-        for emb_str in df["embedding"]
-    ]
-
-    return terms, embeddings
-
-def writeCSV(
-    data: pd.DataFrame = None,
-    file: str = "",
-    separator: str = ";",
-    encoding: str = "utf-8"
-) -> int:
-    """
-    Write a DataFrame to disk as a CSV file with logging.
-
-    Parameters
-    ----------
-    data : pd.DataFrame, optional
-        The DataFrame to write. If None, nothing is written and a
-        message is logged instead.
-    file : str, optional
-        Path of the CSV file to write to. If empty, nothing is written
-        and a message is logged instead.
-    separator : str, optional
-        Field delimiter used in the output CSV (default ";").
-    encoding : str, optional
-        Character encoding used when writing the file (default "utf-8").
-
-    Returns
-    -------
-    int
-        amount of lines written in CSV file.
-    """
-    ret: int = 0
-    l: Logger = Logger()
-
-    # Only proceed if a DataFrame was actually provided.
-    if data is not None:
-        # Only proceed if a target file path was actually provided.
-        if len(file) > 0:
-            # Log before starting the write, in case it's a large file
-            # and takes noticeable time.
-            l.printWriteFileStart(file)
-
-            # Write the DataFrame to disk without the pandas row index,
-            # using the given separator and encoding.
-            data.to_csv(
-                file,
-                sep=separator,
-                encoding=encoding,
-                index=False
-            )
-
-            # Log that the write completed.
-            l.printWriteFileEnd(file)
-            ret = len(data.index)
-        else:
-            # No file path given — log and skip writing.
-            l.log("File has not been specified and is empty.")
-    else:
-        # No DataFrame given — log and skip writing.
-        l.log("No data provided.")
-
-    return ret
-
-
-def writeHugeCSV(
-    data: pd.DataFrame = None,
-    file: str = "",
-    separator: str = ";",
-    encoding: str = "utf-8"
-) -> int:
-    """
-    Write a large DataFrame to disk safely by first writing to a
-    temporary file, then atomically replacing the target file.
-
-    This avoids leaving a corrupted or partially-written file at
-    `file` if the write is interrupted, since the original file is
-    only replaced once the temporary file has been fully written.
-
-    Parameters
-    ----------
-    data : pd.DataFrame, optional
-        The DataFrame to write.
-    file : str, optional
-        Path of the final CSV file to write to.
-    separator : str, optional
-        Field delimiter used in the output CSV (default ";").
-    encoding : str, optional
-        Character encoding used when writing the file (default "utf-8").
-
-    Returns
-    -------
-    int
-        amount of lines written in CSV file.
-    """
-    ret: int = 0
-    l: Logger = Logger()
-
-    l.log("Writing in temporary file first...")
-
-    # Build the temporary file path by appending ".tmp" to the target path.
-    tmpfile = file + ".tmp"
-
-    # Write to the temporary file first, reusing writeCSV's logic.
-    ret = writeCSV(data, tmpfile, separator, encoding)
-
-    # Only replace the original file if the temporary write succeeded.
-    if ret > 0:
-        l.log("Replacing original data with temporary data...")
-
-        # Atomically replace the target file with the temporary file
-        # (os.replace is atomic on both POSIX and Windows).
-        os.replace(tmpfile, file)
-
-        l.log("Replacing original data with temporary data completed.")
-
-    return ret
+    match = re.search(r"\(([^)]+)\)$", term.strip())
+    return match.group(1) if match else ""
 
 def batch_cosine_similarity_threshold(
     hpo_embeddings: np.ndarray,
@@ -338,8 +421,8 @@ def batch_cosine_similarity_threshold(
         - snomed_indices: 1D array of SNOMED array indices for matched pairs.
         - scores: 1D array of similarity scores for matched pairs.
     """
-
-    print(
+    l = Logger()
+    l.log(
         f"Filtering pairs with Cosine Similarity >= {threshold} on 'cuda'..."
     )
 
@@ -392,3 +475,31 @@ def batch_cosine_similarity_threshold(
         scores_out = np.array([], dtype=np.float32)
 
     return hpo_idx_out, snomed_idx_out, scores_out
+
+def printCounts(data: pd.DataFrame, adapter: BaseAdapter, thresholds: list = [], gold: pd.DataFrame = None, diff: bool = False) -> None:
+    l = Logger()
+    if data is not None:
+        old_threshold = 2
+        for threshold in thresholds:
+            subset = data[
+                (data[confidence_column] >= threshold)
+                & ((validity_column not in data.columns) or (data[validity_column] == 1))
+                & ((not diff) or (data[confidence_column] < old_threshold))
+            ]
+            count = len(subset.index)
+
+            if gold is not None:
+                in_gold = subset.merge(
+                    gold[[hpo_id_column, sct_id_column]],
+                    left_on=[adapter.config.id_column, adapter.config.value_column],
+                    right_on=[hpo_id_column, sct_id_column],
+                    how="inner"
+                )
+                gold_count = len(in_gold.index)
+                gold_fraction = gold_count / count if count else 0
+                l.log(f"Mappings with confidence above {threshold:.2f}: {count:7} "
+                      f"(in gold standard: {gold_count:7}, {gold_fraction:.2%})")
+            else:
+                l.log(f"Mappings with confidence above {threshold:.2f}: {count:7} ")
+
+            old_threshold = threshold

@@ -7,9 +7,9 @@ name = "hpo_sct_mapper"
 version = "1.0.2"
 dependencies = [
     "logger @ git+https://github.com/Goldkugel/logger.git@v1.0.6",
-    "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.0.7",
+    "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.0.9",
     "embedder @ git+https://github.com/Goldkugel/embedder.git@v1.0.2",
-    "model @ git+https://github.com/Goldkugel/model.git@v1.0.2",
+    "model @ git+https://github.com/Goldkugel/model.git@v1.0.5",
     "normalizer @ git+https://github.com/Goldkugel/normalizer.git@v1.0.2"
 ]
 
