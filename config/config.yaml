@@ -64,7 +64,8 @@ llm:
   prompt_log_file: "prompts.log"
   prompt_folder: "./prompts/"
   prompt_files:
-    - "mapping.md"
+    - "single_mapping.md"
+    - "multiple_mapping.md"
 embedder:
   model_id:
   - "cambridgeltl/SapBERT-from-PubMedBERT-fulltext"

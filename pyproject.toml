@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hpo_sct_mapper"
-version = "1.0.2"
+version = "1.0.3"
 dependencies = [
     "logger @ git+https://github.com/Goldkugel/logger.git@v1.0.6",
-    "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.0.9",
-    "embedder @ git+https://github.com/Goldkugel/embedder.git@v1.0.2",
-    "model @ git+https://github.com/Goldkugel/model.git@v1.0.5",
-    "normalizer @ git+https://github.com/Goldkugel/normalizer.git@v1.0.2"
+    "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.1.0",
+    "embedder @ git+https://github.com/Goldkugel/embedder.git@v1.1.0",
+    "model @ git+https://github.com/Goldkugel/model.git@v1.0.6",
+    "normalizer @ git+https://github.com/Goldkugel/normalizer.git@v1.0.3"
 ]
 
 [tool.setuptools]
