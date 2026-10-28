@@ -4,14 +4,16 @@ import sys
 sys.dont_write_bytecode = True
 
 from logger         import Logger
-from adapter        import labelClass, childrenClass, writeHugeCSV, BaseAdapter
+from adapter        import labelClass, writeHugeCSV
 from MappingUtils   import (
-    loadOntologies, loadGold,
+    loadInputs, keepHPOConcepts, buildAttributeLookup,
+    build_parent_map, make_descendant_lookup, pairSeries, inGoldSeries,
+    ALL_METHODS, SIM_METHODS, VALIDITY_LABELS, REVIEW_REASON,
+    llm_mappings, llm_filtered_path, evaluation_path,
+    validity_accepted, validity_hierarchy_reversals, validity_reviewable,
     evaluation, printCounts, similarity_steps,
     confidence_column, validity_column,
     hpo_id_column, sct_id_column,
-    hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings,
-    embedding_mappings, jaccard_mappings, exact_lexical_mappings,
     threshold_cosine_similarity,
     getRepresentativeLabel,
 )
@@ -21,90 +23,8 @@ from collections import defaultdict
 from itertools   import combinations
 
 # ---------------------------------------------------------------------------
-# Hierarchy helpers (mirrored from SetBuilder)
-# ---------------------------------------------------------------------------
-
-def build_child_map(data: pd.DataFrame, adapter: BaseAdapter) -> dict:
-    """
-    Direct hierarchy lookup: for every row tagged as a childrenClass relation,
-    records child -> set of parents.
-    """
-    rows      = data[data[adapter.config.attribute_column] == childrenClass]
-    child_map = defaultdict(set)
-    for parent, child in zip(
-        rows[adapter.config.id_column], rows[adapter.config.value_column]
-    ):
-        child_map[child].add(parent)
-    return child_map
-
-
-def make_descendant_lookup(child_map: dict):
-    """
-    Returns a memoized function descendants(node) -> frozenset of ALL nodes
-    transitively reachable from `node` downward through child_map. Cycle-safe.
-    """
-    cache: dict = {}
-
-    def descendants(node):
-        if node in cache:
-            return cache[node]
-        seen  = set()
-        stack = [node]
-        while stack:
-            current = stack.pop()
-            for child in child_map.get(current, ()):
-                if child not in seen:
-                    seen.add(child)
-                    stack.append(child)
-        cache[node] = frozenset(seen)
-        return cache[node]
-
-    return descendants
-
-# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-ALL_METHODS = [
-    hpo_sct_mappings,
-    hpo_umls_sct_mappings,
-    umls_hpo_sct_mappings,
-    jaccard_mappings,
-    embedding_mappings,
-    exact_lexical_mappings,
-    "llm",
-]
-
-SIM_METHODS = [jaccard_mappings, embedding_mappings]
-
-# Validity codes and their human-readable labels — aligned to MappingSetBuilder.
-VALIDITY_LABELS = {
-    0:  "domain mismatch",
-    1:  "step 2 failure — hierarchy reversal anchor",
-    2:  "step 2b failure — hierarchy reversal exact lexical",
-    3:  "step 2c failure — hierarchy reversal HPO xref",
-    4:  "step 3 failure — hierarchy reversal UMLS bridge",
-    5:  "step 4 failure — hierarchy reversal UMLS CUI",
-    6:  "step 5 failure — hierarchy reversal Jaccard+cosine",
-    7:  "step 6 failure — hierarchy reversal Jaccard only",
-    8:  "step 7 fallback — best candidate",
-    9:  "step 8 last resort",
-    10: "accepted",
-}
-
-# Review reasons sent to the LLM — aligned to MappingLLM.py.
-REVIEW_REASON = {
-    1:  "HIERARCHY_REVERSAL_ANCHOR",
-    2:  "HIERARCHY_REVERSAL_EXACT_LEXICAL",
-    3:  "HIERARCHY_REVERSAL_HPO_XREF",
-    4:  "HIERARCHY_REVERSAL_UMLS_BRIDGE",
-    5:  "HIERARCHY_REVERSAL_UMLS_CUI",
-    6:  "HIERARCHY_REVERSAL_JACCARD_COSINE",
-    7:  "HIERARCHY_REVERSAL_JACCARD_ONLY",
-    8:  "BEST_CANDIDATE_FALLBACK",
-    9:  "LAST_RESORT",
-    10: "ACCEPTED",
-}
 
 # How many examples to print per error-analysis category
 ERROR_EXAMPLE_LIMIT = 20
@@ -126,24 +46,28 @@ def _f1(precision: float, recall: float) -> float:
 
 def _metrics(tp: int, pred_total: int, gold_total: int, universe_total: int) -> dict:
     """
-    Returns precision, recall, F1, and accuracy given:
+    Returns precision, recall, F1, and universe share given:
       tp             — true positives (correct predictions)
       pred_total     — total predictions made
       gold_total     — total gold-standard pairs
       universe_total — total unique (HPO, SCT) pairs ever considered
-                       (denominator for accuracy)
+                       (denominator for universe share)
+
+    universe_share is tp / universe_total, i.e. the fraction of all
+    considered pairs that are correct predictions. It is not accuracy:
+    true negatives are not counted.
     """
-    precision = _safe_div(tp, pred_total)
-    recall    = _safe_div(tp, gold_total)
-    f1        = _f1(precision, recall)
-    accuracy  = _safe_div(tp, universe_total)
-    return dict(precision=precision, recall=recall, f1=f1, accuracy=accuracy)
+    precision      = _safe_div(tp, pred_total)
+    recall         = _safe_div(tp, gold_total)
+    f1             = _f1(precision, recall)
+    universe_share = _safe_div(tp, universe_total)
+    return dict(precision=precision, recall=recall, f1=f1, universe_share=universe_share)
 
 
 def _log_metrics(l: Logger, m: dict, prefix: str = "") -> None:
     p = f"{prefix}: " if prefix else ""
     l.log(f"{p}Precision: {m['precision']:.4f}  |  Recall: {m['recall']:.4f}  "
-          f"|  F1: {m['f1']:.4f}  |  Accuracy: {m['accuracy']:.4f}")
+          f"|  F1: {m['f1']:.4f}  |  TP share of universe: {m['universe_share']:.4f}")
 
 
 def _dedupe_by_pair(df: pd.DataFrame, id_col: str, val_col: str) -> pd.DataFrame:
@@ -151,20 +75,9 @@ def _dedupe_by_pair(df: pd.DataFrame, id_col: str, val_col: str) -> pd.DataFrame
     return df.drop_duplicates(subset=[id_col, val_col]).reset_index(drop=True)
 
 
-def _in_gold_series(df: pd.DataFrame, gold_set: set, id_col: str, val_col: str) -> pd.Series:
-    """
-    Boolean Series: True when the (id_col, val_col) pair is in gold_set.
-    Vectorised — no Python-level row loop.
-    """
-    return (
-        pd.Series(list(zip(df[id_col], df[val_col])), index=df.index)
-        .isin(gold_set)
-    )
-
-
 def _tp_from_df(df: pd.DataFrame, gold_set: set, id_col: str, val_col: str) -> int:
     """Count rows in df whose (id_col, val_col) pair is in gold_set."""
-    return int(_in_gold_series(df, gold_set, id_col, val_col).sum())
+    return int(inGoldSeries(df, gold_set, id_col, val_col).sum())
 
 
 def _hpo_depth(hpo_id: str, parent_map: dict) -> int:
@@ -204,18 +117,15 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     l.printHeader("1. Loading data")
 
-    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology = loadOntologies(";")
-    hpo = hpo[hpo[hpo_ontology.config.id_column].str.startswith("HP:")].reset_index(drop=True)
-
-    graham = loadGold("./data/input/graham/mapping_graham.csv", ";")
+    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
 
     id_col   = hpo_ontology.config.id_column       # e.g. "hpo_id"
     val_col  = hpo_ontology.config.value_column     # e.g. "sct_id"
     attr_col = hpo_ontology.config.attribute_column
 
     l.log("Loading llm_filtered.csv (final mappings)...")
-    final_df = pd.read_csv("./data/output/filtered/llm_filtered.csv", sep=";")
-    final_df = final_df[final_df[id_col].str.startswith("HP:")].reset_index(drop=True)
+    final_df = pd.read_csv(llm_filtered_path, sep=";")
+    final_df = keepHPOConcepts(final_df, id_col)
     l.log(f"  Rows in llm_filtered.csv: {len(final_df)}")
 
     # Gold-standard pair set
@@ -225,7 +135,7 @@ if __name__ == "__main__":
     l.log(f"  Gold standard: {gold_total} unique (HPO, SCT) pairs "
           f"across {len(gold_hpo)} HPO concepts.")
 
-    # Universe = all unique (HPO, SCT) pairs ever generated (accuracy denominator).
+    # Universe = all unique (HPO, SCT) pairs ever generated (universe-share denominator).
     all_pairs_df   = _dedupe_by_pair(final_df, id_col, val_col)
     universe_total = len(all_pairs_df)
     l.log(f"  Universe (unique pairs in llm_filtered.csv): {universe_total}")
@@ -233,25 +143,14 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     # 2. Build lookup tables
     # -----------------------------------------------------------------------
+    l.printHeader("2. Building lookup tables")
     l.log("Building label and hierarchy lookup tables...")
 
-    sct_labels_dict = (
-        sct[sct[sct_ontology.config.attribute_column] == labelClass]
-        .groupby(sct_ontology.config.id_column)[sct_ontology.config.value_column]
-        .apply(list).to_dict()
-    )
-    hpo_labels_dict = (
-        hpo[hpo[hpo_ontology.config.attribute_column] == labelClass]
-        .groupby(hpo_ontology.config.id_column)[hpo_ontology.config.value_column]
-        .apply(list).to_dict()
-    )
+    sct_labels_dict = buildAttributeLookup(sct, sct_ontology, labelClass)
+    hpo_labels_dict = buildAttributeLookup(hpo, hpo_ontology, labelClass)
 
-    # HPO hierarchy: built using build_child_map (child -> set of parents).
     # hpo_parent_map[child] = set of direct parents, used for depth calculation.
-    hpo_child_map_lookup = build_child_map(hpo, hpo_ontology)
-    # build_child_map records child->parents in child_map[child].add(parent),
-    # so hpo_child_map_lookup is already child -> {parents}.
-    hpo_parent_map: dict[str, set] = hpo_child_map_lookup
+    hpo_parent_map: dict[str, set] = build_parent_map(hpo, hpo_ontology)
 
     def sct_label(sct_id: str) -> str:
         return getRepresentativeLabel(sct_labels_dict.get(sct_id, [])) or sct_id
@@ -276,9 +175,9 @@ if __name__ == "__main__":
         "Stage 1 — All generated pairs":
             final_df,
         "Stage 2 — After filtering (validity ≠ 0, not NA)":
-            final_df[final_df[validity_column].isin([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])],
+            final_df[final_df[validity_column].isin(validity_reviewable)],
         "Stage 3 — Final accepted (validity = 10)":
-            final_df[final_df[validity_column] == 10],
+            final_df[final_df[validity_column] == validity_accepted],
     }
 
     for stage_name, stage_df in stages.items():
@@ -323,7 +222,7 @@ if __name__ == "__main__":
         m_all  = _metrics(tp_all, len(method_df), gold_total, universe_total)
 
         accepted_df = _dedupe_by_pair(
-            final_df[(final_df[attr_col] == method) & (final_df[validity_column] == 10)],
+            final_df[(final_df[attr_col] == method) & (final_df[validity_column] == validity_accepted)],
             id_col, val_col,
         )
         tp_acc = _tp_from_df(accepted_df, gold_pairs, id_col, val_col)
@@ -352,7 +251,7 @@ if __name__ == "__main__":
     )
 
     accepted_all = _dedupe_by_pair(
-        final_df[final_df[validity_column] == 10], id_col, val_col
+        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
     )
     accepted_with_agree = accepted_all.merge(
         method_agreement, on=[id_col, val_col], how="left"
@@ -420,7 +319,7 @@ if __name__ == "__main__":
             l.log(
                 f"    conf ≥ {thresh:.2f}: {len(subset):6} pairs, {tp:5} in gold | "
                 f"P={m['precision']:.4f}  R={m['recall']:.4f}  "
-                f"F1={m['f1']:.4f}  Acc={m['accuracy']:.4f}"
+                f"F1={m['f1']:.4f}  TPshare={m['universe_share']:.4f}"
             )
 
     # -----------------------------------------------------------------------
@@ -487,7 +386,7 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     l.printHeader("9. LLM-specific analysis")
 
-    llm_rows    = final_df[final_df[attr_col] == "llm"].copy()
+    llm_rows    = final_df[final_df[attr_col] == llm_mappings].copy()
     llm_deduped = _dedupe_by_pair(llm_rows, id_col, val_col)
 
     # The LLM reviewed all validity 1–10 pairs (including auto-accepted).
@@ -526,7 +425,7 @@ if __name__ == "__main__":
 
         # LLM-accepted pairs that came from this validity code.
         accepted_from_reason = llm_deduped[
-            _in_gold_series(llm_deduped, reason_pairs, id_col, val_col)
+            inGoldSeries(llm_deduped, reason_pairs, id_col, val_col)
         ]
 
         n_pool = len(reason_pairs)
@@ -545,7 +444,7 @@ if __name__ == "__main__":
         _log_metrics(l, m_r, "      Metrics")
 
     l.log(f"\n  C. LLM false positives (accepted but NOT in gold):")
-    llm_fp = llm_deduped[~_in_gold_series(llm_deduped, gold_pairs, id_col, val_col)]
+    llm_fp = llm_deduped[~inGoldSeries(llm_deduped, gold_pairs, id_col, val_col)]
     l.log(f"    Count: {len(llm_fp)}")
     for _, row in llm_fp.head(ERROR_EXAMPLE_LIMIT).iterrows():
         l.log(
@@ -568,7 +467,7 @@ if __name__ == "__main__":
     all_hpo_concepts = set(hpo[hpo_ontology.config.id_column].unique())
     generated_hpo    = set(final_df[id_col].unique())
     accepted_v10     = _dedupe_by_pair(
-        final_df[final_df[validity_column] == 10], id_col, val_col
+        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
     )
     accepted_hpo     = set(accepted_v10[id_col].unique())
 
@@ -668,7 +567,7 @@ if __name__ == "__main__":
     never_generated_set  = set(diagnosis_examples.get("NEVER_GENERATED", []))
     generated_missed     = missed_gold - never_generated_set
     if generated_missed:
-        gm_mask = _in_gold_series(final_df, generated_missed, id_col, val_col)
+        gm_mask = inGoldSeries(final_df, generated_missed, id_col, val_col)
         gm_df   = final_df[gm_mask]
         gm_best = (
             gm_df.sort_values(confidence_column, ascending=False)
@@ -760,7 +659,7 @@ if __name__ == "__main__":
 
     correctly_accepted_hpo = set(
         accepted_v10.loc[
-            _in_gold_series(accepted_v10, gold_pairs, id_col, val_col), id_col
+            inGoldSeries(accepted_v10, gold_pairs, id_col, val_col), id_col
         ].unique()
     )
     missed_gold_hpo = set(h for h, _ in missed_gold)
@@ -780,7 +679,7 @@ if __name__ == "__main__":
     l.printHeader("14. Hierarchy-reversal quality check")
 
     reversal_df = _dedupe_by_pair(
-        final_df[final_df[validity_column].isin([1, 2, 3, 4, 5, 6, 7])],
+        final_df[final_df[validity_column].isin(validity_hierarchy_reversals)],
         id_col, val_col,
     )
     tp_rev = _tp_from_df(reversal_df, gold_pairs, id_col, val_col)
@@ -793,7 +692,7 @@ if __name__ == "__main__":
     if tp_rev > 0:
         l.log(f"\n  Examples of incorrectly demoted gold pairs:")
         false_neg = reversal_df[
-            _in_gold_series(reversal_df, gold_pairs, id_col, val_col)
+            inGoldSeries(reversal_df, gold_pairs, id_col, val_col)
         ]
         for _, row in false_neg.head(ERROR_EXAMPLE_LIMIT).iterrows():
             l.log(
@@ -905,17 +804,18 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     l.printHeader("16. Structural quality warnings")
 
-    # Build transitive closure lookups for both ontologies using the shared
-    # build_child_map helper, consistent with MappingSetBuilder.
-    hpo_child_map_struct = build_child_map(hpo, hpo_ontology)
-    hpo_descendants_eval = make_descendant_lookup(hpo_child_map_struct)
-
-    sct_child_map_struct = build_child_map(sct, sct_ontology)
-    sct_descendants_eval = make_descendant_lookup(sct_child_map_struct)
+    # Build transitive closure lookups for both ontologies.
+    # KNOWN ISSUE (kept on purpose for now): these walk the child -> parents
+    # map, so *_descendants_eval actually return ANCESTORS. Warnings A/B
+    # detect related pairs correctly but swap the broader/narrower labels;
+    # warning C still needs to be checked. Switching to build_child_map
+    # (parent -> children), as MappingSetBuilder does, fixes the direction.
+    hpo_descendants_eval = make_descendant_lookup(build_parent_map(hpo, hpo_ontology))
+    sct_descendants_eval = make_descendant_lookup(build_parent_map(sct, sct_ontology))
 
     # Work from the deduplicated accepted set.
     accepted_deduped = _dedupe_by_pair(
-        final_df[final_df[validity_column] == 10], id_col, val_col
+        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
     )
 
     # Per-HPO accepted SCT set and per-SCT accepted HPO set for fast lookup.
@@ -1077,24 +977,21 @@ if __name__ == "__main__":
     l.printHeader("17. Writing final evaluation CSV")
 
     accepted_pairs_for_csv = set(zip(
-        final_df.loc[final_df[validity_column] == 10, id_col],
-        final_df.loc[final_df[validity_column] == 10, val_col],
+        final_df.loc[final_df[validity_column] == validity_accepted, id_col],
+        final_df.loc[final_df[validity_column] == validity_accepted, val_col],
     ))
     llm_pairs_for_csv = set(zip(
-        final_df.loc[final_df[attr_col] == "llm", id_col],
-        final_df.loc[final_df[attr_col] == "llm", val_col],
+        final_df.loc[final_df[attr_col] == llm_mappings, id_col],
+        final_df.loc[final_df[attr_col] == llm_mappings, val_col],
     ))
     qualifying_pairs_for_csv = accepted_pairs_for_csv | llm_pairs_for_csv
 
     # Vectorised filter — no apply() row loop.
-    pair_series  = pd.Series(
-        list(zip(final_df[id_col], final_df[val_col])),
-        index=final_df.index,
-    )
+    pair_series  = pairSeries(final_df, id_col, val_col)
     final_accepted = final_df[pair_series.isin(qualifying_pairs_for_csv)].copy().reset_index(drop=True)
-    final_accepted["in_gold"] = _in_gold_series(final_accepted, gold_pairs, id_col, val_col)
+    final_accepted["in_gold"] = inGoldSeries(final_accepted, gold_pairs, id_col, val_col)
 
-    output_path = "./data/output/evaluation/evaluation_final.csv"
+    output_path = evaluation_path
     writeHugeCSV(final_accepted, output_path)
     l.log(f"Final evaluation CSV written to: {output_path}")
     l.log(f"  Rows: {len(final_accepted)}  |  In gold: {final_accepted['in_gold'].sum()}")
@@ -1105,7 +1002,7 @@ if __name__ == "__main__":
     l.printHeader("18. Overall summary — final accepted mappings (validity=10, deduplicated)")
 
     final_deduped = _dedupe_by_pair(
-        final_df[final_df[validity_column] == 10], id_col, val_col
+        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
     )
     tp_final = _tp_from_df(final_deduped, gold_pairs, id_col, val_col)
     m_final  = _metrics(tp_final, len(final_deduped), gold_total, universe_total)
@@ -1117,7 +1014,7 @@ if __name__ == "__main__":
     _log_metrics(l, m_final, "  Final metrics")
 
     printCounts(
-        final_df[final_df[validity_column] == 10],
+        final_df[final_df[validity_column] == validity_accepted],
         hpo_ontology,
         similarity_steps,
         graham,

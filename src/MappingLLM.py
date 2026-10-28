@@ -1,5 +1,4 @@
 import sys
-import ast
 
 # Prevent Python from generating .pyc files (compiled bytecode files)
 sys.dont_write_bytecode = True
@@ -8,35 +7,19 @@ from logger         import Logger
 from model          import Model
 from adapter        import (
     definitionClass, synonymClass, commentClass, labelClass,
-    childrenClass, exactSynonymClass, semanticClass, writeHugeCSV,
+    childrenClass, writeHugeCSV,
 )
 from MappingUtils   import (
-    loadOntologies, loadGold, evaluation, validity_column, confidence_column
+    loadInputs, evaluation, validity_column, confidence_column,
+    REVIEW_REASON, llm_mappings, filtered_path, llm_filtered_path,
+    validity_accepted, validity_reviewable,
+    buildAttributeLookup, is_exact_synonym,
 )
 import pandas       as pd
 
 # ------------------------------------------------------------------
 # Constants.
 # ------------------------------------------------------------------
-
-# Validity -> review reason label passed to the LLM prompt.
-# Each code corresponds to the pipeline step that produced the pair.
-# Code 0 (domain mismatch) is excluded from review entirely.
-# Code 10 (already accepted) is included so the LLM can act as a
-# judge over the full set of mappings for each HPO concept — accepted
-# pairs that the LLM rejects will simply not appear in the output.
-REVIEW_REASON = {
-    1:  "HIERARCHY_REVERSAL_ANCHOR",          # step 2  failure
-    2:  "HIERARCHY_REVERSAL_EXACT_LEXICAL",   # step 2b failure
-    3:  "HIERARCHY_REVERSAL_HPO_XREF",        # step 2c failure
-    4:  "HIERARCHY_REVERSAL_UMLS_BRIDGE",     # step 3  failure
-    5:  "HIERARCHY_REVERSAL_UMLS_CUI",        # step 4  failure
-    6:  "HIERARCHY_REVERSAL_JACCARD_COSINE",  # step 5  failure
-    7:  "HIERARCHY_REVERSAL_JACCARD_ONLY",    # step 6  failure
-    8:  "BEST_CANDIDATE_FALLBACK",            # step 7  fallback
-    9:  "LAST_RESORT",                        # step 8  last resort
-    10: "ACCEPTED",                           # auto-accepted by pipeline
-}
 
 # Confidence scale is 1–5; used to normalise LLM output to [0, 1].
 CONFIDENCE_MAX = 5
@@ -68,14 +51,12 @@ l.printHeader("LLM review of candidate mappings")
 # umls is loaded by loadOntologies but not used in this script.
 # If loadOntologies supports a parameter to skip UMLS loading, passing
 # it here would save ~30 seconds. Until then it is loaded and discarded.
-hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology = loadOntologies(";")
-hpo = hpo[hpo[hpo_ontology.config.id_column].str.startswith("HP:")].reset_index(drop=True)
+hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
 del umls, umls_ontology  # not used in this script; free the memory
 
-graham = loadGold("./data/input/graham/mapping_graham.csv", ";")
 
 l.log("Loading filtered mappings...")
-mappings = pd.read_csv("./data/output/filtered/filtered.csv", sep=";")
+mappings = pd.read_csv(filtered_path, sep=";")
 l.log("Loading filtered mappings completed.")
 
 # ------------------------------------------------------------------
@@ -91,7 +72,7 @@ def quote_list(txt_list: list, quotation_char: str = '"') -> list:
         return ["None"]
     return [quote(txt, quotation_char) for txt in txt_list]
 
-def build_ontology_lookups(df, ont_config):
+def build_ontology_lookups(df, ont):
     """
     Build per-attribute lookup dicts for a loaded ontology dataframe.
     Returns a dict keyed by attribute class (labelClass, definitionClass,
@@ -99,23 +80,22 @@ def build_ontology_lookups(df, ont_config):
     Parents and children are also included under "parents" and
     childrenClass respectively, derived from the children relation rows.
     """
-    labels      = df[df[ont_config.attribute_column] == labelClass].groupby(ont_config.id_column)[ont_config.value_column].apply(list).to_dict()
-    definitions = df[df[ont_config.attribute_column] == definitionClass].groupby(ont_config.id_column)[ont_config.value_column].apply(list).to_dict()
-    comments    = df[df[ont_config.attribute_column] == commentClass].groupby(ont_config.id_column)[ont_config.value_column].apply(list).to_dict()
+    ont_config  = ont.config
+    labels      = buildAttributeLookup(df, ont, labelClass)
+    definitions = buildAttributeLookup(df, ont, definitionClass)
+    comments    = buildAttributeLookup(df, ont, commentClass)
 
     syn_df = df[df[ont_config.attribute_column] == synonymClass]
     synonyms = {}
     if ont_config.additional_column in syn_df.columns:
-        syn_mask = syn_df[ont_config.additional_column].apply(
-            lambda x: (semanticClass not in x or (ast.literal_eval(x).get(semanticClass) == exactSynonymClass))
-        )
+        syn_mask = syn_df[ont_config.additional_column].apply(is_exact_synonym)
         synonyms = syn_df[syn_mask].groupby(ont_config.id_column)[ont_config.value_column].apply(list).to_dict()
 
-    # childrenClass rows encode parent->child edges as (id=child, value=parent).
+    # childrenClass rows encode parent->child edges as (id=parent, value=child).
     # "parents" maps each concept to its parent concept IDs.
     # childrenClass maps each concept to its child concept IDs.
     parents   = df[df[ont_config.attribute_column] == childrenClass].groupby(ont_config.value_column)[ont_config.id_column].apply(list).to_dict()
-    children  = df[df[ont_config.attribute_column] == childrenClass].groupby(ont_config.id_column)[ont_config.value_column].apply(list).to_dict()
+    children  = buildAttributeLookup(df, ont, childrenClass)
 
     return {
         labelClass:      labels,
@@ -140,8 +120,8 @@ def join_quoted(values: list) -> str:
 # Build lookup tables.
 # ------------------------------------------------------------------
 l.log("Building ontology lookup tables...")
-hpo_data = build_ontology_lookups(hpo, hpo_ontology.config)
-sct_data = build_ontology_lookups(sct, sct_ontology.config)
+hpo_data = build_ontology_lookups(hpo, hpo_ontology)
+sct_data = build_ontology_lookups(sct, sct_ontology)
 l.log("Building ontology lookup tables completed.")
 
 # ------------------------------------------------------------------
@@ -169,14 +149,14 @@ l.log("Building ontology lookup tables completed.")
 # candidates, so the routing naturally favours the group prompt.
 # ------------------------------------------------------------------
 pair_candidates = (
-    mappings[mappings[validity_column].isin([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])]
+    mappings[mappings[validity_column].isin(validity_reviewable)]
     .sort_values(validity_column, ascending=False)
     .drop_duplicates(subset=[hpo_ontology.config.id_column, hpo_ontology.config.value_column])
     .reset_index(drop=True)
 )
 
 review_pairs      = pair_candidates[pair_candidates[validity_column] != 10]
-auto_accepted_df  = pair_candidates[pair_candidates[validity_column] == 10]
+auto_accepted_df  = pair_candidates[pair_candidates[validity_column] == validity_accepted]
 
 l.log(f"Total unique pairs for LLM review: {len(pair_candidates)} "
       f"({len(review_pairs)} under review, {len(auto_accepted_df)} already accepted).")
@@ -416,15 +396,15 @@ all_accepted_llm = all_results[all_results["llm_decision"] == "ACCEPT"].copy()
 # here. Using lengths rather than retaining sub-dataframes avoids any
 # fragility around the subsequent in-place assignment below.
 n_new_accepted       = len(all_accepted_llm[all_accepted_llm[validity_column] != 10])
-n_confirmed_accepted = len(all_accepted_llm[all_accepted_llm[validity_column] == 10])
+n_confirmed_accepted = len(all_accepted_llm[all_accepted_llm[validity_column] == validity_accepted])
 n_rejected_accepted  = len(all_results[
-    (all_results[validity_column] == 10) &
+    (all_results[validity_column] == validity_accepted) &
     (all_results["llm_decision"] == "REJECT")
 ])
 
 # Mark all LLM-accepted rows as accepted and record the source.
 all_accepted_llm[validity_column]                      = 10
-all_accepted_llm[hpo_ontology.config.attribute_column] = "llm"
+all_accepted_llm[hpo_ontology.config.attribute_column] = llm_mappings
 
 # Keep only the columns present in the original mappings dataframe,
 # dropping LLM-specific columns (llm_decision, n_sct).
@@ -439,7 +419,7 @@ all_accepted_llm = all_accepted_llm[retained_cols]
 # Append the new rows to the existing mappings.
 mappings = pd.concat([mappings, all_accepted_llm], ignore_index=True)
 
-writeHugeCSV(mappings, "./data/output/filtered/llm_filtered.csv")
+writeHugeCSV(mappings, llm_filtered_path)
 
 # ------------------------------------------------------------------
 # LLM review statistics.
@@ -482,7 +462,7 @@ l.log(f"Total mappings written: {len(mappings)}.")
 # ------------------------------------------------------------------
 l.log("Evaluating final accepted mapping set...")
 evaluation(
-    mappings[mappings[validity_column] == 10],
+    mappings[mappings[validity_column] == validity_accepted],
     graham,
     "Final accepted mapping set (auto + LLM):",
     hpo_ontology,
