@@ -1,19 +1,23 @@
-from rich.progress          import Progress, BarColumn, TextColumn, TaskID
-from rich.progress          import TaskProgressColumn, TimeElapsedColumn
 from adapter                import BaseAdapter
 from adapter                import HPOAdapter, SCTAdapter, UMLSAdapter
 from adapter                import exactSynonymClass, semanticClass, childrenClass
 from logger                 import Logger
 from collections            import defaultdict
 import pandas               as pd
-import numpy                as np   
+import numpy                as np
 import re
 import ast
 import os
 
+# Column names of the gold standard (loadGold) and of the validity code
+# added by MappingSetBuilder. The mapping files themselves use the
+# adapters' EAV column names (adapter.config.id_column etc.).
 sct_id_column           = "sct_id"
 hpo_id_column           = "hpo_id"
 validity_column         = "validity"
+confidence_column       = "confidence"
+
+# Mapping methods, stored in the attribute column of the mapping files.
 hpo_sct_mappings        = "hpo_sct"
 hpo_umls_sct_mappings   = "hpo_umls_sct"
 umls_hpo_sct_mappings   = "umls_hpo_sct"
@@ -21,8 +25,6 @@ embedding_mappings      = "embedding"
 jaccard_mappings        = "jaccard"
 exact_lexical_mappings  = "exact_lexical"
 llm_mappings            = "llm"
-confidence_column       = "confidence"
-attribute_column        = "attribute"
 
 # All mapping methods, and the similarity-based subset.
 ALL_METHODS = [
@@ -39,17 +41,21 @@ SIM_METHODS = [jaccard_mappings, embedding_mappings]
 # Concept ID prefixes.
 hpo_prefix = "HP:"
 sct_prefix = "SNOMEDCT_US:"
+umls_prefix = "UMLS:"
 
 # Input and output files shared between the pipeline scripts.
 gold_path            = "./data/input/graham/mapping_graham.csv"
 mapping_path         = "./data/output/mapped/mapping.csv"
 filtered_path        = "./data/output/filtered/filtered.csv"
 llm_filtered_path    = "./data/output/filtered/llm_filtered.csv"
+llm_review_path      = "./data/output/filtered/llm_review.csv"
 evaluation_path      = "./data/output/evaluation/evaluation_final.csv"
 
 # ------------------------------------------------------------------
 # Validity codes written by MappingSetBuilder (and read by MappingLLM
-# and MappingErrorAnalysis). Rows with validity=NA are not written.
+# and MappingErrorAnalysis). Rows not reached by any step keep
+# validity=NA and are written too: MappingErrorAnalysis uses them as the
+# universe of generated pairs.
 # ------------------------------------------------------------------
 validity_domain_mismatch          = 0   # step 1: SCT target outside acceptable domain
 validity_anchor_reversal          = 1   # step 2 failure: hierarchy reversal, anchor candidate
@@ -114,9 +120,14 @@ REVIEW_REASON = {
     validity_accepted:                "ACCEPTED",
 }
 
+# Minimum similarity for MappingGeneration to keep a candidate pair
+# (strictly greater than the threshold).
 threshold_cosine_similarity     = 0.80
 threshold_jaccard_similarity    = 0.95
 
+# Confidence thresholds for printCounts: num_points evenly spaced steps
+# from 1.0 down to the cosine threshold, plus 0.99 to separate exact from
+# near-exact matches. Result: [1.0, 0.99, 0.95, 0.9, 0.85, 0.8].
 num_points = 5
 similarity_steps = np.linspace(1.0, threshold_cosine_similarity,
     num = num_points).tolist()
@@ -125,59 +136,43 @@ similarity_steps.append(0.99)
 # buckets from consecutive thresholds and needs them sorted.
 similarity_steps = sorted(set(similarity_steps), reverse=True)
 
+# SCT semantic tags (the last parenthesised part of a fully specified
+# name) that are acceptable targets for HPO phenotype concepts. ""
+# accepts a label without any tag.
 acceptableDomains = [
     "disorder",
     "finding",
     "morphologic abnormality",
-    "contextual qualifier",
     ""
 ]
 
-progressBarColor        = "cyan"
-progressBarTextLength   = 40
-
 def isSCTDomainValid(terms: list[str]) -> bool:
-    ret = False
-    if terms is not None and len(terms) > 0 and any(extract_snomed_domain(pt) in acceptableDomains for pt in terms):
-        ret = True
-    return ret
+    """
+    True if any of the SCT concept's labels has an acceptable semantic tag
+    (see acceptableDomains). Concepts without labels are not valid.
+    """
+    return bool(terms) and any(
+        extract_snomed_domain(term) in acceptableDomains
+        for term in terms if isinstance(term, str)
+    )
 
-# Readable label for the audit trail: prefer a label with an acceptable domain, else the first available
 def getRepresentativeLabel(terms: list) -> str:
+    """
+    Readable label of an SCT concept for the audit trail: the first label
+    with an acceptable semantic tag, else the first label, else None.
+    """
     if not terms:
         return None
     for term in terms:
-        if term is not None and extract_snomed_domain(term) in acceptableDomains:
+        if isinstance(term, str) and extract_snomed_domain(term) in acceptableDomains:
             return term
     return terms[0]
 
-def newProgress() -> Progress:
-    """
-    Create a Rich progress bar with consistent formatting.
-    """
-    return Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(complete_style = progressBarColor),
-        TaskProgressColumn(),
-        TextColumn("ET:"),
-        TimeElapsedColumn(),
-        TextColumn("Elem.s: {task.completed}/{task.total}"),
-    )
-
-def newTask(
-    progress: Progress,
-    iterations: int,
-    text: str = "Task"
-) -> TaskID:
-    """
-    Add a new task to a Rich progress bar.
-    """
-    return progress.add_task(
-        text.ljust(progressBarTextLength),
-        total=iterations
-    )
-
 def dictToEAVDataFrame(data: dict, attribute: str, adapter: BaseAdapter) -> pd.DataFrame:
+    """
+    Turn a {concept id: [values]} dict into EAV rows (id, attribute, value),
+    one row per value, all with the given attribute.
+    """
     ids = []
     values = []
 
@@ -195,9 +190,17 @@ def dictToEAVDataFrame(data: dict, attribute: str, adapter: BaseAdapter) -> pd.D
 def is_exact_synonym(entry) -> bool:
     """
     True if an EAV row's additional-column entry marks an exact synonym,
-    or carries no synonym type at all. Entries may arrive as dicts or as
-    stringified dicts (as pandas reads them from CSV).
+    or carries no synonym type at all (including an empty or missing
+    entry). Entries may arrive as dicts or as stringified dicts (as pandas
+    reads them from CSV).
+
+    HPO synonyms are typed (exact, broad, narrow, related); only exact
+    synonyms name the same phenotype and are used for matching. Applied to
+    all HPO rows: labels, references, hierarchy rows etc. carry no
+    synonym type ("{}") and are kept.
     """
+    if entry is None or (isinstance(entry, float) and np.isnan(entry)):
+        return True
     if isinstance(entry, str):
         try:
             entry = ast.literal_eval(entry)
@@ -212,7 +215,7 @@ def is_exact_synonym(entry) -> bool:
 
 def keepHPOConcepts(data: pd.DataFrame, id_col: str) -> pd.DataFrame:
     """Keep only rows whose id_col is an HPO concept (prefix "HP:")."""
-    return data[data[id_col].str.startswith(hpo_prefix)].reset_index(drop=True)
+    return data[data[id_col].str.startswith(hpo_prefix, na=False)].reset_index(drop=True)
 
 def buildAttributeLookup(data: pd.DataFrame, adapter: BaseAdapter, attribute: str) -> dict:
     """
@@ -260,6 +263,14 @@ def make_descendant_lookup(child_map: dict):
     Passed a parent -> children map (build_child_map) it returns
     descendants; passed a child -> parents map (build_parent_map) it
     returns ancestors.
+
+    The walk is an iterative depth-first search: `stack` holds nodes still
+    to expand, `seen` every node reached so far. A node is pushed only the
+    first time it is reached, so concepts with several parents (common in
+    SNOMED CT and HPO) are expanded once, and a cycle cannot loop forever.
+    The start node itself is not in the result (unless a cycle leads back
+    to it). Each node's result is cached, but a walk does not reuse the
+    cached results of the nodes it passes.
     """
     cache: dict = {}
 
@@ -289,7 +300,8 @@ def pairSeries(data: pd.DataFrame, id_col: str, val_col: str) -> pd.Series:
 def inGoldSeries(data: pd.DataFrame, gold_pairs: set, id_col: str, val_col: str) -> pd.Series:
     """
     Boolean Series: True when the (id_col, val_col) pair is in gold_pairs.
-    Vectorised — no Python-level row loop.
+    The pairs are built once and looked up by hash, instead of filtering
+    the data per gold pair.
     """
     return pairSeries(data, id_col, val_col).isin(gold_pairs)
 
@@ -297,11 +309,12 @@ def loadOntologies(
     separator: str = ";"
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, HPOAdapter, SCTAdapter, UMLSAdapter]:
     """
-    Loads, processes, and exports HPO, SNOMED CT, and UMLS ontology data.
+    Loads, processes, and exports HPO, UMLS, and SNOMED CT ontology data.
 
-    Processes adapters for each ontology to generate CSV files, then loads them
-    into DataFrames. Applies standard filtering (e.g., exact HPO synonyms) and
-    ID formatting (e.g., prefixing SNOMED CT IDs).
+    Runs the adapter of each ontology to (re)generate its EAV CSV file, then
+    reads the three CSV files into DataFrames. The adapters already format
+    the IDs (e.g. the "SNOMEDCT_US:" prefix); here only non-exact HPO
+    synonyms are removed and SNOMED CT values are read as strings.
 
     Parameters:
         separator (str): Delimiter used for reading output CSV files. Defaults to ';'.
@@ -313,85 +326,71 @@ def loadOntologies(
             rather than returning a sentinel value if a source file can't be read.
 
     Note:
-        If an adapter's load() returns 0 (e.g. the source file is missing or empty), its
+        If an adapter's load() returns 0 (usually because skip_if_present is set and
+        the output CSV exists; also if the source file is missing or empty), its
         to_csv() is skipped and the corresponding DataFrame below is read from whatever
         output CSV already exists on disk -- which may be stale from a previous run.
     """
-    # Initialize custom logger
     l = Logger()
 
-    l.log("Loading necessary data from source files...")
+    def runAdapter(adapter: BaseAdapter, name: str) -> None:
+        """Load an ontology from its source files and write its EAV CSV."""
+        l.log(f"Loading {name} from source files...")
+        if adapter.load() > 0:
+            adapter.to_csv()
+            l.log(f"Loading {name} from source files completed.")
+        else:
+            l.log(f"Loading {name} from source files skipped (load() returned "
+                  f"no rows, e.g. skip_if_present); using the existing output "
+                  f"CSV, which may be from an earlier run.")
 
-    # 1. Process and extract HPO (Human Phenotype Ontology) data
-    hpo_ontology = HPOAdapter()
-    if hpo_ontology.load() > 0:
-        hpo_ontology.to_csv()
-    else:
-        l.log("HPO load() returned no rows (skip_if_present or empty source); using existing output CSV.")
+    def readCSV(adapter: BaseAdapter, name: str) -> pd.DataFrame:
+        """Read an ontology's EAV CSV and log its size."""
+        l.log(f"Reading {name} data...")
+        path = os.path.join(adapter.config.output_folder, adapter.config.output_file)
+        data = pd.read_csv(path, sep = separator, engine = "python")
+        l.log(f"Reading {name} data completed. {len(data.index)} rows, "
+              f"{data[adapter.config.id_column].nunique()} concepts.")
+        return data
 
-    # 2. Process and extract UMLS (Unified Medical Language System) data
+    hpo_ontology  = HPOAdapter()
     umls_ontology = UMLSAdapter()
-    if umls_ontology.load() > 0:
-        umls_ontology.to_csv()
-    else:
-        l.log("UMLS load() returned no rows (skip_if_present or empty source); using existing output CSV.")
+    sct_ontology  = SCTAdapter()
 
-    # 3. Process and extract SNOMED CT data
-    sct_ontology = SCTAdapter()
-    if sct_ontology.load() > 0:
-        sct_ontology.to_csv()
-    else:
-        l.log("SNOMED CT load() returned no rows (skip_if_present or empty source); using existing output CSV.")
+    runAdapter(hpo_ontology,  "HPO")
+    runAdapter(umls_ontology, "UMLS")
+    runAdapter(sct_ontology,  "SNOMED CT")
 
-    l.log("Loading necessary data from source files completed.")
-    l.log("Reading HPO, SNOMED CT, and UMLS data...")
+    hpo = readCSV(hpo_ontology, "HPO")
 
-    # --- HPO PROCESSING ---
-    l.log("Reading HPO data...")
-    hpo_file_path = os.path.join(
-        hpo_ontology.config.output_folder, 
-        hpo_ontology.config.output_file
-    )
-    hpo = pd.read_csv(hpo_file_path, sep = separator, engine = "python")
-    
-    l.log("Keep only exact synonyms from HPO...")
-
-    # Filter DataFrame to retain only exact synonyms
+    l.log("Removing non-exact HPO synonyms...")
+    before = len(hpo.index)
     hpo = hpo[hpo[hpo_ontology.config.additional_column].apply(is_exact_synonym)]
-    l.log("Removing non exact synonyms completed.")
-    l.log("Reading HPO data completed.")
+    l.log(f"Removing non-exact HPO synonyms completed. {before - len(hpo.index)} "
+          f"rows removed.")
 
-    # --- SNOMED CT PROCESSING ---
-    l.log("Reading SNOMED CT data...")
-    sct_file_path = os.path.join(
-        sct_ontology.config.output_folder, 
-        sct_ontology.config.output_file
-    )
-    sct = pd.read_csv(sct_file_path, sep = separator, engine = "python")
-    
-    # Ensure value column is string type
-    sct[sct_ontology.config.value_column] = \
-        sct[sct_ontology.config.value_column].astype(str)
-    
-    l.log("Reading SNOMED CT data completed.")
+    umls = readCSV(umls_ontology, "UMLS")
 
-    # --- UMLS PROCESSING ---
-    l.log("Reading UMLS data...")
-    umls_file_path = os.path.join(
-        umls_ontology.config.output_folder, 
-        umls_ontology.config.output_file
-    )
-    umls = pd.read_csv(umls_file_path, sep = separator, engine = "python")
-    l.log("Reading UMLS data completed.")
+    sct = readCSV(sct_ontology, "SNOMED CT")
 
-    l.log("Reading HPO, SNOMED CT, and UMLS data completed.")
-    
+    # Make all SCT values strings, whatever type pandas inferred while
+    # reading; missing values stay missing instead of becoming "nan".
+    value_col = sct_ontology.config.value_column
+    sct[value_col] = sct[value_col].map(lambda v: v if pd.isna(v) else str(v))
+
     return hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology
 
 def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
     """
-    Loads, cleans, and standardizes gold standard mapping data between HPO 
+    Loads, cleans, and standardizes gold standard mapping data between HPO
     and SNOMED CT.
+
+    Each row of the Graham file has an HPO concept (HP_ID), a "Match group"
+    and the SNOMED CT target in "SNOMED term/exp", written as
+    "<SCTID> |<term>|" for a single concept or as a post-coordinated
+    expression (e.g. "<SCTID>:<attribute>=<value>") for composite mappings.
+    If the file has a "canonical view" column, it is used as the bare
+    expression instead. Only single-concept targets are kept.
 
     Parameters:
         path (str): File path to the CSV dataset.
@@ -411,12 +410,15 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
         path,
         sep=separator,
     )
+    rows_read = len(ret.index)
 
-    # 2. Filter for specific matching criteria (keep only valid mappings)
+    # 2. Keep only the match groups used as gold mappings ("One to one
+    # match", "One to many"); rows of all other groups are removed.
     ret = ret[ret["Match group"].isin([
-        "One to one match", 
+        "One to one match",
         "One to many"
     ])]
+    rows_matched = len(ret.index)
 
     # 3. Drop unneeded metadata columns to streamline the dataset
     ret = ret.drop([
@@ -430,7 +432,9 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
         "Mapping Comment"
     ], axis=1)
 
-    # 4. Prepare 'canonical view' for extraction and initialize 'sct_id' column
+    # 4. Get the bare SNOMED CT expression into 'canonical view'. Without
+    # that column, it is the part of "SNOMED term/exp" before the first
+    # " |", i.e. "12345 |Seizure|" -> "12345".
 
     if "canonical view" not in ret.columns:
         ret["SNOMED term/exp"] = ret["SNOMED term/exp"].astype(str)
@@ -439,37 +443,50 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
         ret = ret.drop(["SNOMED term/exp"], axis=1)
     
     ret["canonical view"] = ret["canonical view"].astype(str)
-    ret[sct_id_column] = -1
 
     # 5. Extract numerical SNOMED CT IDs from the 'canonical view' string.
-    # Scientific notation (e.g. '1.2e+08') or a plain numeric string (no
-    # ':' or '+') parses to a positive int; anything else containing '+'
-    # is a composite multi-mapping, flagged -2; everything else keeps the
-    # -1 default set above.
-    val = ret["canonical view"]
-    is_scientific_or_plain = val.str.contains("e+", regex=False) | (
-        ~val.str.contains(":", regex=False) & ~val.str.contains("+", regex=False)
-    )
-    is_composite = ~is_scientific_or_plain & val.str.contains("+", regex=False)
+    # Plain integers are parsed as Python ints, so long (extension) SCTIDs
+    # keep every digit. Scientific notation (e.g. '1.2e+08' or '1.2E+08')
+    # goes through float, as it has already lost precision in the file.
+    # Composite expressions (containing ':' or '+') and anything else
+    # unparsable yield None and are dropped below. Scientific notation also
+    # contains a '+', so it is exempted from the composite check.
+    def parseSCTID(text: str):
+        text = text.strip()
+        if "e+" not in text.lower() and (":" in text or "+" in text):
+            return None
+        try:
+            value = int(text)
+        except ValueError:
+            try:
+                number = float(text)
+            except ValueError:
+                return None
+            if not number.is_integer():
+                return None
+            value = int(number)
+        return str(value) if value > 0 else None
 
-    parsed = pd.to_numeric(val.where(is_scientific_or_plain), errors="coerce")
-    ret.loc[parsed.notna(), sct_id_column] = parsed.dropna().astype(int)
-    ret.loc[is_composite, sct_id_column] = -2
+    ret[sct_id_column] = ret["canonical view"].map(parseSCTID)
 
     # 6. Post-processing and column renaming
     ret = ret.drop(["canonical view"], axis=1)
     ret = ret.rename(columns={"HP_ID": hpo_id_column})
-    
-    # Keep only rows with valid, successfully extracted positive numeric IDs
-    ret = ret[ret[sct_id_column] > 0]
-    ret = ret.reset_index(drop = True)
-    
-    # 7. Prefix SNOMED CT IDs with standard ontology namespace format (e.g., 'SNOMEDCT_US:12345')
-    ret[sct_id_column] = sct_prefix + ret[sct_id_column].astype(str)
 
-    # 8. Log completion and count unique HPO terms successfully mapped
-    l.log("Reading gold standard data completed.")
-    l.log(f"Mappings for {len(set(ret[hpo_id_column].tolist()))} Concepts found.")
+    # Keep only rows with valid, successfully extracted positive numeric IDs
+    ret = ret[ret[sct_id_column].notna()]
+    ret = ret.reset_index(drop = True)
+
+    # 7. Prefix SNOMED CT IDs with standard ontology namespace format (e.g., 'SNOMEDCT_US:12345')
+    ret[sct_id_column] = sct_prefix + ret[sct_id_column]
+
+    # 8. Log completion with the counts of each filtering stage
+    n_pairs = len(ret[[hpo_id_column, sct_id_column]].drop_duplicates().index)
+    l.log(f"Reading gold standard data completed. {rows_read} rows read, "
+          f"{rows_read - rows_matched} removed (match group not one-to-one "
+          f"or one-to-many), {rows_matched - len(ret.index)} removed "
+          f"(composite or unparsable SNOMED CT expression). {n_pairs} unique "
+          f"pairs for {ret[hpo_id_column].nunique()} HPO concepts.")
 
     return ret
 
@@ -484,61 +501,76 @@ def loadInputs(
     Returns:
         (hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, gold)
     """
+    l = Logger()
+
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology = loadOntologies(separator)
-    hpo  = keepHPOConcepts(hpo, hpo_ontology.config.id_column)
+
+    l.log("Removing non-HPO concepts from the HPO data...")
+    before = len(hpo.index)
+    hpo = keepHPOConcepts(hpo, hpo_ontology.config.id_column)
+    l.log(f"Removing non-HPO concepts from the HPO data completed. "
+          f"{before - len(hpo.index)} rows removed, "
+          f"{hpo[hpo_ontology.config.id_column].nunique()} HPO concepts left.")
+
     gold = loadGold(gold_path, separator)
     return hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, gold
 
 def evaluation(data: pd.DataFrame, gold: pd.DataFrame, text: str, adapter: BaseAdapter) -> None:
+    """
+    Log recall and precision of the (hpo_id, sct_id) pairs in data against
+    the gold standard. Both sides are reduced to unique pairs first, so
+    pairs found by several methods, and any other columns (confidence,
+    attribute, validity, LLM output, ...), do not affect the counts.
+
+    recall    = correct pairs / unique gold pairs
+    precision = correct pairs / unique predicted pairs
+
+    Every predicted pair counts in the precision, including pairs of HPO
+    concepts that the gold standard does not cover.
+    """
     l = Logger()
 
-    # Remove columns that are not relevant for evaluation
-    drop_cols = [
-        col for col in (confidence_column, attribute_column)
-        if col in data.columns
-    ]
+    id_col  = adapter.config.id_column
+    val_col = adapter.config.value_column
 
-    eval = (
-        data
-        .drop(columns=drop_cols)
-        .drop_duplicates(ignore_index=True)
-    )
-
-    # Only the columns needed for matching
+    predicted  = data[[id_col, val_col]].drop_duplicates(ignore_index=True)
     gold_pairs = gold[[hpo_id_column, sct_id_column]].drop_duplicates()
 
-    # Find which predictions are present in gold
-    matches = (
-        eval[[adapter.config.id_column, adapter.config.value_column]]
-        .merge(
-            gold_pairs,
-            left_on     = [adapter.config.id_column,    adapter.config.value_column],
-            right_on    = [hpo_id_column,               sct_id_column],
-            how         = "inner"
-        )
+    # Predicted pairs that are present in the gold standard.
+    matches = predicted.merge(
+        gold_pairs,
+        left_on     = [id_col,        val_col],
+        right_on    = [hpo_id_column, sct_id_column],
+        how         = "inner"
     )
 
     count = len(matches)
 
     # Avoid division by zero
-    recall = count / len(gold) if len(gold) else 0
-    precision = count / len(eval) if len(eval) else 0
+    recall    = count / len(gold_pairs) if len(gold_pairs) else 0
+    precision = count / len(predicted)  if len(predicted)  else 0
 
     l.log(f"{text}")
-    l.log(f"Recall:                   {recall:.2f}")
-    l.log(f"Precision:                {precision:.2f}")
-    l.log(f"Concept Mapping Count: {eval[adapter.config.id_column].nunique():7}")
-    l.log(f"Mapping Count:         {len(eval):7}")
+    l.log(f"{'Recall:':<26}{recall:7.2f}")
+    l.log(f"{'Precision:':<26}{precision:7.2f}")
+    l.log(f"{'Correct pairs (in gold):':<26}{count:7}")
+    l.log(f"{'Pairs:':<26}{len(predicted):7}")
+    l.log(f"{'HPO concepts:':<26}{predicted[id_col].nunique():7}")
 
 def extract_snomed_domain(term: str) -> str:
     """
-    Extracts the trailing SNOMED CT semantic tag (domain) from a preferred term string.
-    
+    Extracts the trailing SNOMED CT semantic tag (domain) from a fully
+    specified name: the content of the last parentheses at the end of the
+    string. Non-string input and names without a tag give "".
+
     Examples:
         "Ependymoma (disorder)" -> "disorder"
         "Structure of bone of lower leg (body structure)" -> "body structure"
+        "History of (contextual qualifier) (qualifier value)" -> "qualifier value"
         "Plain term with no tag" -> ""
     """
+    if not isinstance(term, str):
+        return ""
     match = re.search(r"\(([^)]+)\)$", term.strip())
     return match.group(1) if match else ""
 
@@ -551,12 +583,15 @@ def printCounts(
 ) -> None:
     """
     For each confidence threshold, report how many unique (hpo_id, sct_id)
-    pairs exceed it and how many of those appear in the gold standard.
- 
+    pairs reach it (confidence >= threshold) and how many of those appear
+    in the gold standard; the percentage is the precision of that line.
+
     Deduplication is by (id_col, val_col), keeping the row with the highest
     confidence per pair, so mappings produced by multiple strategies are
     counted once. When diff=True each bucket counts only pairs whose
-    confidence falls in [threshold, previous_threshold).
+    confidence falls in [threshold, previous_threshold), so the lines add
+    up to the total; the first bucket has no upper bound. thresholds must
+    be in descending order.
     """
     l = Logger()
  
@@ -565,7 +600,14 @@ def printCounts(
  
     id_col  = adapter.config.id_column
     val_col = adapter.config.value_column
- 
+
+    # Unique gold pairs, so a pair listed twice in the gold standard is
+    # not counted twice.
+    gold_pairs = (
+        gold[[hpo_id_column, sct_id_column]].drop_duplicates()
+        if gold is not None else None
+    )
+
     # One row per unique pair, highest confidence wins.
     deduped = (
         data
@@ -573,6 +615,8 @@ def printCounts(
         .drop_duplicates(subset=[id_col, val_col])
     )
  
+    # Upper bound of the current bucket; 2.0 is above any confidence, so
+    # the first bucket is open-ended.
     old_threshold = 2.0
     for threshold in thresholds:
         subset = deduped[deduped[confidence_column] >= threshold]
@@ -588,9 +632,9 @@ def printCounts(
         else:
             label = f">= {threshold:.2f}"
 
-        if gold is not None:
+        if gold_pairs is not None:
             in_gold = subset.merge(
-                gold[[hpo_id_column, sct_id_column]],
+                gold_pairs,
                 left_on=[id_col, val_col],
                 right_on=[hpo_id_column, sct_id_column],
                 how="inner",
