@@ -5,6 +5,7 @@ from adapter                import HPOAdapter, SCTAdapter, UMLSAdapter
 from adapter                import exactSynonymClass, semanticClass
 from logger                 import Logger
 import pandas               as pd
+import numpy                as np   
 import re
 import ast
 import os
@@ -17,11 +18,17 @@ hpo_umls_sct_mappings   = "hpo_umls_sct"
 umls_hpo_sct_mappings   = "umls_hpo_sct"
 embedding_mappings      = "embedding"
 jaccard_mappings        = "jaccard"
+exact_lexical_mappings  = "exact_lexical"
 confidence_column       = "confidence"
 attribute_column        = "attribute"
 
-threshold_cosine_similarity     = 0.75
+threshold_cosine_similarity     = 0.80
 threshold_jaccard_similarity    = 0.95
+
+num_points = 5
+similarity_steps = np.linspace(1.0, threshold_cosine_similarity,
+    num = num_points).tolist()
+similarity_steps.append(0.99)
 
 acceptableDomains = [
     "disorder",
@@ -185,12 +192,6 @@ def loadOntologies(
     sct[sct_ontology.config.value_column] = \
         sct[sct_ontology.config.value_column].astype(str)
     
-    l.log("Extending the ID of SNOMED CT concepts...")
-    # Standardize SNOMED CT IDs with standard ontology namespace 
-    # prefix (vectorized)
-    sct[sct_ontology.config.id_column] = "SNOMEDCT_US:" + \
-        sct[sct_ontology.config.id_column].astype(str)
-    l.log("Extending the ID of SNOMED CT concepts completed.")
     l.log("Reading SNOMED CT data completed.")
 
     # --- UMLS PROCESSING ---
@@ -245,11 +246,17 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
         "HP Parent Term", 
         "Match group", 
         "Alternative expression", 
-        "Mapping Comment", 
-        "SNOMED term/exp"
+        "Mapping Comment"
     ], axis=1)
 
     # 4. Prepare 'canonical view' for extraction and initialize 'sct_id' column
+
+    if "canonical view" not in ret.columns:
+        ret["SNOMED term/exp"] = ret["SNOMED term/exp"].astype(str)
+        ret["canonical view"] = ret["SNOMED term/exp"].str.split(" |", regex=False).str[0]
+    else:
+        ret = ret.drop(["SNOMED term/exp"], axis=1)
+    
     ret["canonical view"] = ret["canonical view"].astype(str)
     ret[sct_id_column] = -1
 

@@ -51,10 +51,10 @@ normalizer:
   stop_word_removal: True
 llm:
   model_id: 
-    - "google/medgemma-27b-text-it"
+    - "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
   seed: 2898231092
   device: "cuda"
-  chunk_size: 250
+  chunk_size: 500
   temperature: 0.01
   top_p: 0.95
   max_model_len: 32768
