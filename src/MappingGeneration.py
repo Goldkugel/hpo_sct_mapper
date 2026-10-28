@@ -7,7 +7,7 @@ from logger                 import Logger
 from embedder               import Embedder
 from normalizer             import Normalizer
 from adapter                import writeHugeCSV, labelClass, synonymClass
-from MappingUtils           import exact_lexical_mappings, loadOntologies, loadGold, evaluation, dictToEAVDataFrame, newProgress, newTask, confidence_column, hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings, embedding_mappings, jaccard_mappings, threshold_cosine_similarity, threshold_jaccard_similarity
+from MappingUtils           import exact_lexical_mappings, loadOntologies, loadGold, evaluation, dictToEAVDataFrame, newProgress, newTask, confidence_column, hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings, embedding_mappings, jaccard_mappings, threshold_cosine_similarity, threshold_jaccard_similarity, gold_path, mapping_path, hpo_prefix, sct_prefix
 from adapter                import referenceClass
 from scipy                  import sparse
 import pandas               as pd
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology = \
         loadOntologies(separator = ";")
     graham = \
-        loadGold(path = "./data/input/graham/mapping_graham.csv", 
+        loadGold(path = gold_path, 
             separator = ";")
 
     # Build ID sets for fast membership tests. Cross-references found in one
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
             # Prefixed forms used as keys in the mapping dicts.
             umls_id   = "UMLS:" + str(raw_id)
-            sct_value = "SNOMEDCT_US:" + str(raw_value)
+            sct_value = sct_prefix + str(raw_value)
 
             if j["source_abbreviation"] == "HPO":
                 # UMLS -> HPO: used later to cross-check against HPO -> UMLS.
@@ -391,7 +391,7 @@ if __name__ == "__main__":
     hpo_terms_subset = hpo[((
             hpo[hpo_ontology.config.attribute_column] == labelClass) | (
             hpo[hpo_ontology.config.attribute_column] == synonymClass)) & (
-        hpo[hpo_ontology.config.id_column].str.startswith("HP:"))]
+        hpo[hpo_ontology.config.id_column].str.startswith(hpo_prefix))]
 
     hpo_terms_subset = hpo_terms_subset[
         hpo_terms_subset[hpo_ontology.config.value_column].apply(
@@ -751,7 +751,7 @@ if __name__ == "__main__":
         exact_lexical_maps_df
     ], ignore_index = True).reset_index(drop = True)
 
-    writeHugeCSV(all_mappings_df, "./data/output/mapped/mapping.csv")
+    writeHugeCSV(all_mappings_df, mapping_path)
 
     l.printHeader("Gathered all mappings from HPO to SNOMED CT finalized.")
     l.printHeader("Results")

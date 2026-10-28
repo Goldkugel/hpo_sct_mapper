@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hpo_sct_mapper"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
     "logger @ git+https://github.com/Goldkugel/logger.git@v1.0.6",
     "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.1.3",
