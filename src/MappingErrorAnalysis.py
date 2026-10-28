@@ -7,27 +7,53 @@ from logger         import Logger
 from adapter        import labelClass, writeHugeCSV
 from MappingUtils   import (
     loadInputs, keepHPOConcepts, buildAttributeLookup,
-    build_parent_map, make_descendant_lookup, pairSeries, inGoldSeries,
+    build_child_map, build_parent_map, make_descendant_lookup, pairSeries, inGoldSeries,
     ALL_METHODS, SIM_METHODS, VALIDITY_LABELS, REVIEW_REASON,
-    llm_mappings, llm_filtered_path, evaluation_path,
-    validity_accepted, validity_hierarchy_reversals, validity_reviewable,
-    evaluation, printCounts, similarity_steps,
-    confidence_column, validity_column,
+    llm_mappings, llm_filtered_path, llm_review_path, evaluation_path,
+    validity_domain_mismatch, validity_accepted, validity_hierarchy_reversals,
+    validity_best_candidate, validity_last_resort, validity_reviewable,
+    similarity_steps, confidence_column, validity_column,
     hpo_id_column, sct_id_column,
-    threshold_cosine_similarity,
     getRepresentativeLabel,
 )
+import os
 import pandas as pd
 import numpy  as np
 from collections import defaultdict
 from itertools   import combinations
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
+# ==========================================================================
+# MappingErrorAnalysis.py
+#
+# Evaluates the output of the whole pipeline (llm_filtered.csv) against the
+# Graham gold standard. Everything is computed on unique (hpo_id, sct_id)
+# pairs.
+#
+# Each pair has two kinds of rows in llm_filtered.csv: one row per
+# generation method that found it, carrying the validity code assigned by
+# MappingSetBuilder, and, if the LLM accepted it, one extra row with
+# attribute="llm" and validity=10. Three accepted sets follow from this:
+#
+#   auto-accepted : original validity code 10 (before the LLM review)
+#   LLM-accepted  : pairs with an "llm" row
+#   final         : auto-accepted + LLM-accepted (an auto-accepted pair
+#                   the LLM rejected stays accepted)
+#
+# The "original validity code" of a pair is taken from its generation rows
+# only, so an LLM-accepted pair still counts under the code it had before
+# the review. Unless stated otherwise, "accepted" means the final set.
+# ==========================================================================
 
 # How many examples to print per error-analysis category
 ERROR_EXAMPLE_LIMIT = 20
+
+# Number of evenly-spaced thresholds in the precision–recall sweep (section 8)
+PR_STEPS = 50
+
+# The methods that generate candidate pairs; "llm" only re-accepts pairs
+# that one of them generated, so it is excluded wherever methods are
+# compared with each other.
+GENERATION_METHODS = [method for method in ALL_METHODS if method != llm_mappings]
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -64,27 +90,18 @@ def _metrics(tp: int, pred_total: int, gold_total: int, universe_total: int) -> 
     return dict(precision=precision, recall=recall, f1=f1, universe_share=universe_share)
 
 
-def _log_metrics(l: Logger, m: dict, prefix: str = "") -> None:
-    p = f"{prefix}: " if prefix else ""
-    l.log(f"{p}Precision: {m['precision']:.4f}  |  Recall: {m['recall']:.4f}  "
-          f"|  F1: {m['f1']:.4f}  |  TP share of universe: {m['universe_share']:.4f}")
-
-
-def _dedupe_by_pair(df: pd.DataFrame, id_col: str, val_col: str) -> pd.DataFrame:
-    """One row per unique (hpo_id, sct_id) pair."""
-    return df.drop_duplicates(subset=[id_col, val_col]).reset_index(drop=True)
-
-
-def _tp_from_df(df: pd.DataFrame, gold_set: set, id_col: str, val_col: str) -> int:
-    """Count rows in df whose (id_col, val_col) pair is in gold_set."""
-    return int(inGoldSeries(df, gold_set, id_col, val_col).sum())
+def _pair_set(df: pd.DataFrame, id_col: str, val_col: str) -> set:
+    """Set of unique (id_col, val_col) pairs in df."""
+    return set(zip(df[id_col], df[val_col]))
 
 
 def _hpo_depth(hpo_id: str, parent_map: dict) -> int:
     """
-    Returns the depth of hpo_id in the HPO hierarchy (root = 0).
-    parent_map: child -> set of parent ids.
-    Uses BFS upward; cycle-safe.
+    Returns the depth of hpo_id in the HPO hierarchy (a root = 0), measured
+    as the number of breadth-first levels needed to reach all ancestors:
+    the largest shortest-path distance to any ancestor. With several paths
+    to the root this can differ slightly from the shortest distance to the
+    root. parent_map: child -> set of parent ids. Cycle-safe.
     """
     visited  = {hpo_id}
     frontier = {hpo_id}
@@ -118,39 +135,31 @@ if __name__ == "__main__":
     l.printHeader("1. Loading data")
 
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
+    del umls, umls_ontology  # not used in this script; free the memory
 
-    id_col   = hpo_ontology.config.id_column       # e.g. "hpo_id"
-    val_col  = hpo_ontology.config.value_column     # e.g. "sct_id"
-    attr_col = hpo_ontology.config.attribute_column
+    id_col   = hpo_ontology.config.id_column       # HPO concept ID
+    val_col  = hpo_ontology.config.value_column     # SCT concept ID
+    attr_col = hpo_ontology.config.attribute_column # mapping method
 
-    l.log("Loading llm_filtered.csv (final mappings)...")
+    l.log("Loading LLM-reviewed mappings (llm_filtered.csv)...")
     final_df = pd.read_csv(llm_filtered_path, sep=";")
     final_df = keepHPOConcepts(final_df, id_col)
-    l.log(f"  Rows in llm_filtered.csv: {len(final_df)}")
+    l.log(f"Loading LLM-reviewed mappings completed. {len(final_df)} rows.")
 
     # Gold-standard pair set
     gold_pairs = set(zip(graham[hpo_id_column], graham[sct_id_column]))
     gold_hpo   = set(graham[hpo_id_column].unique())
     gold_total = len(gold_pairs)
-    l.log(f"  Gold standard: {gold_total} unique (HPO, SCT) pairs "
-          f"across {len(gold_hpo)} HPO concepts.")
-
-    # Universe = all unique (HPO, SCT) pairs ever generated (universe-share denominator).
-    all_pairs_df   = _dedupe_by_pair(final_df, id_col, val_col)
-    universe_total = len(all_pairs_df)
-    l.log(f"  Universe (unique pairs in llm_filtered.csv): {universe_total}")
+    l.log(f"Gold standard: {gold_total} unique pairs for {len(gold_hpo)} HPO concepts.")
 
     # -----------------------------------------------------------------------
     # 2. Build lookup tables
     # -----------------------------------------------------------------------
     l.printHeader("2. Building lookup tables")
-    l.log("Building label and hierarchy lookup tables...")
+    l.log("Building label, hierarchy and pair lookup tables...")
 
     sct_labels_dict = buildAttributeLookup(sct, sct_ontology, labelClass)
     hpo_labels_dict = buildAttributeLookup(hpo, hpo_ontology, labelClass)
-
-    # hpo_parent_map[child] = set of direct parents, used for depth calculation.
-    hpo_parent_map: dict[str, set] = build_parent_map(hpo, hpo_ontology)
 
     def sct_label(sct_id: str) -> str:
         return getRepresentativeLabel(sct_labels_dict.get(sct_id, [])) or sct_id
@@ -159,202 +168,205 @@ if __name__ == "__main__":
         terms = hpo_labels_dict.get(hpo_id, [])
         return terms[0] if terms else hpo_id
 
-    l.log("Lookup tables built.")
+    # Hierarchy lookups (transitive, memoized):
+    #   hpo_parent_map[child] = set of direct parents (for depth, section 13)
+    #   *_descendants(c)      = all concepts below c
+    #   hpo_ancestors(c)      = all concepts above c
+    hpo_parent_map  = build_parent_map(hpo, hpo_ontology)
+    hpo_ancestors   = make_descendant_lookup(hpo_parent_map)
+    hpo_descendants = make_descendant_lookup(build_child_map(hpo, hpo_ontology))
+    sct_descendants = make_descendant_lookup(build_child_map(sct, sct_ontology))
+
+    # Generation rows only (without the "llm" rows). Their validity is the
+    # code MappingSetBuilder assigned, i.e. before the LLM review; all rows
+    # of a pair share it, so "first" picks that code (or NA if the pair was
+    # not reached by any step). pair_table has one row per generated pair:
+    #   validity  : original validity code
+    #   n_methods : number of generation methods that found the pair
+    #   best_conf : highest confidence of any of its rows (cross-reference
+    #               and exact lexical rows always have 1.0)
+    gen_rows = final_df[final_df[attr_col] != llm_mappings]
+
+    pair_table = (
+        gen_rows.groupby([id_col, val_col])
+        .agg(**{
+            validity_column: (validity_column,   "first"),
+            "n_methods":     (attr_col,          "nunique"),
+            "best_conf":     (confidence_column, "max"),
+        })
+        .reset_index()
+    )
+    pair_keys      = list(zip(pair_table[id_col], pair_table[val_col]))
+    pair_validity  = dict(zip(pair_keys, pair_table[validity_column]))
+    pair_n_methods = dict(zip(pair_keys, pair_table["n_methods"]))
+    pair_best_conf = dict(zip(pair_keys, pair_table["best_conf"]))
+
+    # Universe = all unique pairs ever generated (universe-share denominator).
+    universe_pairs = set(pair_keys)
+    universe_total = len(universe_pairs)
+
+    def pairs_with(codes) -> set:
+        """Pairs whose original validity code is in codes (never NA pairs)."""
+        codes = set(codes)
+        return {p for p, v in pair_validity.items() if pd.notna(v) and v in codes}
+
+    auto_pairs  = pairs_with([validity_accepted])
+    llm_pairs   = _pair_set(final_df[final_df[attr_col] == llm_mappings], id_col, val_col)
+    final_pairs = auto_pairs | llm_pairs
+
+    l.log(f"Building label, hierarchy and pair lookup tables completed. "
+          f"{universe_total} generated pairs; accepted: {len(auto_pairs)} "
+          f"auto, {len(llm_pairs)} by the LLM, {len(final_pairs)} final.")
+
+    def log_pairs(label: str, pairs: set, share: bool = False, indent: str = "  ") -> None:
+        """
+        One metric line for a set of pairs, the same in every section:
+        precision over all pairs in the set (including HPO concepts the
+        gold standard does not cover), recall over all gold pairs, and,
+        with share=True, TP share = correct pairs / all generated pairs.
+        """
+        tp = len(pairs & gold_pairs)
+        m  = _metrics(tp, len(pairs), gold_total, universe_total)
+        line = (f"{indent}{label + ':':<48} pairs {len(pairs):7} | in gold {tp:6} | "
+                f"P {m['precision']:.3f} | R {m['recall']:.3f} | F1 {m['f1']:.3f}")
+        if share:
+            line += f" | TP share {m['universe_share']:.4f}"
+        l.log(line)
+
+    def log_examples(pairs, limit: int = ERROR_EXAMPLE_LIMIT, indent: str = "    ") -> None:
+        """Log up to limit (HPO, SCT) pairs with labels, sorted for reproducibility."""
+        pairs = sorted(pairs)
+        for hid, sid in pairs[:limit]:
+            l.log(f"{indent}{hid} [{hpo_label(hid)}]  →  {sid} [{sct_label(sid)}]")
+        if len(pairs) > limit:
+            l.log(f"{indent}... and {len(pairs) - limit} more.")
 
     # -----------------------------------------------------------------------
     # 3. Stage-by-stage comparison
     #
-    #   Stage 1 — All generated pairs (entire llm_filtered.csv, deduplicated)
-    #   Stage 2 — After filtering: validity in {1..9,10} (domain-rejected
-    #             pairs excluded; these were never seen by the LLM)
-    #   Stage 3 — Final accepted: validity = 10, deduplicated
+    #   Stage 1  — All generated pairs
+    #   Stage 2  — After filtering: original validity 1–10 (domain mismatches
+    #              and pairs not reached by any step excluded); these were
+    #              reviewed by the LLM
+    #   Stage 3a — Auto-accepted (original validity 10, before the LLM)
+    #   Stage 3b — LLM-accepted only
+    #   Stage 3c — Final: auto-accepted + LLM-accepted
     # -----------------------------------------------------------------------
     l.printHeader("3. Stage-by-stage comparison")
 
-    stages = {
-        "Stage 1 — All generated pairs":
-            final_df,
-        "Stage 2 — After filtering (validity ≠ 0, not NA)":
-            final_df[final_df[validity_column].isin(validity_reviewable)],
-        "Stage 3 — Final accepted (validity = 10)":
-            final_df[final_df[validity_column] == validity_accepted],
-    }
-
-    for stage_name, stage_df in stages.items():
-        deduped = _dedupe_by_pair(stage_df, id_col, val_col)
-        tp      = _tp_from_df(deduped, gold_pairs, id_col, val_col)
-        m       = _metrics(tp, len(deduped), gold_total, universe_total)
-        l.log(f"\n  {stage_name}")
-        l.log(f"    Unique pairs: {len(deduped)}  |  Correct (in gold): {tp}")
-        _log_metrics(l, m, "    Metrics")
+    log_pairs("Stage 1 — all generated pairs",                   universe_pairs,                 share=True)
+    log_pairs("Stage 2 — after filtering (validity=1–10)",       pairs_with(validity_reviewable), share=True)
+    log_pairs("Stage 3a — auto-accepted (before LLM review)",    auto_pairs,                     share=True)
+    log_pairs("Stage 3b — LLM-accepted only",                    llm_pairs,                      share=True)
+    log_pairs("Stage 3c — final (auto-accepted + LLM-accepted)", final_pairs,                    share=True)
+    l.log(f"Auto-accepted pairs not accepted by the LLM (rejected or no valid "
+          f"answer; they stay in the final set): {len(auto_pairs - llm_pairs)}.")
 
     # -----------------------------------------------------------------------
     # 4. Validity-level breakdown
+    # By original validity code, i.e. before the LLM review.
     # -----------------------------------------------------------------------
     l.printHeader("4. Validity-level breakdown")
 
+    l.log("Pairs by original validity code (before LLM review):")
     for v_code, v_label in sorted(VALIDITY_LABELS.items()):
-        subset = _dedupe_by_pair(
-            final_df[final_df[validity_column] == v_code], id_col, val_col
-        )
-        if subset.empty:
-            l.log(f"  validity={v_code} ({v_label}): no pairs.")
-            continue
-        tp = _tp_from_df(subset, gold_pairs, id_col, val_col)
-        m  = _metrics(tp, len(subset), gold_total, universe_total)
-        l.log(f"\n  validity={v_code} ({v_label}): {len(subset)} pairs, {tp} in gold.")
-        _log_metrics(l, m, "    Metrics")
+        log_pairs(f"validity={v_code} ({v_label})", pairs_with([v_code]))
+    not_reached = {p for p, v in pair_validity.items() if pd.isna(v)}
+    log_pairs("validity=NA (not reached by any step)", not_reached)
 
     # -----------------------------------------------------------------------
     # 5. Method-level breakdown
+    # All pairs a method produced, and those of them in the final set.
     # -----------------------------------------------------------------------
     l.printHeader("5. Method-level breakdown")
 
     for method in ALL_METHODS:
-        method_df = _dedupe_by_pair(
-            final_df[final_df[attr_col] == method], id_col, val_col
-        )
-        if method_df.empty:
-            l.log(f"  Method '{method}': no pairs found.")
+        method_pairs = _pair_set(final_df[final_df[attr_col] == method], id_col, val_col)
+        if not method_pairs:
+            l.log(f"Method '{method}': no pairs.")
             continue
-
-        tp_all = _tp_from_df(method_df, gold_pairs, id_col, val_col)
-        m_all  = _metrics(tp_all, len(method_df), gold_total, universe_total)
-
-        accepted_df = _dedupe_by_pair(
-            final_df[(final_df[attr_col] == method) & (final_df[validity_column] == validity_accepted)],
-            id_col, val_col,
-        )
-        tp_acc = _tp_from_df(accepted_df, gold_pairs, id_col, val_col)
-        m_acc  = _metrics(tp_acc, len(accepted_df), gold_total, universe_total)
-
-        l.log(f"\n  Method: '{method}'")
-        l.log(f"    All pairs ({len(method_df)}):             in gold={tp_all}")
-        _log_metrics(l, m_all, "      All pairs ")
-        l.log(f"    Accepted (validity=10, {len(accepted_df)}): in gold={tp_acc}")
-        _log_metrics(l, m_acc, "      Accepted  ")
+        l.log(f"Method '{method}':")
+        log_pairs("all pairs",          method_pairs)
+        log_pairs("in the final set",   method_pairs & final_pairs)
 
     # -----------------------------------------------------------------------
     # 6. Method-agreement analysis
     #
-    # For each unique (HPO, SCT) pair, count how many distinct mapping methods
-    # produced it. Bucket accepted (validity=10) pairs by that count and report
-    # metrics — both exact ("exactly k methods") and cumulative ("≥ k methods").
+    # For each final pair, count how many distinct generation methods
+    # produced it ("llm" is not counted). Bucket the pairs by that count and
+    # report metrics — both exact ("exactly k methods") and cumulative
+    # ("≥ k methods").
     # -----------------------------------------------------------------------
     l.printHeader("6. Method-agreement analysis")
 
-    method_agreement = (
-        final_df.groupby([id_col, val_col])[attr_col]
-        .nunique()
-        .reset_index()
-        .rename(columns={attr_col: "method_count"})
-    )
+    final_n_methods = {p: pair_n_methods.get(p, 0) for p in final_pairs}
+    max_agree = max(final_n_methods.values(), default=0)
 
-    accepted_all = _dedupe_by_pair(
-        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
-    )
-    accepted_with_agree = accepted_all.merge(
-        method_agreement, on=[id_col, val_col], how="left"
-    )
-    accepted_with_agree["method_count"] = (
-        accepted_with_agree["method_count"].fillna(1).astype(int)
-    )
-
-    max_agree = int(accepted_with_agree["method_count"].max()) if not accepted_with_agree.empty else 0
-
-    l.log("  Accepted pairs (validity=10) — exact bucket (exactly k methods agree):")
+    l.log("Final pairs found by exactly k generation methods:")
     for k in range(1, max_agree + 1):
-        bucket = accepted_with_agree[accepted_with_agree["method_count"] == k]
-        if bucket.empty:
-            continue
-        tp = _tp_from_df(bucket, gold_pairs, id_col, val_col)
-        m  = _metrics(tp, len(bucket), gold_total, universe_total)
-        l.log(f"\n    {k} method(s) agree — {len(bucket)} pairs, {tp} in gold")
-        _log_metrics(l, m, f"      k={k}")
+        bucket = {p for p, n in final_n_methods.items() if n == k}
+        if bucket:
+            log_pairs(f"k = {k}", bucket)
 
-    l.log("\n  Cumulative: pairs agreed upon by AT LEAST k methods:")
+    l.log("Final pairs found by at least k generation methods:")
     for k in range(1, max_agree + 1):
-        bucket = accepted_with_agree[accepted_with_agree["method_count"] >= k]
-        if bucket.empty:
-            continue
-        tp = _tp_from_df(bucket, gold_pairs, id_col, val_col)
-        m  = _metrics(tp, len(bucket), gold_total, universe_total)
-        l.log(f"\n    ≥ {k} method(s) — {len(bucket)} pairs, {tp} in gold")
-        _log_metrics(l, m, f"      k≥{k}")
+        bucket = {p for p, n in final_n_methods.items() if n >= k}
+        if bucket:
+            log_pairs(f"k ≥ {k}", bucket)
 
     # -----------------------------------------------------------------------
     # 7. Confidence threshold analysis
     #
-    # Sweep confidence thresholds for similarity-based methods (Jaccard,
-    # embedding, and their combination). Reports all four metrics at each
-    # threshold, deduplicating by keeping the highest confidence per pair.
+    # Sweep confidence thresholds for the similarity-based methods over all
+    # generated pairs, deduplicating by keeping the highest confidence per
+    # pair. "Jaccard or embedding" pools both methods and keeps, per pair,
+    # the higher of its Jaccard and cosine confidence; as the two scales are
+    # not the same measure, read its thresholds as "either method reaches t".
     # -----------------------------------------------------------------------
     l.printHeader("7. Confidence threshold analysis")
 
-    for method in SIM_METHODS + ["combined"]:
-        if method == "combined":
-            pool = final_df[final_df[attr_col].isin(SIM_METHODS)].copy()
-            method_label = "Jaccard + Embedding (combined)"
-        else:
-            pool = final_df[final_df[attr_col] == method].copy()
-            method_label = method
+    def similarity_pools():
+        """(label, rows) for each similarity method and their combination."""
+        for method in SIM_METHODS:
+            yield method, gen_rows[gen_rows[attr_col] == method]
+        yield "Jaccard or embedding (max per pair)", gen_rows[gen_rows[attr_col].isin(SIM_METHODS)]
 
-        if pool.empty:
-            continue
-
-        pool_deduped = (
+    def best_confidence(pool: pd.DataFrame) -> pd.DataFrame:
+        """One row per pair, with its highest confidence."""
+        return (
             pool.sort_values(confidence_column, ascending=False)
             .drop_duplicates(subset=[id_col, val_col])
         )
 
-        l.log(f"\n  Method: {method_label}")
-
+    for method_label, pool in similarity_pools():
+        if pool.empty:
+            continue
+        pool_deduped = best_confidence(pool)
+        l.log(f"Method '{method_label}':")
         for thresh in similarity_steps:
             subset = pool_deduped[pool_deduped[confidence_column] >= thresh]
-            if subset.empty:
-                l.log(f"    conf ≥ {thresh:.2f}: no pairs.")
-                continue
-            tp = _tp_from_df(subset, gold_pairs, id_col, val_col)
-            m  = _metrics(tp, len(subset), gold_total, universe_total)
-            l.log(
-                f"    conf ≥ {thresh:.2f}: {len(subset):6} pairs, {tp:5} in gold | "
-                f"P={m['precision']:.4f}  R={m['recall']:.4f}  "
-                f"F1={m['f1']:.4f}  TPshare={m['universe_share']:.4f}"
-            )
+            log_pairs(f"confidence ≥ {thresh:.2f}", _pair_set(subset, id_col, val_col))
 
     # -----------------------------------------------------------------------
-    # 8. Precision–recall curve (simulation across thresholds)
+    # 8. Precision–recall curve (fine-grained threshold sweep)
     #
-    # For each similarity method and their combination, sweep a finer grid of
-    # confidence thresholds and log (threshold, precision, recall, F1) so the
-    # caller can plot or inspect the operating-point trade-off.
+    # For each similarity method and their combination, sweep PR_STEPS
+    # evenly spaced thresholds between the lowest and highest confidence and
+    # log the metrics at each, so the operating-point trade-off can be
+    # plotted or inspected. As in section 7, this covers all generated
+    # pairs of the method (not only accepted ones): it shows what a pure
+    # threshold on that method alone would achieve.
     # -----------------------------------------------------------------------
     l.printHeader("8. Precision–recall curve (fine-grained threshold sweep)")
 
-    PR_STEPS = 50   # number of evenly-spaced threshold steps
-
-    for method in SIM_METHODS + ["combined"]:
-        if method == "combined":
-            pool = final_df[final_df[attr_col].isin(SIM_METHODS)].copy()
-            method_label = "Jaccard + Embedding (combined)"
-        else:
-            pool = final_df[final_df[attr_col] == method].copy()
-            method_label = method
-
+    for method_label, pool in similarity_pools():
         if pool.empty:
             continue
+        pool_deduped = best_confidence(pool)
+        conf_vals    = pool_deduped[confidence_column].values
+        thresholds   = np.linspace(float(np.min(conf_vals)), float(np.max(conf_vals)), PR_STEPS)
 
-        pool_deduped = (
-            pool.sort_values(confidence_column, ascending=False)
-            .drop_duplicates(subset=[id_col, val_col])
-        )
-
-        conf_vals  = pool_deduped[confidence_column].values
-        min_conf   = float(np.min(conf_vals)) if len(conf_vals) else 0.0
-        max_conf   = float(np.max(conf_vals)) if len(conf_vals) else 1.0
-        thresholds = np.linspace(min_conf, max_conf, PR_STEPS)
-
-        l.log(f"\n  PR curve — {method_label}  (threshold : precision / recall / F1):")
+        l.log(f"Method '{method_label}':")
         best_f1_thresh = None
         best_f1_val    = -1.0
 
@@ -362,407 +374,293 @@ if __name__ == "__main__":
             subset = pool_deduped[pool_deduped[confidence_column] >= thresh]
             if subset.empty:
                 continue
-            tp = _tp_from_df(subset, gold_pairs, id_col, val_col)
-            m  = _metrics(tp, len(subset), gold_total, universe_total)
-            l.log(
-                f"    {thresh:.4f} : P={m['precision']:.4f}  "
-                f"R={m['recall']:.4f}  F1={m['f1']:.4f}  ({len(subset)} pairs)"
-            )
+            pairs = _pair_set(subset, id_col, val_col)
+            log_pairs(f"confidence ≥ {thresh:.4f}", pairs)
+            m = _metrics(len(pairs & gold_pairs), len(pairs), gold_total, universe_total)
             if m["f1"] > best_f1_val:
                 best_f1_val    = m["f1"]
                 best_f1_thresh = thresh
 
         if best_f1_thresh is not None:
-            l.log(f"  → Best F1={best_f1_val:.4f} at threshold={best_f1_thresh:.4f}")
+            l.log(f"  Best F1 {best_f1_val:.3f} at confidence ≥ {best_f1_thresh:.4f}.")
 
     # -----------------------------------------------------------------------
     # 9. LLM-specific analysis
     #
-    #   A. Overall LLM accept/reject counts and precision.
-    #   B. Per review-reason breakdown: acceptance rate and precision per
-    #      validity code (1–10) that was sent to LLM review.
-    #   C. LLM false-positive rate: of accepted pairs, what fraction are
-    #      NOT in the gold standard?
+    #   A. Overall: pairs reviewed (original validity 1–10, all of which
+    #      MappingLLM sends to review), accepted (pairs with an "llm" row)
+    #      and not accepted, plus the LLM's decisions per pass from
+    #      llm_review.csv, which also shows answers that were not usable.
+    #   B. Per review reason (original validity code): acceptance rate and
+    #      metrics of the accepted pairs.
+    #   C. LLM false positives: accepted pairs NOT in the gold standard.
     # -----------------------------------------------------------------------
     l.printHeader("9. LLM-specific analysis")
 
-    llm_rows    = final_df[final_df[attr_col] == llm_mappings].copy()
-    llm_deduped = _dedupe_by_pair(llm_rows, id_col, val_col)
+    reviewed_pairs = pairs_with(REVIEW_REASON.keys())
+    n_reviewed     = len(reviewed_pairs)
+    n_accepted     = len(llm_pairs & reviewed_pairs)
 
-    # The LLM reviewed all validity 1–10 pairs (including auto-accepted).
-    reviewed_pool = _dedupe_by_pair(
-        final_df[final_df[validity_column].isin(list(REVIEW_REASON.keys()))],
-        id_col, val_col,
-    )
+    l.log("A. Overall LLM review:")
+    l.log(f"  Pairs reviewed: {n_reviewed}, accepted: {n_accepted} "
+          f"({_safe_div(n_accepted, n_reviewed):.2%}), rejected or no valid "
+          f"answer: {n_reviewed - n_accepted} "
+          f"({_safe_div(n_reviewed - n_accepted, n_reviewed):.2%}).")
+    log_pairs("LLM-accepted", llm_pairs)
 
-    llm_accepted_pairs = set(zip(llm_deduped[id_col], llm_deduped[val_col]))
-    reviewed_pairs     = set(zip(reviewed_pool[id_col], reviewed_pool[val_col]))
+    if os.path.exists(llm_review_path):
+        review = pd.read_csv(llm_review_path, sep=";")
+        l.log(f"LLM decisions per pass (pairs, from {os.path.basename(llm_review_path)}):")
+        for llm_pass, decisions in review.groupby("llm_pass"):
+            n_acc   = int((decisions["llm_decision"] == "ACCEPT").sum())
+            n_rej   = int((decisions["llm_decision"] == "REJECT").sum())
+            n_empty = int(decisions["llm_rationale"].isna().sum())
+            l.log(f"  Pass {llm_pass}: {len(decisions)} reviewed, {n_acc} ACCEPT, "
+                  f"{n_rej} REJECT, {len(decisions) - n_acc - n_rej} other decision; "
+                  f"{n_empty} without rationale (incl. unparsable or missing answers).")
+    else:
+        l.log(f"  {os.path.basename(llm_review_path)} not found; decisions per "
+              f"pass are not available (written by MappingLLM since the "
+              f"rationale field was added).")
 
-    n_reviewed = len(reviewed_pairs)
-    n_accepted = len(llm_accepted_pairs)
-    n_rejected = n_reviewed - n_accepted
-
-    tp_llm = _tp_from_df(llm_deduped, gold_pairs, id_col, val_col)
-    fp_llm = n_accepted - tp_llm
-    m_llm  = _metrics(tp_llm, n_accepted, gold_total, universe_total)
-
-    l.log(f"\n  A. Overall LLM pass:")
-    l.log(f"    Pairs reviewed:  {n_reviewed}")
-    l.log(f"    Accepted:        {n_accepted}  ({_safe_div(n_accepted, n_reviewed):.2%})")
-    l.log(f"    Rejected:        {n_rejected}  ({_safe_div(n_rejected, n_reviewed):.2%})")
-    l.log(f"    True positives:  {tp_llm}")
-    l.log(f"    False positives: {fp_llm}  "
-          f"(FP rate among accepted: {_safe_div(fp_llm, n_accepted):.2%})")
-    _log_metrics(l, m_llm, "    Metrics")
-
-    l.log(f"\n  B. Per review-reason breakdown:")
+    l.log("B. Per review reason (original validity code):")
     for v_code, reason_label in sorted(REVIEW_REASON.items()):
-        # Pairs that entered LLM with this validity code.
-        reason_pool = _dedupe_by_pair(
-            final_df[final_df[validity_column] == v_code], id_col, val_col
-        )
-        reason_pairs = set(zip(reason_pool[id_col], reason_pool[val_col]))
-
-        # LLM-accepted pairs that came from this validity code.
-        accepted_from_reason = llm_deduped[
-            inGoldSeries(llm_deduped, reason_pairs, id_col, val_col)
-        ]
-
-        n_pool = len(reason_pairs)
-        n_acc  = len(accepted_from_reason)
-        if n_pool == 0:
-            l.log(f"    validity={v_code} ({reason_label}): no pairs reviewed.")
+        reason_pairs = pairs_with([v_code])
+        if not reason_pairs:
+            l.log(f"  validity={v_code} ({reason_label}): no pairs reviewed.")
             continue
+        accepted_from_reason = reason_pairs & llm_pairs
+        l.log(f"  validity={v_code} ({reason_label}): {len(reason_pairs)} reviewed, "
+              f"{len(accepted_from_reason)} accepted "
+              f"({_safe_div(len(accepted_from_reason), len(reason_pairs)):.2%}).")
+        log_pairs("accepted", accepted_from_reason, indent="    ")
 
-        tp_r = _tp_from_df(accepted_from_reason, gold_pairs, id_col, val_col)
-        m_r  = _metrics(tp_r, n_acc, gold_total, universe_total)
-        l.log(
-            f"\n    validity={v_code} ({reason_label}): "
-            f"{n_pool} reviewed, {n_acc} accepted "
-            f"({_safe_div(n_acc, n_pool):.2%}), {tp_r} in gold"
-        )
-        _log_metrics(l, m_r, "      Metrics")
-
-    l.log(f"\n  C. LLM false positives (accepted but NOT in gold):")
-    llm_fp = llm_deduped[~inGoldSeries(llm_deduped, gold_pairs, id_col, val_col)]
-    l.log(f"    Count: {len(llm_fp)}")
-    for _, row in llm_fp.head(ERROR_EXAMPLE_LIMIT).iterrows():
-        l.log(
-            f"    {row[id_col]} [{hpo_label(row[id_col])}]  →  "
-            f"{row[val_col]} [{sct_label(row[val_col])}]"
-        )
-    if len(llm_fp) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {len(llm_fp) - ERROR_EXAMPLE_LIMIT} more.")
+    llm_fp = llm_pairs - gold_pairs
+    l.log(f"C. LLM false positives (accepted but NOT in gold): {len(llm_fp)} pairs.")
+    log_examples(llm_fp, indent="  ")
 
     # -----------------------------------------------------------------------
     # 10. Mapping completeness
     #
-    #   A. Coverage: fraction of all HPO concepts that received ≥1 accepted
-    #      mapping, vs. fraction that received ≥1 generated (any validity).
+    #   A. Coverage: fraction of all HPO concepts that received ≥1 final
+    #      mapping, vs. fraction that received ≥1 generated pair.
     #   B. Multi-mapping rate: how many HPO concepts have more than one
-    #      accepted SCT target, and are those multi-mappings correct?
+    #      final SCT target, and are those multi-mappings correct?
     # -----------------------------------------------------------------------
     l.printHeader("10. Mapping completeness")
 
     all_hpo_concepts = set(hpo[hpo_ontology.config.id_column].unique())
-    generated_hpo    = set(final_df[id_col].unique())
-    accepted_v10     = _dedupe_by_pair(
-        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
-    )
-    accepted_hpo     = set(accepted_v10[id_col].unique())
+    generated_hpo    = {h for h, _ in universe_pairs}
+    accepted_hpo     = {h for h, _ in final_pairs}
 
     n_total_hpo = len(all_hpo_concepts)
     n_generated = len(generated_hpo & all_hpo_concepts)
     n_accepted  = len(accepted_hpo & all_hpo_concepts)
 
-    l.log(f"\n  A. HPO concept coverage:")
-    l.log(f"    Total HPO concepts (HP: namespace): {n_total_hpo}")
-    l.log(
-        f"    With ≥1 generated mapping:  {n_generated:6}  "
-        f"({_safe_div(n_generated, n_total_hpo):.2%})"
-    )
-    l.log(
-        f"    With ≥1 accepted mapping:   {n_accepted:6}  "
-        f"({_safe_div(n_accepted, n_total_hpo):.2%})"
-    )
+    l.log("A. HPO concept coverage:")
+    l.log(f"  {'HPO concepts (HP: namespace):':<38}{n_total_hpo:7}")
+    l.log(f"  {'With ≥1 generated pair:':<38}{n_generated:7} "
+          f"({_safe_div(n_generated, n_total_hpo):.2%})")
+    l.log(f"  {'With ≥1 final mapping:':<38}{n_accepted:7} "
+          f"({_safe_div(n_accepted, n_total_hpo):.2%})")
 
-    l.log(f"\n  B. Multi-mapping rate (accepted, validity=10):")
-    sct_count_per_hpo = accepted_v10.groupby(id_col)[val_col].nunique()
-    multi_mapped      = sct_count_per_hpo[sct_count_per_hpo > 1]
-    l.log(
-        f"    HPO concepts with >1 accepted SCT target: {len(multi_mapped)}  "
-        f"({_safe_div(len(multi_mapped), len(sct_count_per_hpo)):.2%} of mapped concepts)"
-    )
+    accepted_sct_per_hpo: dict = defaultdict(set)
+    accepted_hpo_per_sct: dict = defaultdict(set)
+    for hid, sid in final_pairs:
+        accepted_sct_per_hpo[hid].add(sid)
+        accepted_hpo_per_sct[sid].add(hid)
 
-    for hpo_id, n_sct in multi_mapped.sort_values(ascending=False).head(10).items():
-        our_scts  = set(accepted_v10.loc[accepted_v10[id_col] == hpo_id, val_col])
-        gold_scts = set(graham.loc[graham[hpo_id_column] == hpo_id, sct_id_column])
-        correct   = our_scts & gold_scts
+    gold_sct_per_hpo: dict = defaultdict(set)
+    for hid, sid in gold_pairs:
+        gold_sct_per_hpo[hid].add(sid)
+
+    multi_mapped = {h: s for h, s in accepted_sct_per_hpo.items() if len(s) > 1}
+    l.log(f"B. HPO concepts with more than one final SCT target: {len(multi_mapped)} "
+          f"({_safe_div(len(multi_mapped), len(accepted_sct_per_hpo)):.2%} of mapped "
+          f"concepts). Examples with the most targets:")
+
+    for hpo_id, our_scts in sorted(multi_mapped.items(), key=lambda x: (-len(x[1]), x[0]))[:10]:
+        gold_scts = gold_sct_per_hpo.get(hpo_id, set())
         spurious  = our_scts - gold_scts
-        l.log(
-            f"    {hpo_id} [{hpo_label(hpo_id)}]: {n_sct} SCT targets — "
-            f"{len(correct)} in gold, {len(spurious)} not in gold"
-        )
-        for sid in spurious:
-            l.log(f"      spurious: {sid} [{sct_label(sid)}]")
+        l.log(f"  {hpo_id} [{hpo_label(hpo_id)}]: {len(our_scts)} SCT targets, "
+              f"{len(our_scts & gold_scts)} in gold, {len(spurious)} not in gold")
+        for sid in sorted(spurious):
+            l.log(f"    not in gold: {sid} [{sct_label(sid)}]")
 
     # -----------------------------------------------------------------------
     # 11. Missed gold-pair diagnosis
     #
-    # For every gold pair NOT in the final accepted set, determine why:
-    #   - NEVER_GENERATED       : pair absent from llm_filtered.csv entirely
-    #   - DOMAIN_REJECTED       : present but validity=0 (domain mismatch)
-    #   - FILTERED_OUT_HIERARCHY: present, validity in {1..7} (hierarchy
-    #                             reversal steps)
-    #   - LLM_REJECTED          : present, validity in {8,9} but not accepted
-    #   - OTHER                 : any other reason
+    # For every gold pair NOT in the final set, determine why, from its
+    # original validity code:
+    #   - NEVER_GENERATED                 : pair absent from llm_filtered.csv
+    #   - NOT_REACHED                     : validity=NA (generated, but not
+    #                                       reached by any filtering step)
+    #   - DOMAIN_REJECTED                 : validity=0 (domain mismatch)
+    #   - HIERARCHY_REVERSAL_LLM_REJECTED : validity 1–7, not accepted by the
+    #                                       LLM (rejected or no valid answer)
+    #   - FALLBACK_LLM_REJECTED           : validity 8–9, not accepted by the
+    #                                       LLM (rejected or no valid answer)
+    #   - INCONSISTENCY                   : validity 10 (should not happen:
+    #                                       auto-accepted pairs are always in
+    #                                       the final set)
     # -----------------------------------------------------------------------
     l.printHeader("11. Missed gold-pair diagnosis")
 
-    accepted_pairs_set = set(zip(accepted_v10[id_col], accepted_v10[val_col]))
-    missed_gold        = gold_pairs - accepted_pairs_set
+    missed_gold = gold_pairs - final_pairs
+    l.log(f"Missed gold pairs: {len(missed_gold)} of {gold_total}.")
 
-    l.log(f"  Total missed gold pairs: {len(missed_gold)} / {gold_total}")
+    def diagnose(pair) -> str:
+        if pair not in pair_validity:
+            return "NEVER_GENERATED"
+        code = pair_validity[pair]
+        if pd.isna(code):
+            return "NOT_REACHED"
+        if code == validity_domain_mismatch:
+            return "DOMAIN_REJECTED"
+        if code in validity_hierarchy_reversals:
+            return "HIERARCHY_REVERSAL_LLM_REJECTED"
+        if code in (validity_best_candidate, validity_last_resort):
+            return "FALLBACK_LLM_REJECTED"
+        return "INCONSISTENCY"
 
-    # For fast lookup: pair -> set of validity codes it appears under
-    pair_validities: dict[tuple, set] = defaultdict(set)
-    for _, row in final_df[[id_col, val_col, validity_column]].iterrows():
-        pair_validities[(row[id_col], row[val_col])].add(row[validity_column])
-
-    diagnosis_counts   = defaultdict(int)
-    diagnosis_examples: dict[str, list] = defaultdict(list)
-
+    diagnosis: dict = defaultdict(list)
     for pair in missed_gold:
-        if pair not in pair_validities:
-            diagnosis_counts["NEVER_GENERATED"] += 1
-            diagnosis_examples["NEVER_GENERATED"].append(pair)
-        else:
-            validities = pair_validities[pair]
-            if 10 in validities:
-                # Should not happen — accepted pairs are excluded from missed.
-                diagnosis_counts["INCONSISTENCY"] += 1
-            elif 0 in validities and len(validities) == 1:
-                diagnosis_counts["DOMAIN_REJECTED"] += 1
-                diagnosis_examples["DOMAIN_REJECTED"].append(pair)
-            elif validities <= {1, 2, 3, 4, 5, 6, 7}:
-                diagnosis_counts["FILTERED_OUT_HIERARCHY"] += 1
-                diagnosis_examples["FILTERED_OUT_HIERARCHY"].append(pair)
-            elif validities & {8, 9}:
-                diagnosis_counts["LLM_REJECTED"] += 1
-                diagnosis_examples["LLM_REJECTED"].append(pair)
-            else:
-                diagnosis_counts["OTHER"] += 1
-                diagnosis_examples["OTHER"].append(pair)
+        diagnosis[diagnose(pair)].append(pair)
 
-    for category, count in sorted(diagnosis_counts.items(), key=lambda x: -x[1]):
-        l.log(f"\n  {category}: {count} pairs")
-        for pair in diagnosis_examples[category][:5]:
-            hid, sid = pair
-            l.log(f"    {hid} [{hpo_label(hid)}]  →  {sid} [{sct_label(sid)}]")
-        if count > 5:
-            l.log(f"    ... and {count - 5} more.")
+    for category, pairs in sorted(diagnosis.items(), key=lambda x: -len(x[1])):
+        l.log(f"{category}: {len(pairs)} pairs")
+        log_examples(pairs, limit=5, indent="  ")
 
-    # Confidence distribution for generated-but-missed pairs
-    l.log("\n  Confidence distribution for generated-but-missed gold pairs:")
-    never_generated_set  = set(diagnosis_examples.get("NEVER_GENERATED", []))
-    generated_missed     = missed_gold - never_generated_set
+    # Best confidence of any generation method for the generated-but-missed
+    # gold pairs. Cross-reference methods always have confidence 1.0.
+    generated_missed = [p for p in missed_gold if p in pair_best_conf]
     if generated_missed:
-        gm_mask = inGoldSeries(final_df, generated_missed, id_col, val_col)
-        gm_df   = final_df[gm_mask]
-        gm_best = (
-            gm_df.sort_values(confidence_column, ascending=False)
-            .drop_duplicates(subset=[id_col, val_col])
-        )
-        conf_vals = gm_best[confidence_column].dropna()
-        if not conf_vals.empty:
-            for thresh in similarity_steps:
-                n_above = int((conf_vals >= thresh).sum())
-                l.log(
-                    f"    {n_above:5} missed gold pairs had best confidence ≥ {thresh:.2f}  "
-                    f"({_safe_div(n_above, len(conf_vals)):.2%} of generated-but-missed)"
-                )
+        conf_vals = pd.Series([pair_best_conf[p] for p in generated_missed]).dropna()
+        l.log(f"Best confidence of the {len(generated_missed)} generated-but-missed "
+              f"gold pairs (any generation method; cross-references have 1.0):")
+        for thresh in similarity_steps:
+            n_above = int((conf_vals >= thresh).sum())
+            l.log(f"  confidence ≥ {thresh:.2f}: {n_above:6} pairs "
+                  f"({_safe_div(n_above, len(conf_vals)):.2%})")
     else:
-        l.log("    All missed gold pairs were never generated.")
+        l.log("All missed gold pairs were never generated.")
 
     # -----------------------------------------------------------------------
     # 12. Pairwise method overlap and unique contributions
     #
-    #   For every pair of methods: how many (HPO, SCT) pairs did BOTH produce,
-    #   and what fraction of those overlapping pairs are in the gold standard?
+    #   For every pair of generation methods: how many (HPO, SCT) pairs did
+    #   BOTH produce, and what fraction of those overlapping pairs are in the
+    #   gold standard?
     #
-    #   For each method individually: how many gold pairs does it find that NO
-    #   other method finds? (unique contribution — methods you cannot remove.)
+    #   For each generation method: how many gold pairs does it find that NO
+    #   other generation method finds? (unique contribution — methods you
+    #   cannot remove.) "llm" is excluded: it only re-accepts pairs that a
+    #   generation method found, and counting it would hide those pairs'
+    #   unique contribution.
     # -----------------------------------------------------------------------
     l.printHeader("12. Pairwise method overlap and unique contributions")
 
-    # Build pair set per method (all pairs generated, regardless of validity).
-    method_pair_sets: dict[str, set] = {}
-    for method in ALL_METHODS:
-        rows = final_df[final_df[attr_col] == method]
-        method_pair_sets[method] = set(zip(rows[id_col], rows[val_col]))
+    method_pair_sets = {
+        method: _pair_set(gen_rows[gen_rows[attr_col] == method], id_col, val_col)
+        for method in GENERATION_METHODS
+    }
 
-    l.log("  Pairwise overlap (pairs generated by both methods):")
-    for m1, m2 in combinations(ALL_METHODS, 2):
-        s1, s2  = method_pair_sets[m1], method_pair_sets[m2]
-        overlap = s1 & s2
-        if not overlap:
-            l.log(f"    {m1} ∩ {m2}: 0 pairs")
-            continue
-        in_g  = len(overlap & gold_pairs)
-        prec  = _safe_div(in_g, len(overlap))
-        l.log(
-            f"    {m1} ∩ {m2}: {len(overlap):6} pairs, "
-            f"{in_g} in gold ({prec:.2%} precision)"
-        )
+    l.log("Pairwise overlap (pairs generated by both methods):")
+    for m1, m2 in combinations(GENERATION_METHODS, 2):
+        log_pairs(f"{m1} ∩ {m2}", method_pair_sets[m1] & method_pair_sets[m2])
 
-    l.log("\n  Unique gold contributions (gold pairs found by ONLY this method):")
-    for method in ALL_METHODS:
-        own_pairs   = method_pair_sets[method]
+    l.log("Unique gold contributions (gold pairs found by only this method):")
+    for method in GENERATION_METHODS:
         other_pairs = set().union(*(
             s for m, s in method_pair_sets.items() if m != method
         ))
-        unique_gold = (own_pairs - other_pairs) & gold_pairs
-        l.log(
-            f"    {method}: {len(unique_gold)} gold pairs found by no other method"
-        )
-        for pair in list(unique_gold)[:5]:
-            hid, sid = pair
-            l.log(f"      {hid} [{hpo_label(hid)}]  →  {sid} [{sct_label(sid)}]")
-        if len(unique_gold) > 5:
-            l.log(f"      ... and {len(unique_gold) - 5} more.")
+        unique_gold = (method_pair_sets[method] - other_pairs) & gold_pairs
+        l.log(f"  {method}: {len(unique_gold)} gold pairs")
+        log_examples(unique_gold, limit=5)
 
     # -----------------------------------------------------------------------
     # 13. Hierarchy-depth analysis
     #
     # Are accepted/missed mappings concentrated at particular depths in HPO?
-    # Reports mean depth and a histogram for: all HPO concepts, gold-covered
-    # concepts, correctly accepted concepts, and missed gold concepts.
+    # Reports mean depth and a histogram (depth buckets 0–2, 3–5, 6–9,
+    # 10–14, 15+) for: all HPO concepts, gold-covered concepts, correctly
+    # mapped concepts, and concepts with a missed gold pair. A concept can
+    # be in both of the last two groups.
     # -----------------------------------------------------------------------
     l.printHeader("13. Hierarchy-depth analysis")
 
     def depth_stats(hpo_ids: set, label: str) -> None:
         if not hpo_ids:
-            l.log(f"  {label}: (empty)")
+            l.log(f"{label}: (empty)")
             return
-        depths = [_hpo_depth(h, hpo_parent_map) for h in hpo_ids]
-        arr    = np.array(depths)
-        l.log(
-            f"  {label}: n={len(arr)}  "
-            f"mean={arr.mean():.2f}  median={np.median(arr):.1f}  "
-            f"min={arr.min()}  max={arr.max()}"
-        )
-        buckets = [(0, 2), (3, 5), (6, 9), (10, 14), (15, 999)]
-        for lo, hi in buckets:
+        arr = np.array([_hpo_depth(h, hpo_parent_map) for h in hpo_ids])
+        l.log(f"{label}: n={len(arr)}, mean={arr.mean():.2f}, "
+              f"median={np.median(arr):.1f}, min={arr.min()}, max={arr.max()}")
+        for lo, hi in [(0, 2), (3, 5), (6, 9), (10, 14), (15, 999)]:
             count    = int(((arr >= lo) & (arr <= hi)).sum())
             label_hi = str(hi) if hi < 999 else "+"
-            l.log(f"    depth {lo}–{label_hi}: {count}")
+            l.log(f"  depth {lo}–{label_hi}: {count}")
 
-    correctly_accepted_hpo = set(
-        accepted_v10.loc[
-            inGoldSeries(accepted_v10, gold_pairs, id_col, val_col), id_col
-        ].unique()
-    )
-    missed_gold_hpo = set(h for h, _ in missed_gold)
-
-    depth_stats(all_hpo_concepts,       "All HPO concepts")
-    depth_stats(gold_hpo,               "Gold-standard HPO concepts")
-    depth_stats(correctly_accepted_hpo, "Correctly accepted HPO concepts")
-    depth_stats(missed_gold_hpo,        "HPO concepts with ≥1 missed gold pair")
+    depth_stats(all_hpo_concepts,                        "All HPO concepts")
+    depth_stats(gold_hpo,                                "Gold-standard HPO concepts")
+    depth_stats({h for h, _ in final_pairs & gold_pairs}, "HPO concepts with ≥1 correct final mapping")
+    depth_stats({h for h, _ in missed_gold},             "HPO concepts with ≥1 missed gold pair")
 
     # -----------------------------------------------------------------------
     # 14. Hierarchy-reversal quality check
     #
-    # Validity codes 1–7 were rejected by the filter as hierarchy reversals.
-    # How many of those rejected pairs are actually correct gold pairs?
-    # This diagnoses whether the narrower-wins rule over-prunes.
+    # Pairs with original validity 1–7 were rejected (or demoted) by
+    # MappingSetBuilder's narrower-wins rule and then reviewed by the LLM.
+    # How many of them are correct gold pairs, and how many of those did the
+    # LLM rescue? This diagnoses whether the rule over-prunes.
     # -----------------------------------------------------------------------
     l.printHeader("14. Hierarchy-reversal quality check")
 
-    reversal_df = _dedupe_by_pair(
-        final_df[final_df[validity_column].isin(validity_hierarchy_reversals)],
-        id_col, val_col,
-    )
-    tp_rev = _tp_from_df(reversal_df, gold_pairs, id_col, val_col)
-    m_rev  = _metrics(tp_rev, len(reversal_df), gold_total, universe_total)
+    reversal_pairs = pairs_with(validity_hierarchy_reversals)
+    log_pairs("hierarchy reversals (validity=1–7)", reversal_pairs)
+    log_pairs("of which accepted by the LLM",       reversal_pairs & llm_pairs)
 
-    l.log(f"  Pairs rejected as hierarchy reversals (validity=1–7): {len(reversal_df)}")
-    l.log(f"  Of those, in gold standard (false negatives from filter): {tp_rev}")
-    _log_metrics(l, m_rev, "  Metrics")
-
-    if tp_rev > 0:
-        l.log(f"\n  Examples of incorrectly demoted gold pairs:")
-        false_neg = reversal_df[
-            inGoldSeries(reversal_df, gold_pairs, id_col, val_col)
-        ]
-        for _, row in false_neg.head(ERROR_EXAMPLE_LIMIT).iterrows():
-            l.log(
-                f"    {row[id_col]} [{hpo_label(row[id_col])}]  →  "
-                f"{row[val_col]} [{sct_label(row[val_col])}]"
-            )
-        if len(false_neg) > ERROR_EXAMPLE_LIMIT:
-            l.log(f"    ... and {len(false_neg) - ERROR_EXAMPLE_LIMIT} more.")
+    lost_gold = (reversal_pairs - llm_pairs) & gold_pairs
+    l.log(f"Gold pairs among the hierarchy reversals that are not in the final "
+          f"set: {len(lost_gold)}.")
+    log_examples(lost_gold, indent="  ")
 
     # -----------------------------------------------------------------------
     # 15. Error analysis
     #
     #   A. Gold HPO concepts with no generated mapping at all.
-    #   B. Gold HPO concepts generated but never accepted.
-    #   C. Accepted mappings for HPO concepts absent from gold.
-    #   D. HPO concepts in both gold and accepted, but wrong SCT target
+    #   B. Gold HPO concepts generated but without a final mapping.
+    #   C. Final mappings for HPO concepts absent from gold.
+    #   D. HPO concepts in both gold and the final set, but wrong SCT target
     #      (split into entirely wrong and partially wrong).
     # -----------------------------------------------------------------------
     l.printHeader("15. Error analysis")
 
-    accepted_sct_per_hpo: dict[str, set] = defaultdict(set)
-    for _, row in accepted_v10[[id_col, val_col]].iterrows():
-        accepted_sct_per_hpo[row[id_col]].add(row[val_col])
+    def log_concepts(hpo_ids: list, describe=None) -> None:
+        for hid in hpo_ids[:ERROR_EXAMPLE_LIMIT]:
+            extra = f"  {describe(hid)}" if describe else ""
+            l.log(f"  {hid} [{hpo_label(hid)}]{extra}")
+        if len(hpo_ids) > ERROR_EXAMPLE_LIMIT:
+            l.log(f"  ... and {len(hpo_ids) - ERROR_EXAMPLE_LIMIT} more.")
 
-    gold_sct_per_hpo: dict[str, set] = defaultdict(set)
-    for _, row in graham[[hpo_id_column, sct_id_column]].iterrows():
-        gold_sct_per_hpo[row[hpo_id_column]].add(row[sct_id_column])
-
-    # A: Gold HPO concepts entirely absent from generated mappings
-    l.log("\n  A. Gold HPO concepts with NO generated mapping:")
     cat_a = sorted(gold_hpo - generated_hpo)
-    l.log(f"    Count: {len(cat_a)}")
-    for hid in cat_a[:ERROR_EXAMPLE_LIMIT]:
-        l.log(f"    {hid}  [{hpo_label(hid)}]")
-    if len(cat_a) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {len(cat_a) - ERROR_EXAMPLE_LIMIT} more.")
+    l.log(f"A. Gold HPO concepts with no generated pair: {len(cat_a)}")
+    log_concepts(cat_a)
 
-    # B: Gold HPO concepts generated but not accepted
-    l.log("\n  B. Gold HPO concepts present in generated mappings but with NO accepted mapping:")
     cat_b = sorted((gold_hpo & generated_hpo) - accepted_hpo)
-    l.log(f"    Count: {len(cat_b)}")
-    for hid in cat_b[:ERROR_EXAMPLE_LIMIT]:
-        gold_scts = gold_sct_per_hpo.get(hid, set())
-        l.log(
-            f"    {hid}  [{hpo_label(hid)}]  "
-            f"gold SCT(s): {', '.join(sct_label(s) for s in gold_scts)}"
-        )
-    if len(cat_b) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {len(cat_b) - ERROR_EXAMPLE_LIMIT} more.")
+    l.log(f"B. Gold HPO concepts with generated pairs but no final mapping: {len(cat_b)}")
+    log_concepts(cat_b, lambda hid: "gold SCT(s): " + ", ".join(
+        sct_label(s) for s in sorted(gold_sct_per_hpo.get(hid, set()))))
 
-    # C: Accepted mappings for HPO concepts absent from gold
-    l.log("\n  C. Accepted mappings for HPO concepts NOT in the gold standard:")
     cat_c = sorted(accepted_hpo - gold_hpo)
-    l.log(f"    Count: {len(cat_c)} HPO concepts (may be correct but unverifiable)")
-    for hid in cat_c[:ERROR_EXAMPLE_LIMIT]:
-        our_scts = accepted_sct_per_hpo.get(hid, set())
-        l.log(
-            f"    {hid}  [{hpo_label(hid)}]  "
-            f"mapped to: {', '.join(sct_label(s) for s in our_scts)}"
-        )
-    if len(cat_c) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {len(cat_c) - ERROR_EXAMPLE_LIMIT} more.")
+    l.log(f"C. HPO concepts with a final mapping but not in the gold standard "
+          f"(may be correct but unverifiable): {len(cat_c)}")
+    log_concepts(cat_c, lambda hid: "mapped to: " + ", ".join(
+        sct_label(s) for s in sorted(accepted_sct_per_hpo.get(hid, set()))))
 
-    # D: HPO concepts in both, but SCT target differs
-    l.log("\n  D. HPO concepts in both gold and accepted, with WRONG SCT concept(s):")
-    shared_hpo          = gold_hpo & accepted_hpo
     cat_d_exact_wrong   = []
     cat_d_partial_wrong = []
-
-    for hid in sorted(shared_hpo):
+    for hid in sorted(gold_hpo & accepted_hpo):
         our_scts  = accepted_sct_per_hpo.get(hid, set())
         gold_scts = gold_sct_per_hpo.get(hid, set())
         correct   = our_scts & gold_scts
@@ -771,254 +669,151 @@ if __name__ == "__main__":
         elif correct != gold_scts:
             cat_d_partial_wrong.append((hid, our_scts, gold_scts, correct))
 
-    l.log(f"    Entirely wrong (no overlap with gold SCT): {len(cat_d_exact_wrong)}")
+    l.log(f"D. HPO concepts in gold and the final set with entirely wrong SCT "
+          f"target(s): {len(cat_d_exact_wrong)}")
     for hid, our, gold in cat_d_exact_wrong[:10]:
-        l.log(f"    {hid}  [{hpo_label(hid)}]")
-        l.log(f"      Our:  {', '.join(sct_label(s) for s in our)}")
-        l.log(f"      Gold: {', '.join(sct_label(s) for s in gold)}")
+        l.log(f"  {hid} [{hpo_label(hid)}]")
+        l.log(f"    ours: {', '.join(sct_label(s) for s in sorted(our))}")
+        l.log(f"    gold: {', '.join(sct_label(s) for s in sorted(gold))}")
     if len(cat_d_exact_wrong) > 10:
-        l.log(f"    ... and {len(cat_d_exact_wrong) - 10} more.")
+        l.log(f"  ... and {len(cat_d_exact_wrong) - 10} more.")
 
-    l.log(f"    Partially wrong (some gold SCTs missing): {len(cat_d_partial_wrong)}")
+    l.log(f"D. HPO concepts in gold and the final set with some gold SCT "
+          f"target(s) missing: {len(cat_d_partial_wrong)}")
     for hid, our, gold, correct in cat_d_partial_wrong[:10]:
-        missing = gold - our
-        extra   = our - gold
-        l.log(f"    {hid}  [{hpo_label(hid)}]")
-        l.log(f"      Correct:  {', '.join(sct_label(s) for s in correct)}")
-        l.log(f"      Missing:  {', '.join(sct_label(s) for s in missing)}")
-        if extra:
-            l.log(f"      Extra:    {', '.join(sct_label(s) for s in extra)}")
+        l.log(f"  {hid} [{hpo_label(hid)}]")
+        l.log(f"    correct: {', '.join(sct_label(s) for s in sorted(correct))}")
+        l.log(f"    missing: {', '.join(sct_label(s) for s in sorted(gold - our))}")
+        if our - gold:
+            l.log(f"    extra:   {', '.join(sct_label(s) for s in sorted(our - gold))}")
     if len(cat_d_partial_wrong) > 10:
-        l.log(f"    ... and {len(cat_d_partial_wrong) - 10} more.")
+        l.log(f"  ... and {len(cat_d_partial_wrong) - 10} more.")
 
     # -----------------------------------------------------------------------
-    # 16. Structural quality warnings
+    # 16. Structural quality warnings (on the final set)
     #
     #   A. Source collapse: one HPO concept mapped to two SCT concepts where
     #      one is a transitive ancestor of the other.
     #   B. Target collapse: two HPO concepts in an ancestor/descendant
     #      relationship both mapped to the same SCT concept.
-    #   C. Cross-pair hierarchy reversal: HPO_1 is a transitive descendant of
-    #      HPO_2, but the accepted SCT target of HPO_1 is a transitive
-    #      ancestor of the accepted SCT target of HPO_2.
+    #   C. Cross-pair hierarchy reversal: HPO_child is a transitive
+    #      descendant of HPO_parent, but the SCT target of HPO_child is a
+    #      transitive ancestor of the SCT target of HPO_parent.
+    #
+    # MappingSetBuilder removes source collapses among auto-accepted pairs,
+    # but the final set also contains LLM-accepted pairs, so A can be
+    # non-zero: e.g. the LLM accepts a narrower candidate next to an
+    # auto-accepted broader target of the same HPO concept. B and C are not
+    # checked by any earlier step.
     # -----------------------------------------------------------------------
     l.printHeader("16. Structural quality warnings")
 
-    # Build transitive closure lookups for both ontologies.
-    # KNOWN ISSUE (kept on purpose for now): these walk the child -> parents
-    # map, so *_descendants_eval actually return ANCESTORS. Warnings A/B
-    # detect related pairs correctly but swap the broader/narrower labels;
-    # warning C still needs to be checked. Switching to build_child_map
-    # (parent -> children), as MappingSetBuilder does, fixes the direction.
-    hpo_descendants_eval = make_descendant_lookup(build_parent_map(hpo, hpo_ontology))
-    sct_descendants_eval = make_descendant_lookup(build_parent_map(sct, sct_ontology))
+    def related_pairs(concepts: set, descendants) -> list:
+        """
+        (broader, narrower) for every two concepts of the set that are in an
+        ancestor/descendant relation (over any number of levels). Each
+        unordered pair is checked once, in both directions; sorting makes
+        the order of the results reproducible.
+        """
+        found = []
+        for c1, c2 in combinations(sorted(concepts), 2):
+            if c2 in descendants(c1):
+                found.append((c1, c2))
+            elif c1 in descendants(c2):
+                found.append((c2, c1))
+        return found
 
-    # Work from the deduplicated accepted set.
-    accepted_deduped = _dedupe_by_pair(
-        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
-    )
-
-    # Per-HPO accepted SCT set and per-SCT accepted HPO set for fast lookup.
-    accepted_sct_for_struct: dict[str, set] = defaultdict(set)
-    accepted_hpo_for_struct: dict[str, set] = defaultdict(set)
-    for _, row in accepted_deduped[[id_col, val_col]].iterrows():
-        accepted_sct_for_struct[row[id_col]].add(row[val_col])
-        accepted_hpo_for_struct[row[val_col]].add(row[id_col])
-
-    accepted_hpo_ids = list(accepted_sct_for_struct.keys())
-
-    # -------------------------------------------------------------------
     # A. Source collapse
-    # -------------------------------------------------------------------
-    l.log("\n  WARNING A — Source collapse "
-          "(HPO concept mapped to SCT concepts in ancestor/descendant relationship):")
+    source_collapse = {
+        hid: related_pairs(scts, sct_descendants)
+        for hid, scts in accepted_sct_per_hpo.items() if len(scts) > 1
+    }
+    source_collapse = {hid: pairs for hid, pairs in source_collapse.items() if pairs}
+    l.log(f"WARNING A — Source collapse (HPO concept mapped to SCT concepts in an "
+          f"ancestor/descendant relationship): "
+          f"{sum(len(p) for p in source_collapse.values())} related SCT pairs for "
+          f"{len(source_collapse)} HPO concepts.")
+    for hid in sorted(source_collapse)[:ERROR_EXAMPLE_LIMIT]:
+        l.log(f"  {hid} [{hpo_label(hid)}]")
+        for broader, narrower in source_collapse[hid]:
+            l.log(f"    broader:  {broader} [{sct_label(broader)}]")
+            l.log(f"    narrower: {narrower} [{sct_label(narrower)}]")
+    if len(source_collapse) > ERROR_EXAMPLE_LIMIT:
+        l.log(f"  ... and {len(source_collapse) - ERROR_EXAMPLE_LIMIT} more HPO concepts.")
 
-    source_collapse_count = 0
-    source_collapse_hpo   = []
-
-    for hpo_id, sct_targets in accepted_sct_for_struct.items():
-        if len(sct_targets) < 2:
-            continue
-        targets       = list(sct_targets)
-        collapse_pairs = []
-        for i in range(len(targets)):
-            for j in range(i + 1, len(targets)):
-                s1, s2 = targets[i], targets[j]
-                if s2 in sct_descendants_eval(s1) or s1 in sct_descendants_eval(s2):
-                    broader  = s1 if s2 in sct_descendants_eval(s1) else s2
-                    narrower = s2 if s2 in sct_descendants_eval(s1) else s1
-                    collapse_pairs.append((broader, narrower))
-        if collapse_pairs:
-            source_collapse_count += len(collapse_pairs)
-            source_collapse_hpo.append((hpo_id, collapse_pairs))
-
-    l.log(f"    Total source-collapse pairs found: {source_collapse_count} "
-          f"across {len(source_collapse_hpo)} HPO concepts.")
-    for hpo_id, pairs in source_collapse_hpo[:ERROR_EXAMPLE_LIMIT]:
-        l.log(f"    {hpo_id} [{hpo_label(hpo_id)}]")
-        for broader, narrower in pairs:
-            l.log(f"      broader:  {broader} [{sct_label(broader)}]")
-            l.log(f"      narrower: {narrower} [{sct_label(narrower)}]")
-    if len(source_collapse_hpo) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {len(source_collapse_hpo) - ERROR_EXAMPLE_LIMIT} more HPO concepts.")
-
-    # -------------------------------------------------------------------
     # B. Target collapse
-    # -------------------------------------------------------------------
-    l.log("\n  WARNING B — Target collapse "
-          "(related HPO concepts mapped to the same SCT concept):")
+    target_collapse = {
+        sid: related_pairs(hids, hpo_descendants)
+        for sid, hids in accepted_hpo_per_sct.items() if len(hids) > 1
+    }
+    target_collapse = {sid: pairs for sid, pairs in target_collapse.items() if pairs}
+    l.log(f"WARNING B — Target collapse (related HPO concepts mapped to the same "
+          f"SCT concept): {sum(len(p) for p in target_collapse.values())} related "
+          f"HPO pairs for {len(target_collapse)} SCT concepts.")
+    for sid in sorted(target_collapse)[:ERROR_EXAMPLE_LIMIT]:
+        l.log(f"  {sid} [{sct_label(sid)}]")
+        for broader, narrower in target_collapse[sid]:
+            l.log(f"    broader HPO:  {broader} [{hpo_label(broader)}]")
+            l.log(f"    narrower HPO: {narrower} [{hpo_label(narrower)}]")
+    if len(target_collapse) > ERROR_EXAMPLE_LIMIT:
+        l.log(f"  ... and {len(target_collapse) - ERROR_EXAMPLE_LIMIT} more SCT concepts.")
 
-    target_collapse_count = 0
-    target_collapse_sct   = []
-
-    for sct_id, hpo_sources in accepted_hpo_for_struct.items():
-        if len(hpo_sources) < 2:
-            continue
-        sources        = list(hpo_sources)
-        collapse_pairs = []
-        for i in range(len(sources)):
-            for j in range(i + 1, len(sources)):
-                h1, h2 = sources[i], sources[j]
-                if h2 in hpo_descendants_eval(h1) or h1 in hpo_descendants_eval(h2):
-                    broader  = h1 if h2 in hpo_descendants_eval(h1) else h2
-                    narrower = h2 if h2 in hpo_descendants_eval(h1) else h1
-                    collapse_pairs.append((broader, narrower))
-        if collapse_pairs:
-            target_collapse_count += len(collapse_pairs)
-            target_collapse_sct.append((sct_id, collapse_pairs))
-
-    l.log(f"    Total target-collapse pairs found: {target_collapse_count} "
-          f"across {len(target_collapse_sct)} SCT concepts.")
-    for sct_id, pairs in target_collapse_sct[:ERROR_EXAMPLE_LIMIT]:
-        l.log(f"    {sct_id} [{sct_label(sct_id)}]")
-        for broader, narrower in pairs:
-            l.log(f"      broader HPO:  {broader} [{hpo_label(broader)}]")
-            l.log(f"      narrower HPO: {narrower} [{hpo_label(narrower)}]")
-    if len(target_collapse_sct) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {len(target_collapse_sct) - ERROR_EXAMPLE_LIMIT} more SCT concepts.")
-
-    # -------------------------------------------------------------------
-    # C. Cross-pair hierarchy reversal
-    # For each accepted HPO concept (child), find all accepted HPO concepts
-    # that are transitive ancestors of it. For each such (child, ancestor)
-    # pair, check whether the SCT target of the child is a transitive
-    # ancestor of the SCT target of the ancestor — indicating an inverted
-    # mapping direction.
-    #
-    # Efficiency: rather than checking all O(n^2) HPO pairs, we use the
-    # pre-built transitive closure. For each child, the ancestor set is
-    # derived by checking which accepted HPO concepts have the child in
-    # their descendant set, using the memoized closure.
-    # -------------------------------------------------------------------
-    l.log("\n  WARNING C — Cross-pair hierarchy reversal "
-          "(HPO hierarchy direction inverted in SCT mapping):")
-
-    reversal_count    = 0
+    # C. Cross-pair hierarchy reversal. For each mapped HPO concept
+    # (hpo_child), its mapped HPO ancestors (hpo_parent) come from the
+    # ancestor closure directly, so only related concept pairs are
+    # compared. Then every SCT target of the child is compared with every
+    # SCT target of the parent. Example: "Focal seizure" (child) mapped to
+    # "Seizure", and "Seizure" (parent) mapped to "Focal seizure", is a
+    # reversal: the mapping turns the HPO hierarchy upside down.
     reversal_examples = []
-    accepted_hpo_set  = set(accepted_hpo_ids)
-
-    for hpo_child_id in accepted_hpo_ids:
-        # All accepted HPO concepts that are transitive ancestors of hpo_child_id.
-        # An HPO concept h is an ancestor of hpo_child_id iff
-        # hpo_child_id is in hpo_descendants_eval(h).
-        hpo_ancestors_in_accepted = {
-            h for h in accepted_hpo_set
-            if h != hpo_child_id and hpo_child_id in hpo_descendants_eval(h)
-        }
-
-        if not hpo_ancestors_in_accepted:
-            continue
-
-        child_sct_targets = accepted_sct_for_struct[hpo_child_id]
-
-        for hpo_parent_id in hpo_ancestors_in_accepted:
-            parent_sct_targets = accepted_sct_for_struct[hpo_parent_id]
-
-            for sct_child_target in child_sct_targets:
-                for sct_parent_target in parent_sct_targets:
-                    if sct_child_target == sct_parent_target:
-                        continue
+    for hpo_child in sorted(accepted_sct_per_hpo):
+        for hpo_parent in sorted(set(hpo_ancestors(hpo_child)) & set(accepted_sct_per_hpo)):
+            for sct_of_child in sorted(accepted_sct_per_hpo[hpo_child]):
+                for sct_of_parent in sorted(accepted_sct_per_hpo[hpo_parent]):
                     # Reversal: the child HPO maps to an SCT concept that is
-                    # a transitive ancestor of the SCT concept the parent HPO
-                    # maps to — the hierarchy direction is inverted.
-                    if sct_parent_target in sct_descendants_eval(sct_child_target):
-                        reversal_count += 1
-                        reversal_examples.append((
-                            hpo_parent_id, hpo_child_id,
-                            sct_child_target, sct_parent_target,
-                        ))
+                    # a transitive ancestor of the SCT concept the parent
+                    # HPO maps to — the hierarchy direction is inverted.
+                    if sct_of_parent in sct_descendants(sct_of_child):
+                        reversal_examples.append((hpo_parent, hpo_child, sct_of_parent, sct_of_child))
 
-    l.log(f"    Total cross-pair hierarchy reversals found: {reversal_count}")
-    for hpo_parent_id, hpo_child_id, sct_child_target, sct_parent_target \
-            in reversal_examples[:ERROR_EXAMPLE_LIMIT]:
-        l.log(
-            f"    HPO parent: {hpo_parent_id} [{hpo_label(hpo_parent_id)}]  "
-            f"→  SCT: {sct_parent_target} [{sct_label(sct_parent_target)}]"
-        )
-        l.log(
-            f"    HPO child:  {hpo_child_id} [{hpo_label(hpo_child_id)}]  "
-            f"→  SCT: {sct_child_target} [{sct_label(sct_child_target)}]"
-        )
-        l.log(
-            f"      (SCT child target [{sct_label(sct_child_target)}] is an ancestor "
-            f"of SCT parent target [{sct_label(sct_parent_target)}])"
-        )
-    if reversal_count > ERROR_EXAMPLE_LIMIT:
-        l.log(f"    ... and {reversal_count - ERROR_EXAMPLE_LIMIT} more.")
+    l.log(f"WARNING C — Cross-pair hierarchy reversal (HPO hierarchy direction "
+          f"inverted in the SCT targets): {len(reversal_examples)} cases.")
+    for hpo_parent, hpo_child, sct_of_parent, sct_of_child in reversal_examples[:ERROR_EXAMPLE_LIMIT]:
+        l.log(f"  HPO parent: {hpo_parent} [{hpo_label(hpo_parent)}]  →  "
+              f"SCT: {sct_of_parent} [{sct_label(sct_of_parent)}]")
+        l.log(f"  HPO child:  {hpo_child} [{hpo_label(hpo_child)}]  →  "
+              f"SCT: {sct_of_child} [{sct_label(sct_of_child)}]")
+        l.log(f"    (the child's SCT target is an ancestor of the parent's SCT target)")
+    if len(reversal_examples) > ERROR_EXAMPLE_LIMIT:
+        l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
 
     # -----------------------------------------------------------------------
     # 17. Writing final evaluation CSV
     #
-    # All rows whose (HPO, SCT) pair was accepted (validity=10) or approved
-    # by the LLM (attribute="llm") are kept — one row per contributing
-    # method — so every mapping strategy that produced a given pair is
-    # visible in the output. The in_gold flag is attached to every row.
+    # All rows of llm_filtered.csv whose (HPO, SCT) pair is in the final set
+    # are kept — one row per contributing method, plus the "llm" row — so
+    # every mapping strategy that produced a given pair is visible in the
+    # output. The in_gold flag is attached to every row.
     # -----------------------------------------------------------------------
     l.printHeader("17. Writing final evaluation CSV")
 
-    accepted_pairs_for_csv = set(zip(
-        final_df.loc[final_df[validity_column] == validity_accepted, id_col],
-        final_df.loc[final_df[validity_column] == validity_accepted, val_col],
-    ))
-    llm_pairs_for_csv = set(zip(
-        final_df.loc[final_df[attr_col] == llm_mappings, id_col],
-        final_df.loc[final_df[attr_col] == llm_mappings, val_col],
-    ))
-    qualifying_pairs_for_csv = accepted_pairs_for_csv | llm_pairs_for_csv
-
-    # Vectorised filter — no apply() row loop.
-    pair_series  = pairSeries(final_df, id_col, val_col)
-    final_accepted = final_df[pair_series.isin(qualifying_pairs_for_csv)].copy().reset_index(drop=True)
+    final_accepted = final_df[
+        pairSeries(final_df, id_col, val_col).isin(final_pairs)
+    ].copy().reset_index(drop=True)
     final_accepted["in_gold"] = inGoldSeries(final_accepted, gold_pairs, id_col, val_col)
 
-    output_path = evaluation_path
-    writeHugeCSV(final_accepted, output_path)
-    l.log(f"Final evaluation CSV written to: {output_path}")
-    l.log(f"  Rows: {len(final_accepted)}  |  In gold: {final_accepted['in_gold'].sum()}")
+    l.log(f"Rows to write: {len(final_accepted)} ({int(final_accepted['in_gold'].sum())} "
+          f"in gold) for {len(final_pairs)} final pairs.")
+    writeHugeCSV(final_accepted, evaluation_path)
 
     # -----------------------------------------------------------------------
     # 18. Overall summary
     # -----------------------------------------------------------------------
-    l.printHeader("18. Overall summary — final accepted mappings (validity=10, deduplicated)")
+    l.printHeader("18. Overall summary")
 
-    final_deduped = _dedupe_by_pair(
-        final_df[final_df[validity_column] == validity_accepted], id_col, val_col
-    )
-    tp_final = _tp_from_df(final_deduped, gold_pairs, id_col, val_col)
-    m_final  = _metrics(tp_final, len(final_deduped), gold_total, universe_total)
-
-    l.log(f"  Accepted pairs:          {len(final_deduped)}")
-    l.log(f"  Pairs in gold standard:  {tp_final}")
-    l.log(f"  Gold standard size:      {gold_total}")
-    l.log(f"  Universe size:           {universe_total}")
-    _log_metrics(l, m_final, "  Final metrics")
-
-    printCounts(
-        final_df[final_df[validity_column] == validity_accepted],
-        hpo_ontology,
-        similarity_steps,
-        graham,
-        diff=True,
-    )
+    l.log(f"Gold standard: {gold_total} pairs. Universe (generated pairs): {universe_total}.")
+    log_pairs("auto-accepted (before LLM review)",    auto_pairs,  share=True)
+    log_pairs("LLM-accepted only",                    llm_pairs,   share=True)
+    log_pairs("final (auto-accepted + LLM-accepted)", final_pairs, share=True)
 
     l.printHeader("Evaluation completed.")

@@ -59,7 +59,7 @@ llm:
   top_p: 0.95
   max_model_len: 32768
   max_num_batched_tokens: 65536
-  max_tokens: 2048
+  max_tokens: 4096
   prompt_log_folder: "./data/logs/"
   prompt_log_file: "prompts.log"
   prompt_folder: "./prompts/"
