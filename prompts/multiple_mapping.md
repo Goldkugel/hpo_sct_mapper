@@ -33,7 +33,7 @@ Each SNOMED CT candidate includes: SNOMED CT ID, Preferred Term / FSN, Synonyms,
 
 ### Review Reason Definitions
 
-**SNOMED CT hierarchy conflicts.** The reasons starting with `HIERARCHY_REVERSAL_` mean that this candidate and another SNOMED CT concept accepted by the pipeline for the same HPO concept are related in the SNOMED CT hierarchy: one is an ancestor of the other (see "Related Candidates"). The pipeline keeps only one of two related concepts — normally the more specific one, but an anchor (an HPO cross-reference confirmed by an exact label match) is never displaced — so this candidate was not accepted. The part after `HIERARCHY_REVERSAL_` says how the pipeline found the candidate:
+**SNOMED CT hierarchy conflicts.** The reasons starting with `HIERARCHY_REVERSAL_` mean that this candidate and another SNOMED CT concept accepted by the pipeline for the same HPO concept are related in the SNOMED CT hierarchy: one is an ancestor of the other (see "Related Candidates"). The pipeline keeps only one of two related concepts: the more specific one, unless the broader one has stronger supporting evidence (more cross-references, then a stronger label match, then identical embeddings). So this candidate was either not accepted or displaced by a more specific candidate. The part after `HIERARCHY_REVERSAL_` says how the pipeline found the candidate:
 
 * `HIERARCHY_REVERSAL_ANCHOR`: a direct HPO cross-reference confirmed by an exact label match. Minimum confidence to ACCEPT: **4**.
 * `HIERARCHY_REVERSAL_EXACT_LEXICAL`: an exact label match, without an HPO cross-reference. Minimum confidence to ACCEPT: **4**.

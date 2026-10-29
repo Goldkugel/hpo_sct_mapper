@@ -9,7 +9,8 @@ from MappingUtils   import (
     loadInputs, keepHPOConcepts, buildAttributeLookup,
     build_child_map, build_parent_map, make_descendant_lookup, pairSeries, inGoldSeries,
     ALL_METHODS, SIM_METHODS, VALIDITY_LABELS, REVIEW_REASON,
-    llm_mappings, llm_filtered_path, llm_review_path, evaluation_path,
+    llm_mappings, llm_filtered_path, llm_review_path, evaluation_path, no_gold_path,
+    llm_disagreements_path,
     validity_domain_mismatch, validity_accepted, validity_hierarchy_reversals,
     validity_best_candidate, validity_last_resort, validity_reviewable,
     similarity_steps, confidence_column, validity_column,
@@ -408,8 +409,11 @@ if __name__ == "__main__":
           f"({_safe_div(n_reviewed - n_accepted, n_reviewed):.2%}).")
     log_pairs("LLM-accepted", llm_pairs)
 
-    if os.path.exists(llm_review_path):
-        review = pd.read_csv(llm_review_path, sep=";")
+    # The LLM's decision, confidence and rationale per reviewed pair, written
+    # by MappingLLM; None for runs from before the review file existed.
+    review = pd.read_csv(llm_review_path, sep=";") if os.path.exists(llm_review_path) else None
+
+    if review is not None:
         l.log(f"LLM decisions per pass (pairs, from {os.path.basename(llm_review_path)}):")
         for llm_pass, decisions in review.groupby("llm_pass"):
             n_acc   = int((decisions["llm_decision"] == "ACCEPT").sum())
@@ -788,23 +792,130 @@ if __name__ == "__main__":
         l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
 
     # -----------------------------------------------------------------------
-    # 17. Writing final evaluation CSV
+    # 17. Writing output CSVs
     #
-    # All rows of llm_filtered.csv whose (HPO, SCT) pair is in the final set
-    # are kept — one row per contributing method, plus the "llm" row — so
-    # every mapping strategy that produced a given pair is visible in the
-    # output. The in_gold flag is attached to every row.
+    # evaluation_final.csv: all rows of llm_filtered.csv whose (HPO, SCT)
+    # pair is in the final set — one row per contributing method, plus the
+    # "llm" row — so every mapping strategy that produced a given pair is
+    # visible in the output. The in_gold flag is attached to every row.
+    #
+    # accepted_without_gold.csv: the final pairs of HPO concepts that have
+    # no mapping in the gold standard (category C of section 15), one row
+    # per pair. They cannot be checked against Graham, so they are written
+    # separately, e.g. for manual review. HPO concepts whose gold rows were
+    # all removed by loadGold (other match groups, composite expressions)
+    # count as concepts without a gold mapping.
+    #
+    # llm_disagreements.csv: the final pairs on which the LLM and
+    # MappingSetBuilder disagree, one row per pair:
+    #   auto_accepted_llm_rejected : auto-accepted, but not accepted by the
+    #                                LLM (rejected or no valid answer); the
+    #                                pair stays in the final set
+    #   candidate_llm_accepted     : not accepted by MappingSetBuilder
+    #                                (validity 1-9), accepted by the LLM
+    # with the LLM's pass, decision, confidence (normalised to 0.2-1.0) and
+    # rationale from llm_review.csv.
     # -----------------------------------------------------------------------
-    l.printHeader("17. Writing final evaluation CSV")
+    l.printHeader("17. Writing output CSVs")
 
+    # Pair-level information for every final pair, shared by both files:
+    #   auto_accepted     : original validity 10 (accepted by MappingSetBuilder)
+    #   llm_accepted      : has an "llm" row (accepted by the LLM)
+    #   original_validity : validity code before the LLM review
+    #   methods           : generation methods that found the pair (without
+    #                       "llm"), e.g. "embedding,jaccard"
+    #   best_conf         : highest confidence of those methods
+    final_list = sorted(final_pairs)
+    final_gen_rows = gen_rows[pairSeries(gen_rows, id_col, val_col).isin(final_pairs)]
+    methods_per_pair = (
+        final_gen_rows.groupby([id_col, val_col])[attr_col]
+        .agg(lambda methods: ",".join(sorted(set(methods))))
+        .to_dict()
+    )
+    pair_info = pd.DataFrame({
+        id_col:              [h for h, _ in final_list],
+        "hpo_label":         [hpo_label(h) for h, _ in final_list],
+        val_col:             [s for _, s in final_list],
+        "sct_label":         [sct_label(s) for _, s in final_list],
+        "auto_accepted":     [p in auto_pairs for p in final_list],
+        "llm_accepted":      [p in llm_pairs  for p in final_list],
+        "original_validity": [pair_validity.get(p) for p in final_list],
+        "methods":           [methods_per_pair.get(p, "") for p in final_list],
+        "best_conf":         [pair_best_conf.get(p) for p in final_list],
+    })
+
+    # evaluation_final.csv: one row per method (and "llm" row) of each final
+    # pair, with its row-level columns, in_gold, and the pair-level columns.
+    # The ID columns are renamed to hpo_id / sct_id, as in the other files.
+    # Note the row-level validity column holds 10 on "llm" rows; use
+    # original_validity for the code before the LLM review.
     final_accepted = final_df[
         pairSeries(final_df, id_col, val_col).isin(final_pairs)
     ].copy().reset_index(drop=True)
     final_accepted["in_gold"] = inGoldSeries(final_accepted, gold_pairs, id_col, val_col)
+    final_accepted = (
+        final_accepted
+        .merge(pair_info, on=[id_col, val_col], how="left")
+        .rename(columns={id_col: hpo_id_column, val_col: sct_id_column})
+    )
 
-    l.log(f"Rows to write: {len(final_accepted)} ({int(final_accepted['in_gold'].sum())} "
-          f"in gold) for {len(final_pairs)} final pairs.")
+    l.log(f"Rows to write to {os.path.basename(evaluation_path)}: {len(final_accepted)} "
+          f"({int(final_accepted['in_gold'].sum())} in gold) for {len(final_pairs)} "
+          f"final pairs.")
     writeHugeCSV(final_accepted, evaluation_path)
+
+    # accepted_without_gold.csv: one row per final pair of an HPO concept
+    # without a gold mapping.
+    no_gold_df = (
+        pair_info[~pair_info[id_col].isin(gold_hpo)]
+        .rename(columns={id_col: hpo_id_column, val_col: sct_id_column})
+        .reset_index(drop=True)
+    )
+
+    l.log(f"Rows to write to {os.path.basename(no_gold_path)}: {len(no_gold_df)} "
+          f"final pairs of {no_gold_df[hpo_id_column].nunique()} HPO concepts "
+          f"without a gold mapping ({int(no_gold_df['auto_accepted'].sum())} "
+          f"auto-accepted, {int(no_gold_df['llm_accepted'].sum())} LLM-accepted; "
+          f"a pair can be both).")
+    writeHugeCSV(no_gold_df, no_gold_path)
+
+    disagreement_pairs = (auto_pairs - llm_pairs) | (llm_pairs - auto_pairs)
+    disagreements = pair_info[
+        pairSeries(pair_info, id_col, val_col).isin(disagreement_pairs)
+    ].copy()
+    disagreements.insert(0, "disagreement", np.where(
+        disagreements["auto_accepted"], "auto_accepted_llm_rejected", "candidate_llm_accepted"
+    ))
+    disagreements["in_gold"] = inGoldSeries(disagreements, gold_pairs, id_col, val_col)
+    disagreements["review_reason"] = disagreements["original_validity"].map(
+        lambda v: REVIEW_REASON.get(int(v), "") if pd.notna(v) else ""
+    )
+
+    llm_cols = ["llm_pass", "llm_decision", "llm_confidence", "llm_rationale"]
+    if review is not None:
+        disagreements = disagreements.merge(
+            review[[id_col, val_col, "llm_pass", "llm_decision",
+                    confidence_column, "llm_rationale"]]
+            .rename(columns={confidence_column: "llm_confidence"}),
+            on=[id_col, val_col], how="left",
+        )
+    else:
+        for col in llm_cols:
+            disagreements[col] = pd.NA
+
+    disagreements = (
+        disagreements
+        .rename(columns={id_col: hpo_id_column, val_col: sct_id_column})
+        .sort_values(["disagreement", hpo_id_column, sct_id_column])
+        .reset_index(drop=True)
+    )
+
+    for kind, rows in disagreements.groupby("disagreement"):
+        l.log(f"Rows to write to {os.path.basename(llm_disagreements_path)} ({kind}): "
+              f"{len(rows)} pairs, {int(rows['in_gold'].sum())} in gold.")
+    if review is None:
+        l.log(f"{os.path.basename(llm_review_path)} not found; the LLM columns are empty.")
+    writeHugeCSV(disagreements, llm_disagreements_path)
 
     # -----------------------------------------------------------------------
     # 18. Overall summary

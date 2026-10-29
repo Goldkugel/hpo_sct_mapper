@@ -42,7 +42,8 @@ import numpy                as np
 #   Step 8  : last resort for unmapped concepts     -> 9 (LLM review)
 #
 # A pair keeps the first code it is given; only demotion (a narrower
-# candidate displacing a broader accepted one) overwrites an accepted 10.
+# candidate with at least the same evidence displacing a broader accepted
+# one, see evidence() and check_hierarchy) overwrites an accepted 10.
 # Pairs not reached by any step keep validity=NA.
 #
 # Output: all rows of mapping.csv with the validity column filled in,
@@ -127,13 +128,11 @@ if __name__ == "__main__":
     # accepted_pairs   : set of (hpo_id, sct_id) pairs accepted so far.
     # accepted_by_hpo  : hpo_id -> {sct_id, ...} for fast per-concept lookup.
     # domain_invalid   : set of (hpo_id, sct_id) pairs marked validity=0.
-    # anchor_pairs     : pairs accepted as anchors in step 2; never demoted.
     # classified_pairs : pairs assigned any validity code so far.
     # ------------------------------------------------------------------
     accepted_pairs   = set()
     accepted_by_hpo  = defaultdict(set)
     domain_invalid   = set()
-    anchor_pairs     = set()
     classified_pairs = set()
 
     def mark_validity(hpo_id: str, sct_id: str, value: int, replace: Optional[int] = None) -> int:
@@ -160,7 +159,7 @@ if __name__ == "__main__":
             classified_pairs.add((hpo_id, sct_id))
         return changed
 
-    def accept(hpo_id: str, sct_id: str, is_anchor: bool = False) -> None:
+    def accept(hpo_id: str, sct_id: str) -> None:
         """
         Register a pair as accepted (validity=10) and propagate to all rows
         sharing the same (hpo_id, sct_id), so all mapping strategies for
@@ -168,17 +167,15 @@ if __name__ == "__main__":
         """
         accepted_pairs.add((hpo_id, sct_id))
         accepted_by_hpo[hpo_id].add(sct_id)
-        if is_anchor:
-            anchor_pairs.add((hpo_id, sct_id))
         mark_validity(hpo_id, sct_id, validity_accepted)
 
     def demote(hpo_id: str, sct_id: str, reversal_validity: int) -> None:
         """
-        Remove a non-anchor accepted pair from the accepted set and mark it
-        with the given reversal_validity code. Only called when a narrower
-        candidate displaces a broader already-accepted non-anchor mapping.
-        The reversal_validity is the code of the step that triggered the
-        demotion.
+        Remove an accepted pair from the accepted set and mark it with the
+        given reversal_validity code. Only called when a narrower candidate
+        with at least the same evidence displaces a broader accepted target
+        (see check_hierarchy). The reversal_validity is the code of the step
+        that triggered the demotion.
         """
         accepted_pairs.discard((hpo_id, sct_id))
         accepted_by_hpo[hpo_id].discard(sct_id)
@@ -195,15 +192,19 @@ if __name__ == "__main__":
         not_accepted: Optional[int] = None,
         not_accepted_reason: str = "",
         skipped:     Optional[dict] = None,
+        rejected_by_evidence: int = 0,
     ) -> None:
         """
         One summary line per acceptance step, always in the same order:
         accepted, rejected, demoted, not accepted here, skipped. All counts
-        are pairs.
+        are pairs. rejected_by_evidence is the part of the rejections where
+        the candidate was narrower but had weaker evidence than the accepted
+        broader target.
         """
         parts = [
             f"{accepted} accepted",
-            f"{reversal} rejected (hierarchy reversal, validity={validity})",
+            f"{reversal} rejected (hierarchy reversal, validity={validity}; "
+            f"{rejected_by_evidence} of them narrower but with weaker evidence)",
             f"{demoted} demoted (broader target displaced, validity={validity})",
         ]
         if not_accepted is not None:
@@ -245,64 +246,47 @@ if __name__ == "__main__":
             printCounts(selected_sim, hpo_ontology, similarity_steps, graham, True)
 
     # ------------------------------------------------------------------
-    # Pre-compute the highest confidence seen for each (hpo_id, sct_id)
-    # pair across all methods. Used by rule 3 of check_hierarchy, where a
-    # narrower candidate may only displace broader accepted targets that
-    # are not more confident than itself.
-    # ------------------------------------------------------------------
-    best_confidence_per_pair: dict[tuple, float] = (
-        mappings.groupby([id_col, val_col])[confidence_column]
-        .max()
-        .to_dict()
-    )
-
-    # ------------------------------------------------------------------
-    # Hierarchy check: transitive within-concept, narrower wins.
+    # Hierarchy check: transitive within-concept, narrower wins unless the
+    # broader target has stronger evidence.
     # For the SAME HPO concept, checks whether the candidate's SCT target
     # is in an ancestor/descendant relationship (over any number of
     # levels) with any other already-accepted SCT target for that concept.
     #
     # Mapping one HPO concept to both an SCT concept and one of its
     # ancestors is a "source collapse": e.g. "Focal seizure" mapped to
-    # both "Focal seizure" and its ancestor "Seizure". Only the narrower,
-    # more specific target should stay accepted.
+    # both "Focal seizure" and its ancestor "Seizure". Only one of the two
+    # should stay accepted: normally the narrower, more specific one.
     #
     # All accepted targets are inspected before deciding, so the result
     # does not depend on which conflict happens to be found first.
     #
     # Priority rules, applied in this order:
-    #   1. Candidate broader than any accepted target -> "reject" (narrower
-    #      accepted mapping always wins, regardless of confidence)
-    #   2. Candidate narrower than an anchor           -> "reject" (anchors
-    #      are immutable)
-    #   3. Candidate narrower than non-anchor targets:
-    #        any target more confident than candidate -> "reject"
-    #        otherwise                                -> "demote" ALL of them
+    #   1. Candidate broader than any accepted target -> "reject" (the
+    #      narrower accepted mapping wins)
+    #   2. Candidate narrower than accepted targets, and any of them has
+    #      stronger evidence (see evidence())         -> "reject_evidence"
+    #   3. Candidate narrower than accepted targets, none with stronger
+    #      evidence                                   -> "demote" ALL of them
     #   4. No relationship                             -> "ok"
     #
     # Rule 3 is all-or-nothing: accepting the candidate while one broader
     # target stays accepted would leave a source collapse.
     #
     # Rules 1 and 3 together make the outcome independent of the order in
-    # which two related non-anchor candidates arrive (at equal confidence):
-    # broader first -> the narrower one demotes it (rule 3); narrower first
-    # -> the broader one is rejected (rule 1). Either way the narrower one
-    # ends up accepted. Anchors are immutable, so step 2 sorts its
-    # candidates narrowest-first to reach the same result.
-    #
-    # Note on the confidence comparison in rule 3: every candidate of steps
-    # 2-6 is a cross-reference or has Jaccard=1 or cosine=1, so its best
-    # confidence is 1.0, as is that of every accepted target. The comparison
-    # therefore never rejects in steps 2-6; it only matters if lower-
-    # confidence candidates are ever checked against accepted targets.
+    # which two related candidates of equal evidence arrive: broader first
+    # -> the narrower one demotes it (rule 3); narrower first -> the broader
+    # one is rejected (rule 1). Rule 2 keeps a weaker candidate (e.g. a
+    # Jaccard-only pair of step 6) from displacing a broader target backed
+    # by a cross-reference.
     #
     # Returns (action, conflicting_sct_ids): for "demote" the targets to
-    # demote, for "reject" the targets that caused the rejection, for "ok"
-    # an empty list.
+    # demote, for "reject"/"reject_evidence" the targets that caused the
+    # rejection, for "ok" an empty list. Callers treat both reject actions
+    # alike and count "reject_evidence" separately for the log.
     # TODO: if there is no overlap in hierarchy in three generations above or
     # below, accept both candidates.
     # ------------------------------------------------------------------
-    def check_hierarchy(hpo_id: str, sct_id: str, candidate_confidence: float):
+    def check_hierarchy(hpo_id: str, sct_id: str):
         candidate_desc_sct = sct_descendants(sct_id)
         broader            = []    # accepted targets the candidate is narrower than
         narrower           = []    # accepted targets the candidate is broader than
@@ -322,16 +306,10 @@ if __name__ == "__main__":
         if not broader:
             return "ok", []
 
-        anchors = [s for s in broader if (hpo_id, s) in anchor_pairs]
-        if anchors:
-            return "reject", anchors
-
-        stronger = [
-            s for s in broader
-            if best_confidence_per_pair.get((hpo_id, s), 0.0) > candidate_confidence
-        ]
+        candidate_evidence = evidence((hpo_id, sct_id))
+        stronger = [s for s in broader if evidence((hpo_id, s)) > candidate_evidence]
         if stronger:
-            return "reject", stronger
+            return "reject_evidence", stronger
 
         return "demote", broader
 
@@ -353,9 +331,39 @@ if __name__ == "__main__":
 
     # Pairs with any reference-based row (HPO xref or UMLS), regardless of
     # whether they are accepted later. Steps 5 and 6 skip them.
-    reference_backed_pairs = pairs_of(mappings[mappings[attr_col].isin([
-        hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings
-    ])])
+    reference_methods = [hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings]
+    reference_rows    = mappings[mappings[attr_col].isin(reference_methods)]
+    reference_backed_pairs = pairs_of(reference_rows)
+
+    # Number of distinct reference sources (0-3) per pair.
+    reference_count: dict = (
+        reference_rows.groupby([id_col, val_col])[attr_col].nunique().to_dict()
+    )
+
+    # ------------------------------------------------------------------
+    # Evidence of a pair, used by check_hierarchy to decide whether a
+    # narrower candidate may displace a broader accepted target. It is
+    # defined from the kinds of evidence a pair has, not tuned on the gold
+    # standard, and compared as a tuple from left to right:
+    #
+    #   1. number of reference sources (hpo_sct, hpo_umls_sct,
+    #      umls_hpo_sct): 0-3
+    #   2. lexical evidence: 2 = exact lexical match, 1 = Jaccard=1,
+    #      0 = none
+    #   3. embedding evidence: 1 = cosine=1, 0 = none
+    #
+    # So one cross-reference outweighs any lexical or embedding evidence,
+    # and among pairs with equally many references the stronger lexical
+    # evidence wins. Anchors (HPO xref + exact lexical) are at least
+    # (1, 2, 0) and therefore protected against every weaker candidate.
+    # ------------------------------------------------------------------
+    def evidence(pair: tuple) -> tuple:
+        lexical = 2 if pair in exact_lexical_pairs else 1 if pair in jaccard_exact_pairs else 0
+        return (
+            reference_count.get(pair, 0),
+            lexical,
+            1 if pair in embedding_exact_pairs else 0,
+        )
 
     # ------------------------------------------------------------------
     # SCT label lookup (fully specified names), built once and reused by
@@ -405,16 +413,16 @@ if __name__ == "__main__":
     # sources: an explicit cross-reference in HPO and a label match, giving
     # high confidence without requiring Jaccard or cosine corroboration.
     #
-    # Anchors that pass the hierarchy check are accepted as immutable
-    # (validity=10) and cannot be demoted by any subsequent step. Anchors
-    # that fail it are marked validity=1 and enter the LLM review queue.
+    # Anchors that pass the hierarchy check are accepted (validity=10).
+    # Their evidence is at least (1, 2, 0), so a later candidate can only
+    # demote an anchor if it is narrower and has at least the same evidence
+    # (e.g. more reference sources). Anchors that fail the check are marked
+    # validity=1 and enter the LLM review queue.
     #
     # Within each HPO concept the candidates are processed narrowest first
-    # (most SCT ancestors first). Because anchors are immutable, the first
-    # of two related anchors would always win; processing the narrowest
-    # first makes that the narrower one, as in all other steps: the broader
-    # candidate then fails rule 1 of check_hierarchy. For the same reason
-    # check_hierarchy can never return "demote" here.
+    # (most SCT ancestors first), so of two related anchors the narrower one
+    # is accepted first and the broader one then fails rule 1 of
+    # check_hierarchy, without any demotion inside this step.
 
     l.printHeader("Step 2: Anchors (HPO xref + exact lexical)")
 
@@ -431,6 +439,8 @@ if __name__ == "__main__":
 
     step2_accepted = 0
     step2_reversal = 0
+    step2_evidence = 0
+    step2_demoted  = 0
     step2_domain   = 0
 
     for hpo_id, sct_id in sorted(anchor_candidates, key=anchor_order):
@@ -439,21 +449,27 @@ if __name__ == "__main__":
             step2_domain += 1
             continue
 
-        action, _ = check_hierarchy(
-            hpo_id, sct_id,
-            best_confidence_per_pair.get((hpo_id, sct_id), 0.0)
-        )
+        action, conflicts = check_hierarchy(hpo_id, sct_id)
         if action == "ok":
-            accept(hpo_id, sct_id, is_anchor=True)
+            accept(hpo_id, sct_id)
+            step2_accepted += 1
+        elif action == "demote":
+            for other_sct in conflicts:
+                demote(hpo_id, other_sct, validity_anchor_reversal)
+            step2_demoted += len(conflicts)
+            accept(hpo_id, sct_id)
             step2_accepted += 1
         else:
             mark_validity(hpo_id, sct_id, validity_anchor_reversal)
             step2_reversal += 1
+            step2_evidence += action == "reject_evidence"
 
     # HPO xrefs without an exact lexical match are left with validity=NA and
     # are evaluated in step 2c.
     log_step_summary(
         "Step 2", step2_accepted, step2_reversal, validity_anchor_reversal,
+        demoted = step2_demoted,
+        rejected_by_evidence = step2_evidence,
         not_accepted = len(hpo_sct_pairs - anchor_candidates),
         not_accepted_reason = "HPO xref without exact lexical match, left for step 2c",
         skipped = {"domain mismatch": step2_domain},
@@ -484,10 +500,11 @@ if __name__ == "__main__":
     # All exact lexical pairs that were not anchor candidates (i.e. those
     # without an HPO xref) are processed here. Pairs that pass the hierarchy
     # check are accepted (validity=10); pairs that fail are marked
-    # validity=2 and enter the LLM review queue. From this step on, a
-    # narrower candidate can demote a broader target accepted earlier in
-    # the same or a previous step (but never an anchor); the demoted pair
-    # gets the current step's reversal code.
+    # validity=2 and enter the LLM review queue. A narrower candidate can
+    # demote a broader target accepted earlier in the same or a previous
+    # step if its evidence is at least as strong (rule 3 of
+    # check_hierarchy); the demoted pair gets the current step's reversal
+    # code.
 
     l.printHeader("Step 2b: Remaining exact lexical mappings")
 
@@ -495,6 +512,7 @@ if __name__ == "__main__":
 
     step2b_accepted = 0
     step2b_reversal = 0
+    step2b_evidence = 0
     step2b_demoted  = 0
     step2b_domain   = 0
 
@@ -506,17 +524,15 @@ if __name__ == "__main__":
             step2b_domain += 1
             continue
 
-        action, conflicts = check_hierarchy(
-            hpo_id, sct_id,
-            best_confidence_per_pair.get(pair, 0.0)
-        )
+        action, conflicts = check_hierarchy(hpo_id, sct_id)
 
         if action == "ok":
             accept(hpo_id, sct_id)
             step2b_accepted += 1
         elif action == "demote":
-            # Candidate is narrower than accepted non-anchors — demote
-            # the broader mappings and accept this one.
+            # Candidate is narrower than the accepted targets and its
+            # evidence is at least as strong — demote the broader
+            # mappings and accept this one.
             for other_sct in conflicts:
                 demote(hpo_id, other_sct, validity_exact_lexical_reversal)
             step2b_demoted += len(conflicts)
@@ -525,10 +541,12 @@ if __name__ == "__main__":
         else:
             mark_validity(hpo_id, sct_id, validity_exact_lexical_reversal)
             step2b_reversal += 1
+            step2b_evidence += action == "reject_evidence"
 
     log_step_summary(
         "Step 2b", step2b_accepted, step2b_reversal, validity_exact_lexical_reversal,
         demoted = step2b_demoted,
+        rejected_by_evidence = step2b_evidence,
         skipped = {"domain mismatch": step2b_domain},
     )
     evaluate_accepted("step 2b")
@@ -557,6 +575,7 @@ if __name__ == "__main__":
 
         accepted_count       = 0
         reversal_count       = 0
+        evidence_count       = 0
         demoted_count        = 0
         domain_count         = 0
         classified_count     = 0
@@ -580,17 +599,15 @@ if __name__ == "__main__":
                 low_similarity_pairs.add(pair)
                 continue
 
-            action, conflicts = check_hierarchy(
-                hpo_id, sct_id,
-                best_confidence_per_pair.get(pair, 0.0)
-            )
+            action, conflicts = check_hierarchy(hpo_id, sct_id)
 
             if action == "ok":
                 accept(hpo_id, sct_id)
                 accepted_count += 1
 
             elif action == "demote":
-                # Candidate is narrower than the accepted non-anchor conflicts.
+                # Candidate is narrower than the accepted targets and its
+                # evidence is at least as strong.
                 # Demote the broader accepted mappings and accept the candidate.
                 for other_sct in conflicts:
                     demote(hpo_id, other_sct, reversal_validity)
@@ -604,10 +621,12 @@ if __name__ == "__main__":
                 mark_validity(hpo_id, sct_id, reversal_validity)
                 reversal_pairs.add(pair)
                 reversal_count += 1
+                evidence_count += action == "reject_evidence"
 
         log_step_summary(
             step, accepted_count, reversal_count, reversal_validity,
             demoted = demoted_count,
+            rejected_by_evidence = evidence_count,
             not_accepted = len(low_similarity_pairs),
             not_accepted_reason = "neither Jaccard=1 nor cosine=1",
             skipped = {
@@ -695,6 +714,7 @@ if __name__ == "__main__":
 
         accepted_count       = 0
         reversal_count       = 0
+        evidence_count       = 0
         demoted_count        = 0
         domain_count         = 0
         reference_count      = 0
@@ -724,10 +744,7 @@ if __name__ == "__main__":
                 not_qualifying_pairs.add(pair)
                 continue
 
-            action, conflicts = check_hierarchy(
-                hpo_id, sct_id,
-                best_confidence_per_pair.get(pair, 0.0)
-            )
+            action, conflicts = check_hierarchy(hpo_id, sct_id)
 
             if action == "ok":
                 accept(hpo_id, sct_id)
@@ -745,10 +762,12 @@ if __name__ == "__main__":
                 mark_validity(hpo_id, sct_id, reversal_validity)
                 reversal_pairs.add(pair)
                 reversal_count += 1
+                evidence_count += action == "reject_evidence"
 
         log_step_summary(
             step, accepted_count, reversal_count, reversal_validity,
             demoted = demoted_count,
+            rejected_by_evidence = evidence_count,
             not_accepted = len(not_qualifying_pairs),
             not_accepted_reason = not_accepted_reason,
             skipped = {
@@ -911,7 +930,7 @@ if __name__ == "__main__":
             step7_skipped_other += 1
             continue
 
-        action, _ = check_hierarchy(hpo_id, sct_id, best_confidence_per_pair.get(pair, 0.0))
+        action, _ = check_hierarchy(hpo_id, sct_id)
 
         if action in ("ok", "demote"):
             # Hierarchy check passes — mark for LLM review rather than
