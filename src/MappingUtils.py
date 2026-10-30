@@ -293,6 +293,71 @@ def make_descendant_lookup(child_map: dict):
 
     return descendants
 
+def make_ancestor_distance_lookup(parent_map: dict):
+    """
+    Returns a memoized function ancestor_distances(node) -> dict mapping
+    the node itself (0) and every transitive ancestor to the smallest
+    number of is_a steps up from `node`. parent_map: child -> set of
+    direct parents (build_parent_map). Cycle-safe.
+
+    The walk is a breadth-first search, so the first time an ancestor is
+    reached is over the shortest path, also for concepts with several
+    parents.
+    """
+    cache: dict = {}
+
+    def ancestor_distances(node):
+        if node in cache:
+            return cache[node]
+        distances = {node: 0}
+        frontier  = [node]
+        steps     = 0
+        while frontier:
+            steps += 1
+            next_frontier = []
+            for current in frontier:
+                for parent in parent_map.get(current, ()):
+                    if parent not in distances:
+                        distances[parent] = steps
+                        next_frontier.append(parent)
+            frontier = next_frontier
+        cache[node] = distances
+        return distances
+
+    return ancestor_distances
+
+def make_hierarchy_distance(ancestor_distances):
+    """
+    Returns a function hierarchy_distance(a, b) -> int or None: the number
+    of is_a edges on the shortest path from a up to a common ancestor and
+    down to b. Equal concepts have distance 0, a parent and its child 1,
+    siblings and grandparent/grandchild 2, uncle/nephew 3, cousins 4.
+    Paths over a common descendant (down, then up) are not counted, so two
+    parents of the same child are only related through their own common
+    ancestor.
+
+    None means that a and b have no common ancestor, e.g. because one of
+    them is not in the hierarchy. ancestor_distances is the lookup returned
+    by make_ancestor_distance_lookup, so its cache can be shared with other
+    uses (e.g. ancestor checks).
+    """
+    def hierarchy_distance(a, b):
+        if a == b:
+            return 0
+        up_a = ancestor_distances(a)
+        up_b = ancestor_distances(b)
+        # Iterate over the smaller ancestor set and look up the larger one.
+        if len(up_a) > len(up_b):
+            up_a, up_b = up_b, up_a
+        best = None
+        for ancestor, steps_a in up_a.items():
+            steps_b = up_b.get(ancestor)
+            if steps_b is not None and (best is None or steps_a + steps_b < best):
+                best = steps_a + steps_b
+        return best
+
+    return hierarchy_distance
+
 # ------------------------------------------------------------------
 # (hpo_id, sct_id) pair helpers.
 # ------------------------------------------------------------------
