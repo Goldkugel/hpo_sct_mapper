@@ -1,0 +1,30 @@
+Parse safetensors files:   0%|          | 0/11 [00:00<?, ?it/s]Parse safetensors files:   9%|▉         | 1/11 [00:00<00:05,  1.72it/s]Parse safetensors files:  73%|███████▎  | 8/11 [00:00<00:00, 14.46it/s]Parse safetensors files: 100%|██████████| 11/11 [00:00<00:00, 14.53it/s]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:   0% Completed | 0/11 [00:00<?, ?it/s]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:   9% Completed | 1/11 [00:05<00:53,  5.31s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  18% Completed | 2/11 [00:06<00:28,  3.17s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  27% Completed | 3/11 [00:08<00:19,  2.46s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  36% Completed | 4/11 [00:10<00:15,  2.16s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  45% Completed | 5/11 [00:11<00:11,  1.97s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  55% Completed | 6/11 [00:13<00:09,  1.85s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  64% Completed | 7/11 [00:15<00:07,  1.80s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  73% Completed | 8/11 [00:16<00:05,  1.75s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  82% Completed | 9/11 [00:18<00:03,  1.71s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards:  91% Completed | 10/11 [00:20<00:01,  1.64s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:20<00:00,  1.26s/it]
+(Worker_TP0 pid=2824081) Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:20<00:00,  1.85s/it]
+(Worker_TP0 pid=2824081) 
+Parse safetensors files:   0%|          | 0/11 [00:00<?, ?it/s]Parse safetensors files:   9%|▉         | 1/11 [00:00<00:05,  1.67it/s]Parse safetensors files:  64%|██████▎   | 7/11 [00:00<00:00, 12.64it/s]Parse safetensors files: 100%|██████████| 11/11 [00:00<00:00, 16.10it/s]Parse safetensors files: 100%|██████████| 11/11 [00:00<00:00, 12.50it/s]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:   0% Completed | 0/11 [00:00<?, ?it/s]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:   9% Completed | 1/11 [00:05<00:53,  5.31s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  18% Completed | 2/11 [00:06<00:28,  3.17s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  27% Completed | 3/11 [00:08<00:19,  2.46s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  36% Completed | 4/11 [00:10<00:15,  2.15s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  45% Completed | 5/11 [00:11<00:11,  1.96s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  55% Completed | 6/11 [00:13<00:09,  1.84s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  64% Completed | 7/11 [00:15<00:07,  1.79s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  73% Completed | 8/11 [00:16<00:05,  1.74s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  82% Completed | 9/11 [00:18<00:03,  1.70s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards:  91% Completed | 10/11 [00:19<00:01,  1.64s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:20<00:00,  1.27s/it]
+(Worker_TP0 pid=2832289) Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:20<00:00,  1.85s/it]
+(Worker_TP0 pid=2832289) 
