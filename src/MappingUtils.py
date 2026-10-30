@@ -124,8 +124,8 @@ REVIEW_REASON = {
 
 # Minimum similarity for MappingGeneration to keep a candidate pair
 # (strictly greater than the threshold).
-threshold_cosine_similarity     = 0.80
-threshold_jaccard_similarity    = 0.95
+threshold_cosine_similarity     = 0.75
+threshold_jaccard_similarity    = 0.90
 
 # Confidence thresholds for printCounts: num_points evenly spaced steps
 # from 1.0 down to the cosine threshold, plus 0.99 to separate exact from
