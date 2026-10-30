@@ -129,7 +129,8 @@ threshold_jaccard_similarity    = 0.90
 
 # Confidence thresholds for printCounts: num_points evenly spaced steps
 # from 1.0 down to the cosine threshold, plus 0.99 to separate exact from
-# near-exact matches. Result: [1.0, 0.99, 0.95, 0.9, 0.85, 0.8].
+# near-exact matches. With a cosine threshold of 0.75 the result is
+# [1.0, 0.99, 0.9375, 0.875, 0.8125, 0.75].
 num_points = 5
 similarity_steps = np.linspace(1.0, threshold_cosine_similarity,
     num = num_points).tolist()

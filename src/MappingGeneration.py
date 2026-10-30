@@ -479,9 +479,9 @@ if __name__ == "__main__":
     #      token are 0 and not stored at all, so the result stays small.
     #   4. |S ∪ H| = |S| + |H| - |S ∩ H|, where |S| and |H| are the row sums.
     #
-    # With threshold_jaccard_similarity = 0.95, a pair only passes when the
+    # With threshold_jaccard_similarity = 0.90, a pair only passes when the
     # token sets are identical, unless both terms together have more than
-    # 20 distinct tokens (e.g. 20 of 21 shared tokens gives 0.952).
+    # 10 distinct tokens (e.g. 10 of 11 shared tokens gives 0.909).
     vocab = {}
 
     def encode(term_lists):

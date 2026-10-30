@@ -879,6 +879,9 @@ if __name__ == "__main__":
           f"a pair can be both).")
     writeHugeCSV(no_gold_df, no_gold_path)
 
+    # llm_disagreements.csv: one row per pair on which the rule-based filter
+    # and the LLM disagree, i.e. auto-accepted but rejected by the LLM, or
+    # not auto-accepted but accepted by the LLM (symmetric difference).
     disagreement_pairs = (auto_pairs - llm_pairs) | (llm_pairs - auto_pairs)
     disagreements = pair_info[
         pairSeries(pair_info, id_col, val_col).isin(disagreement_pairs)
@@ -891,6 +894,9 @@ if __name__ == "__main__":
         lambda v: REVIEW_REASON.get(int(v), "") if pd.notna(v) else ""
     )
 
+    # Add the LLM's own answer from llm_review.csv (one row per reviewed
+    # pair). Without the review file the columns are kept but left empty,
+    # so the file always has the same columns.
     llm_cols = ["llm_pass", "llm_decision", "llm_confidence", "llm_rationale"]
     if review is not None:
         disagreements = disagreements.merge(

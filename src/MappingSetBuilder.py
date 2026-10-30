@@ -744,6 +744,11 @@ if __name__ == "__main__":
                 not_qualifying_pairs.add(pair)
                 continue
 
+            # "ok": no accepted SCT concept of this HPO concept is related
+            # to the candidate. "demote": the candidate is narrower than
+            # accepted targets with no stronger evidence, which it replaces.
+            # Anything else ("reject", "reject_evidence") is a reversal of
+            # the candidate itself; see the rules above check_hierarchy().
             action, conflicts = check_hierarchy(hpo_id, sct_id)
 
             if action == "ok":
