@@ -8,6 +8,7 @@ from adapter        import labelClass, writeHugeCSV
 from MappingUtils   import (
     loadInputs, keepHPOConcepts, buildAttributeLookup,
     build_child_map, build_parent_map, make_descendant_lookup, pairSeries, inGoldSeries,
+    make_ancestor_distance_lookup, make_hierarchy_distance,
     ALL_METHODS, SIM_METHODS, VALIDITY_LABELS, REVIEW_REASON,
     llm_mappings, llm_filtered_path, llm_review_path, evaluation_path, no_gold_path,
     llm_disagreements_path,
@@ -20,7 +21,7 @@ from MappingUtils   import (
 import os
 import pandas as pd
 import numpy  as np
-from collections import defaultdict
+from collections import Counter, defaultdict
 from itertools   import combinations
 
 # ==========================================================================
@@ -50,6 +51,16 @@ ERROR_EXAMPLE_LIMIT = 20
 
 # Number of evenly-spaced thresholds in the precision–recall sweep (section 8)
 PR_STEPS = 50
+
+# Hierarchy distance analysis (section 16): distances of MAX_DISTANCE or
+# more share one bucket, and up to DISTANCE_EXAMPLE_LIMIT examples are
+# printed per distance.
+MAX_DISTANCE           = 5
+DISTANCE_EXAMPLE_LIMIT = 5
+
+# Bucket of pairs whose gold targets are all missing from sct.csv
+# (inactive or not in the SNOMED CT release), so no distance exists.
+GOLD_NOT_IN_SCT = "gold target not in SCT"
 
 # The methods that generate candidate pairs; "llm" only re-accepts pairs
 # that one of them generated, so it is excluded wherever methods are
@@ -694,7 +705,172 @@ if __name__ == "__main__":
         l.log(f"  ... and {len(cat_d_partial_wrong) - 10} more.")
 
     # -----------------------------------------------------------------------
-    # 16. Structural quality warnings (on the final set)
+    # 16. Hierarchy distance to the gold standard
+    #
+    # How far are the mappings from the gold standard in the SNOMED CT is_a
+    # hierarchy? The distance of a pair is the number of is_a edges from its
+    # SCT target up to a common ancestor and down to the nearest gold target
+    # of the same HPO concept (MappingUtils.make_hierarchy_distance):
+    #   0 = correct, 1 = parent or child, 2 = sibling, grandparent or
+    #   grandchild, 3 = uncle or nephew, 4 = cousin, ...
+    # Paths over a common descendant (down, then up) are not counted.
+    # Distances of MAX_DISTANCE or more share one bucket. Ties between gold
+    # targets at the same distance go to the smallest SCT ID.
+    #
+    # Relation of the SCT target to the nearest gold target:
+    #   equal    : the gold target itself
+    #   broader  : a transitive ancestor of the gold target
+    #   narrower : a transitive descendant of the gold target
+    #   lateral  : neither (sibling, cousin, ...)
+    #
+    # Gold targets missing from sct.csv (inactive or not in the SNOMED CT
+    # release) have no position in the hierarchy; a pair whose HPO concept
+    # only has such gold targets is counted as GOLD_NOT_IN_SCT.
+    #
+    #   A. Distance of the auto-accepted, LLM-accepted and final pairs to
+    #      the gold standard. Only pairs of HPO concepts in the gold
+    #      standard are measured. "cumulative" is the share of pairs within
+    #      that distance, i.e. the precision if near misses up to that
+    #      distance counted as correct.
+    #   B. Examples per distance (final set).
+    #   C. Missed gold pairs whose HPO concept has a final mapping: distance
+    #      from the gold target to the nearest final target, i.e. how close
+    #      the misses came.
+    # -----------------------------------------------------------------------
+    l.printHeader("16. Hierarchy distance to the gold standard")
+
+    l.log("Building SNOMED CT ancestor lookup...")
+    sct_concepts       = set(sct[sct_ontology.config.id_column].unique())
+    sct_up             = make_ancestor_distance_lookup(build_parent_map(sct, sct_ontology))
+    hierarchy_distance = make_hierarchy_distance(sct_up)
+    l.log(f"Building SNOMED CT ancestor lookup completed. {len(sct_concepts)} concepts.")
+
+    def sct_relation(sct_id: str, other_id: str) -> str:
+        """Relation of sct_id to other_id: equal, broader, narrower or lateral."""
+        if sct_id == other_id:
+            return "equal"
+        if sct_id in sct_up(other_id):
+            return "broader"
+        if other_id in sct_up(sct_id):
+            return "narrower"
+        return "lateral"
+
+    def nearest_target(sct_id: str, targets) -> tuple:
+        """
+        (distance, target) of the target nearest to sct_id, or (None, None)
+        if sct_id or all targets are missing from sct.csv. Targets are
+        visited in sorted order, so ties go to the smallest SCT ID.
+        """
+        best_distance, best_target = None, None
+        if sct_id not in sct_concepts:
+            return best_distance, best_target
+        for target in sorted(targets):
+            if target not in sct_concepts:
+                continue
+            distance = hierarchy_distance(sct_id, target)
+            if distance is not None and (best_distance is None or distance < best_distance):
+                best_distance, best_target = distance, target
+        return best_distance, best_target
+
+    def distance_bucket(distance) -> str:
+        if distance is None:
+            return GOLD_NOT_IN_SCT
+        return f"{MAX_DISTANCE}+" if distance >= MAX_DISTANCE else str(distance)
+
+    distance_buckets = [str(d) for d in range(MAX_DISTANCE)] + [f"{MAX_DISTANCE}+", GOLD_NOT_IN_SCT]
+
+    # pair_gold_distance[(hpo, sct)] = (distance, nearest gold target,
+    # relation of sct to it) for every final pair of a gold HPO concept.
+    # auto_pairs and llm_pairs are subsets of final_pairs.
+    pair_gold_distance: dict = {}
+    for hid, sid in final_pairs:
+        if hid in gold_hpo:
+            distance, target = nearest_target(sid, gold_sct_per_hpo[hid])
+            pair_gold_distance[(hid, sid)] = (
+                distance, target, sct_relation(sid, target) if target is not None else ""
+            )
+
+    def log_distances(label: str, info: dict) -> None:
+        """
+        Distance histogram of info (pair -> (distance, other, relation)):
+        count and share per bucket, the cumulative share up to the bucket,
+        and the relations within each bucket.
+        """
+        total = len(info)
+        l.log(f"{label}: {total} pairs")
+        if not total:
+            return
+        counts    = Counter(distance_bucket(d) for d, _, _ in info.values())
+        relations = defaultdict(Counter)
+        for distance, _, relation in info.values():
+            relations[distance_bucket(distance)][relation] += 1
+
+        cumulative = 0
+        for bucket in distance_buckets:
+            count = counts.get(bucket, 0)
+            name  = {"0": "distance 0 (correct)", GOLD_NOT_IN_SCT: GOLD_NOT_IN_SCT}.get(
+                bucket, f"distance {bucket}"
+            )
+            line  = f"    {name + ':':<33}{count:7} ({_safe_div(count, total):7.2%})"
+            if bucket != GOLD_NOT_IN_SCT:
+                cumulative += count
+                line += f" | cumulative {_safe_div(cumulative, total):7.2%}"
+            if bucket not in ("0", GOLD_NOT_IN_SCT) and count:
+                rel = relations[bucket]
+                line += (f" | broader {rel['broader']:5} | narrower {rel['narrower']:5} "
+                         f"| lateral {rel['lateral']:5}")
+            l.log(line)
+
+        wrong = [d for d, _, _ in info.values() if d]
+        if wrong:
+            l.log(f"    mean distance of the {len(wrong)} wrong pairs with a distance: "
+                  f"{np.mean(wrong):.2f}, median {np.median(wrong):.1f}")
+
+    l.log("A. Distance to the nearest gold target (pairs of gold HPO concepts):")
+    for label, pairs in [
+        ("auto-accepted (before LLM review)",    auto_pairs),
+        ("LLM-accepted only",                    llm_pairs),
+        ("final (auto-accepted + LLM-accepted)", final_pairs),
+    ]:
+        log_distances(f"  {label}", {p: v for p, v in pair_gold_distance.items() if p in pairs})
+
+    l.log("B. Examples of final pairs per distance:")
+    for bucket in distance_buckets[1:]:
+        examples = sorted(
+            (p, v) for p, v in pair_gold_distance.items() if distance_bucket(v[0]) == bucket
+        )
+        if not examples:
+            continue
+        name = GOLD_NOT_IN_SCT if bucket == GOLD_NOT_IN_SCT else f"distance {bucket}"
+        l.log(f"  {name}: {len(examples)} pairs")
+        for (hid, sid), (_, target, relation) in examples[:DISTANCE_EXAMPLE_LIMIT]:
+            l.log(f"    {hid} [{hpo_label(hid)}]  →  {sid} [{sct_label(sid)}]")
+            if target is not None:
+                phrase = f"{relation} than" if relation in ("broader", "narrower") else f"{relation} to"
+                l.log(f"      {phrase} gold: {target} [{sct_label(target)}]")
+            else:
+                l.log("      gold: " + ", ".join(
+                    f"{g} [{sct_label(g)}]" for g in sorted(gold_sct_per_hpo[hid])))
+        if len(examples) > DISTANCE_EXAMPLE_LIMIT:
+            l.log(f"    ... and {len(examples) - DISTANCE_EXAMPLE_LIMIT} more.")
+
+    # missed_gold_distance[(hpo, gold sct)] = (distance, nearest final
+    # target, relation of that final target to the gold target).
+    missed_gold_distance: dict = {}
+    for hid, gid in missed_gold:
+        if hid in accepted_hpo:
+            distance, target = nearest_target(gid, accepted_sct_per_hpo[hid])
+            missed_gold_distance[(hid, gid)] = (
+                distance, target, sct_relation(target, gid) if target is not None else ""
+            )
+    l.log(f"C. Missed gold pairs: {len(missed_gold)}; "
+          f"{len(missed_gold) - len(missed_gold_distance)} of them belong to HPO concepts "
+          f"without a final mapping and are not measured.")
+    log_distances("  missed gold pairs of HPO concepts with a final mapping "
+                  "(relation = final target to gold target)", missed_gold_distance)
+
+    # -----------------------------------------------------------------------
+    # 17. Structural quality warnings (on the final set)
     #
     #   A. Source collapse: one HPO concept mapped to two SCT concepts where
     #      one is a transitive ancestor of the other.
@@ -710,7 +886,7 @@ if __name__ == "__main__":
     # auto-accepted broader target of the same HPO concept. B and C are not
     # checked by any earlier step.
     # -----------------------------------------------------------------------
-    l.printHeader("16. Structural quality warnings")
+    l.printHeader("17. Structural quality warnings")
 
     def related_pairs(concepts: set, descendants) -> list:
         """
@@ -792,7 +968,7 @@ if __name__ == "__main__":
         l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
 
     # -----------------------------------------------------------------------
-    # 17. Writing output CSVs
+    # 18. Writing output CSVs
     #
     # evaluation_final.csv: all rows of llm_filtered.csv whose (HPO, SCT)
     # pair is in the final set — one row per contributing method, plus the
@@ -816,7 +992,7 @@ if __name__ == "__main__":
     # with the LLM's pass, decision, confidence (normalised to 0.2-1.0) and
     # rationale from llm_review.csv.
     # -----------------------------------------------------------------------
-    l.printHeader("17. Writing output CSVs")
+    l.printHeader("18. Writing output CSVs")
 
     # Pair-level information for every final pair, shared by both files:
     #   auto_accepted     : original validity 10 (accepted by MappingSetBuilder)
@@ -825,7 +1001,21 @@ if __name__ == "__main__":
     #   methods           : generation methods that found the pair (without
     #                       "llm"), e.g. "embedding,jaccard"
     #   best_conf         : highest confidence of those methods
+    #   gold_distance     : is_a distance to the nearest gold target of the
+    #                       HPO concept (section 16); empty if the concept
+    #                       has no gold mapping or its gold targets are not
+    #                       in sct.csv
+    #   nearest_gold_sct  : that gold target
+    #   gold_relation     : equal, broader, narrower or lateral (relation of
+    #                       the SCT target to nearest_gold_sct), no_gold, or
+    #                       gold_not_in_sct
     final_list = sorted(final_pairs)
+
+    def gold_relation(pair) -> str:
+        if pair not in pair_gold_distance:
+            return "no_gold"
+        return pair_gold_distance[pair][2] or "gold_not_in_sct"
+
     final_gen_rows = gen_rows[pairSeries(gen_rows, id_col, val_col).isin(final_pairs)]
     methods_per_pair = (
         final_gen_rows.groupby([id_col, val_col])[attr_col]
@@ -842,6 +1032,11 @@ if __name__ == "__main__":
         "original_validity": [pair_validity.get(p) for p in final_list],
         "methods":           [methods_per_pair.get(p, "") for p in final_list],
         "best_conf":         [pair_best_conf.get(p) for p in final_list],
+        "gold_distance":     pd.array(
+            [pair_gold_distance.get(p, (None,))[0] for p in final_list], dtype="Int64"
+        ),
+        "nearest_gold_sct":  [(pair_gold_distance.get(p, (None, None))[1] or "") for p in final_list],
+        "gold_relation":     [gold_relation(p) for p in final_list],
     })
 
     # evaluation_final.csv: one row per method (and "llm" row) of each final
@@ -924,13 +1119,23 @@ if __name__ == "__main__":
     writeHugeCSV(disagreements, llm_disagreements_path)
 
     # -----------------------------------------------------------------------
-    # 18. Overall summary
+    # 19. Overall summary
     # -----------------------------------------------------------------------
-    l.printHeader("18. Overall summary")
+    l.printHeader("19. Overall summary")
 
     l.log(f"Gold standard: {gold_total} pairs. Universe (generated pairs): {universe_total}.")
     log_pairs("auto-accepted (before LLM review)",    auto_pairs,  share=True)
     log_pairs("LLM-accepted only",                    llm_pairs,   share=True)
     log_pairs("final (auto-accepted + LLM-accepted)", final_pairs, share=True)
+
+    # Near misses (section 16): share of the final pairs of gold HPO
+    # concepts whose SCT target is within 0, 1 and 2 is_a edges of a gold
+    # target.
+    final_distances = [d for p, (d, _, _) in pair_gold_distance.items() if p in final_pairs]
+    within = {k: _safe_div(sum(1 for d in final_distances if d is not None and d <= k),
+                           len(final_distances)) for k in (0, 1, 2)}
+    l.log(f"  final pairs of gold HPO concepts within is_a distance 0 / ≤1 / ≤2 of a gold "
+          f"target: {within[0]:.3f} / {within[1]:.3f} / {within[2]:.3f} "
+          f"({len(final_distances)} pairs)")
 
     l.printHeader("Evaluation completed.")

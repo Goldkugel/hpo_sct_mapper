@@ -62,11 +62,11 @@ The model answers with a rationale, a decision (ACCEPT/REJECT) and a confidence 
 
 ### 4. Evaluation (`MappingErrorAnalysis.py`)
 
-Compares every stage with the gold standard and logs precision, recall and F1 per stage, per validity code and per method. It also logs method agreement, confidence thresholds and precision–recall curves, the LLM's decisions per review reason, the reasons gold pairs were missed, hierarchy-depth and structural checks, and error examples. It writes three CSV files to `data/output/evaluation/`:
+Compares every stage with the gold standard and logs precision, recall and F1 per stage, per validity code and per method. It also logs method agreement, confidence thresholds and precision–recall curves, the LLM's decisions per review reason, the reasons gold pairs were missed, hierarchy-depth and structural checks, and error examples. For HPO concepts in the gold standard it also logs how far each mapping is from the nearest gold target in the SNOMED CT is_a hierarchy (0 = correct, 1 = parent or child, 2 = sibling, grandparent or grandchild, ...), whether it is broader, narrower or lateral, and how close the missed gold pairs came. It writes three CSV files to `data/output/evaluation/`:
 
 | File | Content |
 |---|---|
-| `evaluation_final.csv` | All rows of the final mapping set, with gold status and pair-level columns (`auto_accepted`, `llm_accepted`, `original_validity`, `methods`, `best_conf`) |
+| `evaluation_final.csv` | All rows of the final mapping set, with gold status and pair-level columns (`auto_accepted`, `llm_accepted`, `original_validity`, `methods`, `best_conf`, `gold_distance`, `nearest_gold_sct`, `gold_relation`) |
 | `accepted_without_gold.csv` | Final pairs of HPO concepts that have no mapping in the gold standard |
 | `llm_disagreements.csv` | Pairs where the LLM and the rule-based filter disagree, with the LLM's decision, confidence and rationale |
 
