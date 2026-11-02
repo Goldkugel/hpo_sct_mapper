@@ -52,6 +52,7 @@ llm_review_path      = "./data/output/filtered/llm_review.csv"
 evaluation_path      = "./data/output/evaluation/evaluation_final.csv"
 no_gold_path         = "./data/output/evaluation/accepted_without_gold.csv"
 llm_disagreements_path = "./data/output/evaluation/llm_disagreements.csv"
+gold_check_path      = "./data/output/evaluation/gold_check.csv"
 
 # ------------------------------------------------------------------
 # Validity codes written by MappingSetBuilder (and read by MappingLLM
