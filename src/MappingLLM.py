@@ -277,7 +277,10 @@ if __name__ == "__main__":
 
         l.log(f"Looking for a checkpoint of an interrupted run "
               f"('{m.config.prompt_tmp_file}')...")
-        imported = m.importHistoriesFromFile()
+        try:
+            imported = m.importHistoriesFromFile()
+        except FileNotFoundError:
+            imported = 0
         if imported > 0:
             l.log(f"Resuming from the checkpoint with {imported} conversations "
                   f"({n_prompts} prompts expected).")

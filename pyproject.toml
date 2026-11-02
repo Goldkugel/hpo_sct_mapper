@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hpo_sct_mapper"
-version = "1.0.6"
+version = "1.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "logger @ git+https://github.com/Goldkugel/logger.git@v1.1.0",
-    "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.1.5",
-    "embedder @ git+https://github.com/Goldkugel/embedder.git@v2.0.0",
-    "model @ git+https://github.com/Goldkugel/model.git@v1.1.0",
-    "normalizer @ git+https://github.com/Goldkugel/normalizer.git@v1.0.5"
+    "logger @ git+https://github.com/Goldkugel/logger.git@v1.4.0",
+    "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.3.0",
+    "embedder @ git+https://github.com/Goldkugel/embedder.git@v2.2.0",
+    "model @ git+https://github.com/Goldkugel/model.git@v2.1.0",
+    "normalizer @ git+https://github.com/Goldkugel/normalizer.git@v1.1.0"
 ]
 
 [tool.setuptools]
