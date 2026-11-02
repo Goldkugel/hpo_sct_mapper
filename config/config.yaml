@@ -69,6 +69,7 @@ llm:
 embedder:
   model_id:
   - "cambridgeltl/SapBERT-from-PubMedBERT-fulltext"
+  pooling: "cls"
   device: "cpu"
   batch_size: 128
   max_seq_length: 128
