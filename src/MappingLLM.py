@@ -138,6 +138,107 @@ def share(count: int, total: int) -> str:
     return f"{count / total if total else 0:.1%}"
 
 
+# ------------------------------------------------------------------
+# Prompt fields. Shared with MappingGoldCheck, which sends the gold
+# standard pairs through the same two prompts.
+# ------------------------------------------------------------------
+def hpo_prompt_fields(hpo_id: str, hpo_data: dict) -> dict:
+    """Prompt fields describing the HPO concept, shared by both prompts."""
+    return {
+        "hpo_label":      join_quoted(hpo_data[labelClass].get(hpo_id, [])),
+        "hpo_synonyms":   join_quoted(hpo_data[synonymClass].get(hpo_id, [])),
+        "hpo_definition": join_quoted(hpo_data[definitionClass].get(hpo_id, [])),
+        "hpo_comment":    join_quoted(hpo_data[commentClass].get(hpo_id, [])),
+        "hpo_parents":    join_quoted(get_labels_for_ids(hpo_data["parents"].get(hpo_id, []), hpo_data[labelClass])),
+        "hpo_children":   children_text(hpo_id, hpo_data),
+    }
+
+def pair_prompt_fields(hpo_id: str, sct_id: str, reason: str, hpo_data: dict, sct_data: dict) -> dict:
+    """All fields of the pair-level prompt (single_mapping.md)."""
+    return {
+        **hpo_prompt_fields(hpo_id, hpo_data),
+        "sct_term":       join_quoted(sct_data[labelClass].get(sct_id, [])),
+        "sct_synonyms":   join_quoted(sct_data[synonymClass].get(sct_id, [])),
+        "sct_parents":    join_quoted(get_labels_for_ids(sct_data["parents"].get(sct_id, []), sct_data[labelClass])),
+        "sct_children":   children_text(sct_id, sct_data),
+        "review_reason":  reason,
+    }
+
+def related_candidates_text(sct_id: str, group_sct_ids: list, sct_data: dict, sct_descendants) -> str:
+    """
+    The other candidates of the group that are an ancestor (the
+    candidate is narrower than them) or a descendant (broader than
+    them) of sct_id in the SCT hierarchy, or "None".
+    """
+    parts = []
+    for other in group_sct_ids:
+        if other == sct_id:
+            continue
+        label = join_quoted(sct_data[labelClass].get(other, [])[:1])
+        if other in sct_descendants(sct_id):
+            parts.append(f"broader than {other} ({label})")
+        elif sct_id in sct_descendants(other):
+            parts.append(f"narrower than {other} ({label})")
+    return "; ".join(parts) if parts else "None"
+
+def group_prompt_fields(hpo_id: str, candidates: list, hpo_data: dict, sct_data: dict,
+                        sct_descendants) -> dict:
+    """
+    All fields of the group-level prompt (multiple_mapping.md).
+    candidates is a list of (sct_id, review reason) tuples, one per
+    SNOMED CT candidate of the HPO concept.
+    """
+    group_sct_ids = [sct_id for sct_id, _ in candidates]
+    sct_blocks = []
+    for sct_id, reason in candidates:
+        # The SNOMED CT ID is included explicitly so the LLM can
+        # populate the sct_id field in its output schema, enabling
+        # the code to match decisions back to rows by ID rather
+        # than by position.
+        sct_blocks.append(
+            f"* SNOMED CT ID: {sct_id}\n"
+            f"* Preferred Term / FSN: {join_quoted(sct_data[labelClass].get(sct_id, []))}\n"
+            f"* Synonyms: {join_quoted(sct_data[synonymClass].get(sct_id, []))}\n"
+            f"* Parents: {join_quoted(get_labels_for_ids(sct_data['parents'].get(sct_id, []), sct_data[labelClass]))}\n"
+            f"* Children: {children_text(sct_id, sct_data)}\n"
+            f"* Related Candidates: {related_candidates_text(sct_id, group_sct_ids, sct_data, sct_descendants)}\n"
+            f"* Review Reason: {reason}"
+        )
+    return {
+        **hpo_prompt_fields(hpo_id, hpo_data),
+        "sct_concepts":   "\n\n---\n\n".join(sct_blocks),
+    }
+
+def start_pass(m: Model, prompt_index: int, n_prompts: int, prefix: str = "prompt") -> bool:
+    """
+    Give each pass its own checkpoint file "<prefix>_<prompt_index>_<model>.tmp"
+    (so pass 2 does not import pass 1's histories on a resumed run, and
+    MappingGoldCheck does not import those of MappingLLM) and try to
+    resume from it. Returns True if new prompts must be formatted, False
+    if the histories were imported from the checkpoint of an interrupted
+    run.
+    """
+    l = Logger()
+    model_name = str(m.config.model_id[0].split("/")[-1])
+    m.config.prompt_tmp_file = f"{prefix}_{prompt_index}_{model_name}.tmp"
+
+    l.log(f"Looking for a checkpoint of an interrupted run "
+          f"('{m.config.prompt_tmp_file}')...")
+    # model 2.x raises FileNotFoundError instead of returning 0.
+    try:
+        imported = m.importHistoriesFromFile()
+    except FileNotFoundError:
+        imported = 0
+    if imported > 0:
+        l.log(f"Resuming from the checkpoint with {imported} conversations "
+              f"({n_prompts} prompts expected).")
+        return False
+
+    l.log("No checkpoint found; starting a new review.")
+    m.addPromptFromFile(prompt_index, n_prompts)
+    return True
+
+
 if __name__ == "__main__":
 
     l = Logger()
@@ -237,59 +338,6 @@ if __name__ == "__main__":
         hpo_ontology,
     )
 
-    def hpo_prompt_fields(hpo_id: str) -> dict:
-        """Prompt fields describing the HPO concept, shared by both prompts."""
-        return {
-            "hpo_label":      join_quoted(hpo_data[labelClass].get(hpo_id, [])),
-            "hpo_synonyms":   join_quoted(hpo_data[synonymClass].get(hpo_id, [])),
-            "hpo_definition": join_quoted(hpo_data[definitionClass].get(hpo_id, [])),
-            "hpo_comment":    join_quoted(hpo_data[commentClass].get(hpo_id, [])),
-            "hpo_parents":    join_quoted(get_labels_for_ids(hpo_data["parents"].get(hpo_id, []), hpo_data[labelClass])),
-            "hpo_children":   children_text(hpo_id, hpo_data),
-        }
-
-    def related_candidates_text(sct_id: str, group_sct_ids: list) -> str:
-        """
-        The other candidates of the group that are an ancestor (the
-        candidate is narrower than them) or a descendant (broader than
-        them) of sct_id in the SCT hierarchy, or "None".
-        """
-        parts = []
-        for other in group_sct_ids:
-            if other == sct_id:
-                continue
-            label = join_quoted(sct_data[labelClass].get(other, [])[:1])
-            if other in sct_descendants(sct_id):
-                parts.append(f"broader than {other} ({label})")
-            elif sct_id in sct_descendants(other):
-                parts.append(f"narrower than {other} ({label})")
-        return "; ".join(parts) if parts else "None"
-
-    def start_pass(m: Model, prompt_index: int, n_prompts: int) -> bool:
-        """
-        Give each pass its own checkpoint file (so pass 2 does not import
-        pass 1's histories on a resumed run) and try to resume from it.
-        Returns True if new prompts must be formatted, False if the
-        histories were imported from the checkpoint of an interrupted run.
-        """
-        model_name = str(m.config.model_id[0].split("/")[-1])
-        m.config.prompt_tmp_file = f"prompt_{prompt_index}_{model_name}.tmp"
-
-        l.log(f"Looking for a checkpoint of an interrupted run "
-              f"('{m.config.prompt_tmp_file}')...")
-        try:
-            imported = m.importHistoriesFromFile()
-        except FileNotFoundError:
-            imported = 0
-        if imported > 0:
-            l.log(f"Resuming from the checkpoint with {imported} conversations "
-                  f"({n_prompts} prompts expected).")
-            return False
-
-        l.log("No checkpoint found; starting a new review.")
-        m.addPromptFromFile(prompt_index, n_prompts)
-        return True
-
     # ======================================================================
     # Pass 1: pair-level review
     # ======================================================================
@@ -312,16 +360,9 @@ if __name__ == "__main__":
                 sct_id = getattr(row, val_col)
                 reason = REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN")
 
-                obj = {
-                    **hpo_prompt_fields(hpo_id),
-                    "sct_term":       join_quoted(sct_data[labelClass].get(sct_id, [])),
-                    "sct_synonyms":   join_quoted(sct_data[synonymClass].get(sct_id, [])),
-                    "sct_parents":    join_quoted(get_labels_for_ids(sct_data["parents"].get(sct_id, []), sct_data[labelClass])),
-                    "sct_children":   children_text(sct_id, sct_data),
-                    "review_reason":  reason,
-                }
-
-                m.formatPromptFromFile(row.Index, obj)
+                m.formatPromptFromFile(
+                    row.Index, pair_prompt_fields(hpo_id, sct_id, reason, hpo_data, sct_data)
+                )
 
             l.log("Formatting pair-level prompts completed.")
 
@@ -370,35 +411,16 @@ if __name__ == "__main__":
             l.log("Formatting group-level prompts...")
             for g_idx, hpo_id in enumerate(group_hpo_ids):
 
-                # Build the SNOMED CT candidates block for this HPO concept.
-                group_sct_ids = [getattr(row, val_col) for row in groups_1n[hpo_id]]
-                sct_blocks = []
-                for row in groups_1n[hpo_id]:
-                    sct_id = getattr(row, val_col)
-                    reason = REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN")
+                # One (sct_id, review reason) per SNOMED CT candidate.
+                candidates = [
+                    (getattr(row, val_col),
+                     REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN"))
+                    for row in groups_1n[hpo_id]
+                ]
 
-                    # The SNOMED CT ID is included explicitly so the LLM can
-                    # populate the sct_id field in its output schema, enabling
-                    # the code to match decisions back to rows by ID rather
-                    # than by position.
-                    block  = (
-                        f"* SNOMED CT ID: {sct_id}\n"
-                        f"* Preferred Term / FSN: {join_quoted(sct_data[labelClass].get(sct_id, []))}\n"
-                        f"* Synonyms: {join_quoted(sct_data[synonymClass].get(sct_id, []))}\n"
-                        f"* Parents: {join_quoted(get_labels_for_ids(sct_data['parents'].get(sct_id, []), sct_data[labelClass]))}\n"
-                        f"* Children: {children_text(sct_id, sct_data)}\n"
-                        f"* Related Candidates: {related_candidates_text(sct_id, group_sct_ids)}\n"
-                        f"* Review Reason: {reason}"
-                    )
-
-                    sct_blocks.append(block)
-
-                obj = {
-                    **hpo_prompt_fields(hpo_id),
-                    "sct_concepts":   "\n\n---\n\n".join(sct_blocks),
-                }
-
-                m.formatPromptFromFile(g_idx, obj)
+                m.formatPromptFromFile(g_idx, group_prompt_fields(
+                    hpo_id, candidates, hpo_data, sct_data, sct_descendants,
+                ))
 
             l.log("Formatting group-level prompts completed.")
 

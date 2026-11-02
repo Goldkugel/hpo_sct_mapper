@@ -1,17 +1,17 @@
 # hpo_sct_mapper
 
-Maps concepts of the [Human Phenotype Ontology (HPO)](https://hpo.jax.org/) to [SNOMED CT](https://www.snomed.org/) concepts. Candidate mappings are collected from cross-references and from lexical and embedding similarity. A rule-based filter then accepts, rejects or flags them, and a local LLM reviews the flagged and accepted candidates. Every stage is evaluated against a gold standard mapping.
+Maps concepts of the [Human Phenotype Ontology (HPO)](https://hpo.jax.org/) to [SNOMED CT](https://www.snomed.org/) concepts. Candidate mappings are collected from cross-references and from lexical and embedding similarity. A rule-based filter then accepts, rejects or flags them, and a local LLM reviews the flagged and accepted candidates. Every stage is evaluated against a gold standard mapping, which can itself be checked with the LLM.
 
 ## Pipeline
 
-The pipeline consists of four scripts in `src/`. They are run one after the other and pass their results on as CSV files:
+The pipeline consists of four scripts in `src/`. They are run one after the other and pass their results on as CSV files. A fifth script, `MappingGoldCheck.py`, checks the gold standard with the LLM and runs on its own (see below).
 
 | Step | Script | Input | Output |
 |---|---|---|---|
 | 1 | `MappingGeneration.py` | HPO, SNOMED CT, UMLS, gold standard | `data/output/mapped/mapping.csv` |
 | 2 | `MappingSetBuilder.py` | `mapping.csv` | `data/output/filtered/filtered.csv` |
 | 3 | `MappingLLM.py` | `filtered.csv` | `data/output/filtered/llm_filtered.csv`, `llm_review.csv` |
-| 4 | `MappingErrorAnalysis.py` | all of the above | `data/output/evaluation/*.csv` and the log |
+| 4 | `MappingErrorAnalysis.py` | all of the above | `evaluation_final.csv`, `accepted_without_gold.csv`, `llm_disagreements.csv` in `data/output/evaluation/`, and the log |
 
 Shared constants (file paths, method names, validity codes, thresholds) and helper functions live in `MappingUtils.py`.
 
@@ -66,9 +66,33 @@ Compares every stage with the gold standard and logs precision, recall and F1 pe
 
 | File | Content |
 |---|---|
-| `evaluation_final.csv` | All rows of the final mapping set, with gold status and pair-level columns (`auto_accepted`, `llm_accepted`, `original_validity`, `methods`, `best_conf`, `gold_distance`, `nearest_gold_sct`, `gold_relation`) |
+| `evaluation_final.csv` | All rows of the final mapping set, with gold status and pair-level columns (`auto_accepted`, `llm_accepted`, `original_validity`, `methods`, `best_conf`, `gold_distance`, `nearest_gold_sct`, `gold_relation`) and the LLM's rationale from `llm_review.csv` (`llm_rationale`) |
 | `accepted_without_gold.csv` | Final pairs of HPO concepts that have no mapping in the gold standard |
 | `llm_disagreements.csv` | Pairs where the LLM and the rule-based filter disagree, with the LLM's decision, confidence and rationale |
+
+### Gold standard check (`MappingGoldCheck.py`)
+
+Checks the gold standard itself with the LLM. It is independent of the pipeline and can run before or after steps 1–4. Every unique pair of the gold standard is reviewed with the prompts of step 3, with the review reason always set to `ACCEPTED`, so the model judges each gold pair like a mapping the pipeline accepted:
+
+- **Pass 1** reviews HPO concepts with exactly one gold target, using `prompts/single_mapping.md`.
+- **Pass 2** reviews HPO concepts with several gold targets together, using `prompts/multiple_mapping.md`, so the model sees how the targets relate in the SNOMED CT hierarchy.
+
+Pairs whose HPO or SNOMED CT concept is missing from the loaded data (obsolete or inactive concepts) cannot be shown to the model. They are not reviewed and get the status `HPO_NOT_FOUND` or `SCT_NOT_FOUND`. Answers that cannot be parsed count as rejected with confidence 1, as in step 3.
+
+The results are written to `data/output/evaluation/gold_check.csv`:
+
+| Column | Content |
+|---|---|
+| `hpo_id`, `hpo_label` | HPO concept |
+| `sct_id`, `sct_label` | SNOMED CT target in the gold standard |
+| `status` | `CHECKED`, `HPO_NOT_FOUND` or `SCT_NOT_FOUND` |
+| `n_sct` | Number of reviewed gold targets of the HPO concept |
+| `llm_pass` | 1 (pair-level prompt) or 2 (group-level prompt) |
+| `llm_decision` | `ACCEPT` or `REJECT` |
+| `confidence` | The model's confidence (1–5) divided by 5 |
+| `llm_rationale` | The model's rationale |
+
+The columns from `llm_pass` on are empty for pairs that were not reviewed. The log shows the counts per pass and the rejected pairs with the highest confidence, which are the first candidates for errors in the gold standard.
 
 ## Repository Structure
 
@@ -78,16 +102,18 @@ Compares every stage with the gold standard and logs precision, recall and F1 pe
 │   └── config.yaml            # Configuration of all libraries (see config/README.md)
 ├── data/                      # Input data, outputs, logs and checkpoints (see data/README.md)
 ├── prompts/
-│   ├── single_mapping.md      # LLM prompt for one candidate (pass 1)
-│   └── multiple_mapping.md    # LLM prompt for several candidates (pass 2)
+│   ├── single_mapping.md      # LLM prompt for one candidate (pass 1 of step 3 and of the gold check)
+│   └── multiple_mapping.md    # LLM prompt for several candidates (pass 2 of step 3 and of the gold check)
 ├── src/
 │   ├── MappingGeneration.py   # Step 1: candidate generation
 │   ├── MappingSetBuilder.py   # Step 2: rule-based filter
 │   ├── MappingLLM.py          # Step 3: LLM review
 │   ├── MappingErrorAnalysis.py# Step 4: evaluation
+│   ├── MappingGoldCheck.py    # LLM check of the gold standard
 │   └── MappingUtils.py        # Shared constants and helpers
 ├── start.sh                   # Runs steps 1 and 2
 ├── startLLM.sh                # Slurm job for step 3
+├── startGoldCheck.sh          # Slurm job for the gold standard check
 ├── LICENSE
 └── pyproject.toml
 ```
@@ -95,7 +121,7 @@ Compares every stage with the gold standard and logs precision, recall and F1 pe
 ## Requirements & Installation
 
 - Python 3.10+
-- A CUDA GPU for the LLM review (step 3); steps 1, 2 and 4 run on the CPU
+- A CUDA GPU for the LLM review (step 3) and the gold standard check; steps 1, 2 and 4 run on the CPU
 - The libraries [`logger`](https://github.com/Goldkugel/logger), [`adapter`](https://github.com/Goldkugel/adapter), [`embedder`](https://github.com/Goldkugel/embedder), [`model`](https://github.com/Goldkugel/model) and [`normalizer`](https://github.com/Goldkugel/normalizer), pinned to fixed versions in `pyproject.toml`
 - `faiss` (e.g. `faiss-cpu`) and `scipy`, which are imported by `MappingGeneration.py` but not declared in `pyproject.toml`
 
@@ -135,9 +161,15 @@ python3 ./src/MappingErrorAnalysis.py
 
 `start.sh` runs steps 1 and 2. `startLLM.sh` submits step 3 as a Slurm job on two A40 GPUs. Step 4 is run once the LLM review has finished.
 
-The LLM review saves a checkpoint after every chunk to `data/tmp/prompt_<pass>_<model>.tmp` and resumes from it if the job is interrupted. **Delete these files before starting a new review**, otherwise answers from an earlier run are reused.
+```bash
+sbatch ./startGoldCheck.sh
+```
 
-All scripts log to `data/logs/output.log`.
+`startGoldCheck.sh` submits the gold standard check as a Slurm job on two A40 GPUs, like `startLLM.sh`. It only needs the input data, not the outputs of steps 1–4.
+
+The LLM review and the gold standard check save a checkpoint after every chunk to `data/tmp/` (`prompt_<pass>_<model>.tmp` and `gold_<pass>_<model>.tmp`) and resume from it if the job is interrupted. **Delete these files before starting a new review or check**, otherwise answers from an earlier run are reused.
+
+All scripts log to `data/logs/output.log`. New runs append to it. The file is tracked by git, so commit it with the results of a run to keep the log of the latest run in the repository (see `data/logs/README.md`).
 
 ## License
 

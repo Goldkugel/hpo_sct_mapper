@@ -973,7 +973,8 @@ if __name__ == "__main__":
     # evaluation_final.csv: all rows of llm_filtered.csv whose (HPO, SCT)
     # pair is in the final set — one row per contributing method, plus the
     # "llm" row — so every mapping strategy that produced a given pair is
-    # visible in the output. The in_gold flag is attached to every row.
+    # visible in the output. The in_gold flag and the LLM's rationale from
+    # llm_review.csv are attached to every row.
     #
     # accepted_without_gold.csv: the final pairs of HPO concepts that have
     # no mapping in the gold standard (category C of section 15), one row
@@ -1040,7 +1041,8 @@ if __name__ == "__main__":
     })
 
     # evaluation_final.csv: one row per method (and "llm" row) of each final
-    # pair, with its row-level columns, in_gold, and the pair-level columns.
+    # pair, with its row-level columns, in_gold, the pair-level columns and
+    # the LLM's rationale.
     # The ID columns are renamed to hpo_id / sct_id, as in the other files.
     # Note the row-level validity column holds 10 on "llm" rows; use
     # original_validity for the code before the LLM review.
@@ -1048,11 +1050,20 @@ if __name__ == "__main__":
         pairSeries(final_df, id_col, val_col).isin(final_pairs)
     ].copy().reset_index(drop=True)
     final_accepted["in_gold"] = inGoldSeries(final_accepted, gold_pairs, id_col, val_col)
-    final_accepted = (
-        final_accepted
-        .merge(pair_info, on=[id_col, val_col], how="left")
-        .rename(columns={id_col: hpo_id_column, val_col: sct_id_column})
-    )
+    final_accepted = final_accepted.merge(pair_info, on=[id_col, val_col], how="left")
+
+    # The LLM's rationale from llm_review.csv (one row per reviewed pair),
+    # on every row of the pair. Whether the LLM accepted the pair is in
+    # llm_accepted. Empty for pairs the LLM did not review and for runs
+    # without the review file, so the file always has the same columns.
+    if review is not None:
+        final_accepted = final_accepted.merge(
+            review[[id_col, val_col, "llm_rationale"]].drop_duplicates(subset=[id_col, val_col]),
+            on=[id_col, val_col], how="left",
+        )
+    else:
+        final_accepted["llm_rationale"] = pd.NA
+    final_accepted = final_accepted.rename(columns={id_col: hpo_id_column, val_col: sct_id_column})
 
     l.log(f"Rows to write to {os.path.basename(evaluation_path)}: {len(final_accepted)} "
           f"({int(final_accepted['in_gold'].sum())} in gold) for {len(final_pairs)} "
