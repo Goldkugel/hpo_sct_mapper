@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=gold_check
 #SBATCH --partition=batch_long
-#SBATCH --gres=gpu:a40:2                        # Fordert 1x NVIDIA A40 an
-#SBATCH --time=2-00:00:00                       # Maximale Laufzeit (Format: HH:MM:SS)
+#SBATCH --gres=gpu:a40:2                        # Fordert 2x NVIDIA A40 an
+#SBATCH --time=2-00:00:00                       # Maximale Laufzeit (Format: D-HH:MM:SS)
 #SBATCH --output=./data/slurmlogs/job_%j.out        # Speicherort für Ausgaben (%j = Job-ID)
 #SBATCH --error=./data/slurmlogs/job_%j.err         # Speicherort für Fehlermeldungen
 

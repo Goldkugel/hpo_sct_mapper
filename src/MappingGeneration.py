@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     l.printHeader("2. Collecting cross-references")
 
-    # Five lookups are built here and used by the strategies below:
+    # Four lookups are built here and used by the strategies below:
     #   umls_hpo_maps : UMLS CUI -> [HPO IDs]   (from UMLS)
     #   umls_sct_maps : UMLS CUI -> [SCT IDs]   (from UMLS)
     #   hpo_umls_maps : HPO ID   -> [UMLS CUIs] (from HPO)

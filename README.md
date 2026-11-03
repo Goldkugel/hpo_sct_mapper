@@ -49,7 +49,7 @@ Assigns every pair a **validity code** in a fixed order of steps, from the stron
 | 10 | 2–6 | Accepted |
 | NA | – | Not reached by any step |
 
-Steps 2–6 accept candidates. A **hierarchy reversal** means that a candidate and an SNOMED CT concept already accepted for the same HPO concept are ancestor and descendant of each other. Only one of the two is kept: the narrower one, unless the broader one has stronger evidence. The evidence of a pair is compared as the tuple (number of cross-reference sources, lexical match strength, cosine = 1). The pair that is not kept gets the reversal code of its step.
+Steps 2–6 accept candidates. A **hierarchy reversal** means that a candidate and an SNOMED CT concept already accepted for the same HPO concept are ancestor and descendant of each other. Only one of the two is kept: the narrower one, unless the broader one has stronger evidence. The evidence of a pair is compared as the tuple (number of cross-reference sources, lexical match strength, cosine = 1). The pair that is not kept gets the reversal code of the step in which the conflict is found, so a demoted pair gets the code of the step that displaced it.
 
 ### 3. LLM review (`MappingLLM.py`)
 
@@ -92,7 +92,7 @@ The results are written to `data/output/evaluation/gold_check.csv`:
 | `confidence` | The model's confidence (1–5) divided by 5 |
 | `llm_rationale` | The model's rationale |
 
-The columns from `llm_pass` on are empty for pairs that were not reviewed. The log shows the counts per pass and the rejected pairs with the highest confidence, which are the first candidates for errors in the gold standard.
+The columns from `n_sct` on are empty for pairs that were not reviewed. The log shows the counts per pass and the rejected pairs with the highest confidence, which are the first candidates for errors in the gold standard.
 
 ## Repository Structure
 
@@ -167,7 +167,7 @@ sbatch ./startGoldCheck.sh
 
 `startGoldCheck.sh` submits the gold standard check as a Slurm job on two A40 GPUs, like `startLLM.sh`. It only needs the input data, not the outputs of steps 1–4.
 
-The LLM review and the gold standard check save a checkpoint after every chunk to `data/tmp/` (`prompt_<pass>_<model>.tmp` and `gold_<pass>_<model>.tmp`) and resume from it if the job is interrupted. **Delete these files before starting a new review or check**, otherwise answers from an earlier run are reused.
+The LLM review and the gold standard check save a checkpoint after every chunk to `data/tmp/` (`prompt_<index>_<model>.tmp` and `gold_<index>_<model>.tmp`, with index 0 for pass 1 and 1 for pass 2, see `data/tmp/README.md`) and resume from it if the job is interrupted. **Delete these files before starting a new review or check**, otherwise answers from an earlier run are reused.
 
 All scripts log to `data/logs/output.log`. New runs append to it. The file is tracked by git, so commit it with the results of a run to keep the log of the latest run in the repository (see `data/logs/README.md`).
 

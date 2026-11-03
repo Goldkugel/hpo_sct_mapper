@@ -9,8 +9,9 @@ import re
 import ast
 import os
 
-# Column names of the gold standard (loadGold) and of the validity code
-# added by MappingSetBuilder. The mapping files themselves use the
+# Column names of the gold standard (loadGold), of the confidence added by
+# MappingGeneration and of the validity code added by MappingSetBuilder.
+# The mapping files themselves use the
 # adapters' EAV column names (adapter.config.id_column etc.).
 sct_id_column           = "sct_id"
 hpo_id_column           = "hpo_id"
@@ -396,7 +397,8 @@ def loadOntologies(
 
     Note:
         If an adapter's load() returns 0 (usually because skip_if_present is set and
-        the output CSV exists; also if the source file is missing or empty), its
+        the output CSV exists; also if no input files are configured or they yield
+        no rows; a missing source file raises instead), its
         to_csv() is skipped and the corresponding DataFrame below is read from whatever
         output CSV already exists on disk -- which may be stale from a previous run.
     """
@@ -563,7 +565,7 @@ def loadInputs(
     separator: str = ";"
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, HPOAdapter, SCTAdapter, UMLSAdapter, pd.DataFrame]:
     """
-    Shared setup of the filtering, LLM and evaluation scripts: loads the
+    Shared setup of all pipeline scripts and the gold standard check: loads the
     ontologies (see loadOntologies), keeps only HPO concepts ("HP:") in the
     HPO data, and loads the gold standard from gold_path.
 

@@ -530,7 +530,8 @@ if __name__ == "__main__":
     all_accepted_llm[attr_col]        = llm_mappings
 
     # Keep only the columns present in the original mappings dataframe,
-    # dropping LLM-specific columns (llm_decision, n_sct).
+    # dropping LLM-specific columns (llm_decision, llm_rationale, llm_pass,
+    # n_sct).
     retained_cols = [col for col in mappings.columns if col in all_accepted_llm.columns]
     assert validity_column in retained_cols, (
         f"validity_column '{validity_column}' was unexpectedly dropped during "
