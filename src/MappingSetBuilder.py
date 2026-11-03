@@ -89,7 +89,7 @@ if __name__ == "__main__":
     l.log(f"Loading generated mappings completed. {len(mappings.index)} rows, "
           f"{n_pairs} pairs, {mappings[id_col].nunique()} HPO concepts.")
 
-    # Initialise validity column to NaN; filled in per-row as the pipeline runs.
+    # Initialise validity column to NA; filled in per-row as the pipeline runs.
     mappings[validity_column] = pd.NA
 
     # Build a pair -> [row positions] lookup once, so mark_validity never has
