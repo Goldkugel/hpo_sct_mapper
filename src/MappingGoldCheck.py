@@ -204,7 +204,8 @@ if __name__ == "__main__":
 
     one_to_one["llm_pass"] = 1
 
-    l.log(f"Pass 1 completed: {pass1_unparsable} unparsable answers, counted as rejected.")
+    l.log(f"Pass 1: {pass1_unparsable} unparsable answers, counted as rejected.")
+    l.log(f"Pass 1: Reviewing {len(one_to_one)} gold pairs with the pair-level prompt completed.")
 
     # ======================================================================
     # Pass 2: group-level review
@@ -260,8 +261,10 @@ if __name__ == "__main__":
 
     one_to_n["llm_pass"] = 2
 
-    l.log(f"Pass 2 completed: {pass2_unparsable} unparsable group answers and "
-          f"{pass2_missing} targets without a usable decision, all counted as rejected.")
+    l.log(f"Pass 2: {pass2_unparsable} unparsable group answers, counted as rejected.")
+    l.log(f"Pass 2: {pass2_missing} targets without a usable decision, counted as rejected.")
+    l.log(f"Pass 2: Reviewing {len(one_to_n)} gold pairs of {len(group_hpo_ids)} HPO "
+          f"concepts with the group-level prompt completed.")
 
     # ======================================================================
     # Writing results
@@ -311,8 +314,9 @@ if __name__ == "__main__":
         rejected = len(subset) - accepted
         l.log(f"  {label:<34} {len(subset):>8} {accepted:>9} {rejected:>9} "
               f"{share(rejected, len(subset)):>15}")
-    l.log(f"  Rejections include {pass1_unparsable + pass2_missing} pairs without a usable "
-          f"decision and the pairs of {pass2_unparsable} unparsable group answers.")
+    l.log(f"  Rejections include {pass1_unparsable + pass2_missing} pairs without a "
+          f"usable decision.")
+    l.log(f"  Rejections include the pairs of {pass2_unparsable} unparsable group answers.")
 
     # The rejections the LLM is surest about come first; they are the first
     # candidates for errors in the gold standard.
@@ -320,8 +324,8 @@ if __name__ == "__main__":
         out[(out["status"] == status_checked) & (out["llm_decision"] == "REJECT")]
         .sort_values(confidence_column, ascending=False, kind="stable")
     )
-    l.log(f"Rejected gold pairs (up to {REJECTED_EXAMPLE_LIMIT}, highest confidence first; "
-          f"all in {gold_check_path}):")
+    l.log(f"All rejected gold pairs are in {gold_check_path}.")
+    l.log(f"Rejected gold pairs (up to {REJECTED_EXAMPLE_LIMIT}, highest confidence first):")
     for row in rejected.head(REJECTED_EXAMPLE_LIMIT).itertuples(index=False):
         l.log(f"  {getattr(row, hpo_id_column)} ({row.hpo_label}) -> "
               f"{getattr(row, sct_id_column)} ({row.sct_label}): "

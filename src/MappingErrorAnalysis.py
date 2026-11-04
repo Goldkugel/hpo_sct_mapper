@@ -156,7 +156,8 @@ if __name__ == "__main__":
     l.log("Loading LLM-reviewed mappings (llm_filtered.csv)...")
     final_df = pd.read_csv(llm_filtered_path, sep=";")
     final_df = keepHPOConcepts(final_df, id_col)
-    l.log(f"Loading LLM-reviewed mappings completed. {len(final_df)} rows.")
+    l.log(f"LLM-reviewed mappings: {len(final_df)} rows.")
+    l.log("Loading LLM-reviewed mappings (llm_filtered.csv) completed.")
 
     # Gold-standard pair set
     gold_pairs = set(zip(graham[hpo_id_column], graham[sct_id_column]))
@@ -226,9 +227,10 @@ if __name__ == "__main__":
     llm_pairs   = _pair_set(final_df[final_df[attr_col] == llm_mappings], id_col, val_col)
     final_pairs = auto_pairs | llm_pairs
 
-    l.log(f"Building label, hierarchy and pair lookup tables completed. "
-          f"{universe_total} generated pairs; accepted: {len(auto_pairs)} "
-          f"auto, {len(llm_pairs)} by the LLM, {len(final_pairs)} final.")
+    l.log(f"Generated pairs: {universe_total}.")
+    l.log(f"Accepted pairs: {len(auto_pairs)} auto, {len(llm_pairs)} by the LLM, "
+          f"{len(final_pairs)} final.")
+    l.log("Building label, hierarchy and pair lookup tables completed.")
 
     def log_pairs(label: str, pairs: set, share: bool = False, indent: str = "  ") -> None:
         """
@@ -272,7 +274,8 @@ if __name__ == "__main__":
     log_pairs("Stage 3b — LLM-accepted only",                    llm_pairs,                      share=True)
     log_pairs("Stage 3c — final (auto-accepted + LLM-accepted)", final_pairs,                    share=True)
     l.log(f"Auto-accepted pairs not accepted by the LLM (rejected or no valid "
-          f"answer; they stay in the final set): {len(auto_pairs - llm_pairs)}.")
+          f"answer): {len(auto_pairs - llm_pairs)}.")
+    l.log("These auto-accepted pairs stay in the final set.")
 
     # -----------------------------------------------------------------------
     # 4. Validity-level breakdown
@@ -415,8 +418,8 @@ if __name__ == "__main__":
 
     l.log("A. Overall LLM review:")
     l.log(f"  Pairs reviewed: {n_reviewed}, accepted: {n_accepted} "
-          f"({_safe_div(n_accepted, n_reviewed):.2%}), rejected or no valid "
-          f"answer: {n_reviewed - n_accepted} "
+          f"({_safe_div(n_accepted, n_reviewed):.2%}).")
+    l.log(f"  Pairs rejected or without a valid answer: {n_reviewed - n_accepted} "
           f"({_safe_div(n_reviewed - n_accepted, n_reviewed):.2%}).")
     log_pairs("LLM-accepted", llm_pairs)
 
@@ -431,12 +434,13 @@ if __name__ == "__main__":
             n_rej   = int((decisions["llm_decision"] == "REJECT").sum())
             n_empty = int(decisions["llm_rationale"].isna().sum())
             l.log(f"  Pass {llm_pass}: {len(decisions)} reviewed, {n_acc} ACCEPT, "
-                  f"{n_rej} REJECT, {len(decisions) - n_acc - n_rej} other decision; "
-                  f"{n_empty} without rationale (incl. unparsable or missing answers).")
+                  f"{n_rej} REJECT, {len(decisions) - n_acc - n_rej} other decision.")
+            l.log(f"  Pass {llm_pass}: {n_empty} without rationale (incl. unparsable or "
+                  f"missing answers).")
     else:
         l.log(f"  {os.path.basename(llm_review_path)} not found; decisions per "
-              f"pass are not available (written by MappingLLM since the "
-              f"rationale field was added).")
+              f"pass are not available.")
+        l.log("  The file is written by MappingLLM since the rationale field was added.")
 
     l.log("B. Per review reason (original validity code):")
     for v_code, reason_label in sorted(REVIEW_REASON.items()):
@@ -492,7 +496,8 @@ if __name__ == "__main__":
     multi_mapped = {h: s for h, s in accepted_sct_per_hpo.items() if len(s) > 1}
     l.log(f"B. HPO concepts with more than one final SCT target: {len(multi_mapped)} "
           f"({_safe_div(len(multi_mapped), len(accepted_sct_per_hpo)):.2%} of mapped "
-          f"concepts). Examples with the most targets:")
+          f"concepts).")
+    l.log("Examples with the most targets:")
 
     for hpo_id, our_scts in sorted(multi_mapped.items(), key=lambda x: (-len(x[1]), x[0]))[:10]:
         gold_scts = gold_sct_per_hpo.get(hpo_id, set())
@@ -551,8 +556,9 @@ if __name__ == "__main__":
     generated_missed = [p for p in missed_gold if p in pair_best_conf]
     if generated_missed:
         conf_vals = pd.Series([pair_best_conf[p] for p in generated_missed]).dropna()
+        l.log("Cross-reference rows always have confidence 1.0.")
         l.log(f"Best confidence of the {len(generated_missed)} generated-but-missed "
-              f"gold pairs (any generation method; cross-references have 1.0):")
+              f"gold pairs (any generation method):")
         for thresh in similarity_steps:
             n_above = int((conf_vals >= thresh).sum())
             l.log(f"  confidence ≥ {thresh:.2f}: {n_above:6} pairs "
@@ -659,17 +665,17 @@ if __name__ == "__main__":
             l.log(f"  ... and {len(hpo_ids) - ERROR_EXAMPLE_LIMIT} more.")
 
     cat_a = sorted(gold_hpo - generated_hpo)
-    l.log(f"A. Gold HPO concepts with no generated pair: {len(cat_a)}")
+    l.log(f"A. Gold HPO concepts with no generated pair: {len(cat_a)}.")
     log_concepts(cat_a)
 
     cat_b = sorted((gold_hpo & generated_hpo) - accepted_hpo)
-    l.log(f"B. Gold HPO concepts with generated pairs but no final mapping: {len(cat_b)}")
+    l.log(f"B. Gold HPO concepts with generated pairs but no final mapping: {len(cat_b)}.")
     log_concepts(cat_b, lambda hid: "gold SCT(s): " + ", ".join(
         sct_label(s) for s in sorted(gold_sct_per_hpo.get(hid, set()))))
 
     cat_c = sorted(accepted_hpo - gold_hpo)
-    l.log(f"C. HPO concepts with a final mapping but not in the gold standard "
-          f"(may be correct but unverifiable): {len(cat_c)}")
+    l.log(f"C. HPO concepts with a final mapping but not in the gold standard: {len(cat_c)}.")
+    l.log("These mappings may be correct but cannot be verified.")
     log_concepts(cat_c, lambda hid: "mapped to: " + ", ".join(
         sct_label(s) for s in sorted(accepted_sct_per_hpo.get(hid, set()))))
 
@@ -685,7 +691,7 @@ if __name__ == "__main__":
             cat_d_partial_wrong.append((hid, our_scts, gold_scts, correct))
 
     l.log(f"D. HPO concepts in gold and the final set with entirely wrong SCT "
-          f"target(s): {len(cat_d_exact_wrong)}")
+          f"target(s): {len(cat_d_exact_wrong)}.")
     for hid, our, gold in cat_d_exact_wrong[:10]:
         l.log(f"  {hid} [{hpo_label(hid)}]")
         l.log(f"    ours: {', '.join(sct_label(s) for s in sorted(our))}")
@@ -694,7 +700,7 @@ if __name__ == "__main__":
         l.log(f"  ... and {len(cat_d_exact_wrong) - 10} more.")
 
     l.log(f"D. HPO concepts in gold and the final set with some gold SCT "
-          f"target(s) missing: {len(cat_d_partial_wrong)}")
+          f"target(s) missing: {len(cat_d_partial_wrong)}.")
     for hid, our, gold, correct in cat_d_partial_wrong[:10]:
         l.log(f"  {hid} [{hpo_label(hid)}]")
         l.log(f"    correct: {', '.join(sct_label(s) for s in sorted(correct))}")
@@ -743,7 +749,8 @@ if __name__ == "__main__":
     sct_concepts       = set(sct[sct_ontology.config.id_column].unique())
     sct_up             = make_ancestor_distance_lookup(build_parent_map(sct, sct_ontology))
     hierarchy_distance = make_hierarchy_distance(sct_up)
-    l.log(f"Building SNOMED CT ancestor lookup completed. {len(sct_concepts)} concepts.")
+    l.log(f"SNOMED CT concepts: {len(sct_concepts)}.")
+    l.log("Building SNOMED CT ancestor lookup completed.")
 
     def sct_relation(sct_id: str, other_id: str) -> str:
         """Relation of sct_id to other_id: equal, broader, narrower or lateral."""
@@ -863,8 +870,8 @@ if __name__ == "__main__":
             missed_gold_distance[(hid, gid)] = (
                 distance, target, sct_relation(target, gid) if target is not None else ""
             )
-    l.log(f"C. Missed gold pairs: {len(missed_gold)}; "
-          f"{len(missed_gold) - len(missed_gold_distance)} of them belong to HPO concepts "
+    l.log(f"C. Missed gold pairs: {len(missed_gold)}.")
+    l.log(f"{len(missed_gold) - len(missed_gold_distance)} of them belong to HPO concepts "
           f"without a final mapping and are not measured.")
     log_distances("  missed gold pairs of HPO concepts with a final mapping "
                   "(relation = final target to gold target)", missed_gold_distance)
@@ -909,10 +916,10 @@ if __name__ == "__main__":
         for hid, scts in accepted_sct_per_hpo.items() if len(scts) > 1
     }
     source_collapse = {hid: pairs for hid, pairs in source_collapse.items() if pairs}
-    l.log(f"WARNING A — Source collapse (HPO concept mapped to SCT concepts in an "
-          f"ancestor/descendant relationship): "
-          f"{sum(len(p) for p in source_collapse.values())} related SCT pairs for "
-          f"{len(source_collapse)} HPO concepts.")
+    l.log(f"WARNING A — Source collapse: {sum(len(p) for p in source_collapse.values())} "
+          f"related SCT pairs for {len(source_collapse)} HPO concepts.")
+    l.log("Source collapse: an HPO concept is mapped to an SCT concept and to one of "
+          "its ancestors.")
     for hid in sorted(source_collapse)[:ERROR_EXAMPLE_LIMIT]:
         l.log(f"  {hid} [{hpo_label(hid)}]")
         for broader, narrower in source_collapse[hid]:
@@ -927,9 +934,9 @@ if __name__ == "__main__":
         for sid, hids in accepted_hpo_per_sct.items() if len(hids) > 1
     }
     target_collapse = {sid: pairs for sid, pairs in target_collapse.items() if pairs}
-    l.log(f"WARNING B — Target collapse (related HPO concepts mapped to the same "
-          f"SCT concept): {sum(len(p) for p in target_collapse.values())} related "
-          f"HPO pairs for {len(target_collapse)} SCT concepts.")
+    l.log(f"WARNING B — Target collapse: {sum(len(p) for p in target_collapse.values())} "
+          f"related HPO pairs for {len(target_collapse)} SCT concepts.")
+    l.log("Target collapse: related HPO concepts are mapped to the same SCT concept.")
     for sid in sorted(target_collapse)[:ERROR_EXAMPLE_LIMIT]:
         l.log(f"  {sid} [{sct_label(sid)}]")
         for broader, narrower in target_collapse[sid]:
@@ -956,14 +963,15 @@ if __name__ == "__main__":
                     if sct_of_parent in sct_descendants(sct_of_child):
                         reversal_examples.append((hpo_parent, hpo_child, sct_of_parent, sct_of_child))
 
-    l.log(f"WARNING C — Cross-pair hierarchy reversal (HPO hierarchy direction "
-          f"inverted in the SCT targets): {len(reversal_examples)} cases.")
+    l.log(f"WARNING C — Cross-pair hierarchy reversal: {len(reversal_examples)} cases.")
+    l.log("Cross-pair hierarchy reversal: the HPO hierarchy direction is inverted in "
+          "the SCT targets.")
     for hpo_parent, hpo_child, sct_of_parent, sct_of_child in reversal_examples[:ERROR_EXAMPLE_LIMIT]:
         l.log(f"  HPO parent: {hpo_parent} [{hpo_label(hpo_parent)}]  →  "
               f"SCT: {sct_of_parent} [{sct_label(sct_of_parent)}]")
         l.log(f"  HPO child:  {hpo_child} [{hpo_label(hpo_child)}]  →  "
               f"SCT: {sct_of_child} [{sct_label(sct_of_child)}]")
-        l.log(f"    (the child's SCT target is an ancestor of the parent's SCT target)")
+        l.log("    The child's SCT target is an ancestor of the parent's SCT target.")
     if len(reversal_examples) > ERROR_EXAMPLE_LIMIT:
         l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
 
@@ -1080,9 +1088,9 @@ if __name__ == "__main__":
 
     l.log(f"Rows to write to {os.path.basename(no_gold_path)}: {len(no_gold_df)} "
           f"final pairs of {no_gold_df[hpo_id_column].nunique()} HPO concepts "
-          f"without a gold mapping ({int(no_gold_df['auto_accepted'].sum())} "
-          f"auto-accepted, {int(no_gold_df['llm_accepted'].sum())} LLM-accepted; "
-          f"a pair can be both).")
+          f"without a gold mapping.")
+    l.log(f"Of these, {int(no_gold_df['auto_accepted'].sum())} are auto-accepted and "
+          f"{int(no_gold_df['llm_accepted'].sum())} LLM-accepted; a pair can be both.")
     writeHugeCSV(no_gold_df, no_gold_path)
 
     # llm_disagreements.csv: one row per pair on which the rule-based filter
@@ -1134,7 +1142,8 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     l.printHeader("19. Overall summary")
 
-    l.log(f"Gold standard: {gold_total} pairs. Universe (generated pairs): {universe_total}.")
+    l.log(f"Gold standard: {gold_total} pairs.")
+    l.log(f"Universe (generated pairs): {universe_total}.")
     log_pairs("auto-accepted (before LLM review)",    auto_pairs,  share=True)
     log_pairs("LLM-accepted only",                    llm_pairs,   share=True)
     log_pairs("final (auto-accepted + LLM-accepted)", final_pairs, share=True)
@@ -1145,8 +1154,8 @@ if __name__ == "__main__":
     final_distances = [d for p, (d, _, _) in pair_gold_distance.items() if p in final_pairs]
     within = {k: _safe_div(sum(1 for d in final_distances if d is not None and d <= k),
                            len(final_distances)) for k in (0, 1, 2)}
-    l.log(f"  final pairs of gold HPO concepts within is_a distance 0 / ≤1 / ≤2 of a gold "
-          f"target: {within[0]:.3f} / {within[1]:.3f} / {within[2]:.3f} "
-          f"({len(final_distances)} pairs)")
+    l.log(f"  Final pairs of gold HPO concepts: {len(final_distances)}.")
+    l.log(f"  Share within is_a distance 0 / ≤1 / ≤2 of a gold target: "
+          f"{within[0]:.3f} / {within[1]:.3f} / {within[2]:.3f}.")
 
     l.printHeader("Evaluation completed.")

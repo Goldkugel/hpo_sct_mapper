@@ -222,19 +222,20 @@ def start_pass(m: Model, prompt_index: int, n_prompts: int, prefix: str = "promp
     model_name = str(m.config.model_id[0].split("/")[-1])
     m.config.prompt_tmp_file = f"{prefix}_{prompt_index}_{model_name}.tmp"
 
-    l.log(f"Looking for a checkpoint of an interrupted run "
-          f"('{m.config.prompt_tmp_file}')...")
+    l.log(f"Looking for the checkpoint '{m.config.prompt_tmp_file}'...")
     # model 2.x raises FileNotFoundError instead of returning 0.
     try:
         imported = m.importHistoriesFromFile()
     except FileNotFoundError:
         imported = 0
     if imported > 0:
-        l.log(f"Resuming from the checkpoint with {imported} conversations "
-              f"({n_prompts} prompts expected).")
+        l.log(f"Checkpoint found with {imported} conversations "
+              f"({n_prompts} prompts expected); resuming from it.")
+        l.log(f"Looking for the checkpoint '{m.config.prompt_tmp_file}' completed.")
         return False
 
     l.log("No checkpoint found; starting a new review.")
+    l.log(f"Looking for the checkpoint '{m.config.prompt_tmp_file}' completed.")
     m.addPromptFromFile(prompt_index, n_prompts)
     return True
 
@@ -264,8 +265,9 @@ if __name__ == "__main__":
 
     l.log("Loading filtered mappings...")
     mappings = pd.read_csv(filtered_path, sep=";")
-    l.log(f"Loading filtered mappings completed. {len(mappings.index)} rows, "
+    l.log(f"Filtered mappings: {len(mappings.index)} rows, "
           f"{len(mappings.drop_duplicates(subset=[id_col, val_col]).index)} pairs.")
+    l.log("Loading filtered mappings completed.")
 
     l.log("Building ontology lookup tables...")
     hpo_data = build_ontology_lookups(hpo, hpo_ontology)
@@ -309,10 +311,10 @@ if __name__ == "__main__":
 
     n_auto_accepted = int((pair_candidates[validity_column] == validity_accepted).sum())
 
-    l.log(f"Pairs to review (validity=1–{validity_accepted}): {len(pair_candidates)} "
-          f"({len(pair_candidates) - n_auto_accepted} candidates with validity="
-          f"1–{validity_accepted - 1}, {n_auto_accepted} auto-accepted with "
-          f"validity={validity_accepted}).")
+    l.log(f"Pairs to review (validity=1–{validity_accepted}): {len(pair_candidates)}.")
+    l.log(f"Pairs to review: {len(pair_candidates) - n_auto_accepted} candidates with "
+          f"validity=1–{validity_accepted - 1}.")
+    l.log(f"Pairs to review: {n_auto_accepted} auto-accepted with validity={validity_accepted}.")
 
     sct_per_hpo = pair_candidates.groupby(id_col)[val_col].nunique()
     pair_candidates["n_sct"] = pair_candidates[id_col].map(sct_per_hpo)
@@ -384,9 +386,10 @@ if __name__ == "__main__":
 
     p1_accepted = int((pass1_out["llm_decision"] == "ACCEPT").sum())
     p1_rejected = int((pass1_out["llm_decision"] == "REJECT").sum())
-    l.log(f"Pass 1 completed (pairs): {p1_accepted} accepted, {p1_rejected} rejected "
-          f"(including {pass1_unparsable} unparsable answers counted as rejected), "
+    l.log(f"Pass 1 (pairs): {p1_accepted} accepted, {p1_rejected} rejected, "
           f"{len(pass1_out.index) - p1_accepted - p1_rejected} with another decision.")
+    l.log(f"Pass 1: {pass1_unparsable} unparsable answers, counted as rejected.")
+    l.log(f"Pass 1: Reviewing {len(one_to_one)} pairs with the pair-level prompt completed.")
 
     # ======================================================================
     # Pass 2: group-level review
@@ -478,11 +481,13 @@ if __name__ == "__main__":
 
     p2_accepted = int((pass2_out["llm_decision"] == "ACCEPT").sum())
     p2_rejected = int((pass2_out["llm_decision"] == "REJECT").sum())
-    l.log(f"Pass 2 completed (pairs): {p2_accepted} accepted, {p2_rejected} rejected "
-          f"(including {pass2_missing} candidates missing in the answer and the "
-          f"pairs of {pass2_unparsable} unparsable group answers, all counted as "
-          f"rejected), {len(pass2_out.index) - p2_accepted - p2_rejected} with "
-          f"another decision.")
+    l.log(f"Pass 2 (pairs): {p2_accepted} accepted, {p2_rejected} rejected, "
+          f"{len(pass2_out.index) - p2_accepted - p2_rejected} with another decision.")
+    l.log(f"Pass 2: {pass2_missing} candidates missing in the answers, counted as rejected.")
+    l.log(f"Pass 2: The pairs of {pass2_unparsable} unparsable group answers are counted "
+          f"as rejected.")
+    l.log(f"Pass 2: Reviewing {len(one_to_n)} pairs of {len(group_hpo_ids)} HPO "
+          f"concepts with the group-level prompt completed.")
 
     # ======================================================================
     # Writing LLM-reviewed mappings
@@ -544,9 +549,9 @@ if __name__ == "__main__":
     n_rows_before = len(mappings.index)
     mappings = pd.concat([mappings, all_accepted_llm], ignore_index=True)
 
-    l.log(f"Rows to write: {len(mappings.index)} ({n_rows_before} from "
-          f"filtered.csv, {len(all_accepted_llm.index)} new rows with "
-          f"attribute={llm_mappings} and validity={validity_accepted}).")
+    l.log(f"Rows to write: {len(mappings.index)} ({n_rows_before} from filtered.csv, "
+          f"{len(all_accepted_llm.index)} new).")
+    l.log(f"The new rows have attribute={llm_mappings} and validity={validity_accepted}.")
 
     writeHugeCSV(mappings, llm_filtered_path)
 
@@ -584,8 +589,7 @@ if __name__ == "__main__":
     l.log(f"  {'Auto-accepted confirmed:':<34}{n_confirmed_accepted:7} "
           f"(validity={validity_accepted} accepted by the LLM)")
     l.log(f"  {'Auto-accepted rejected:':<34}{n_rejected_accepted:7} "
-          f"(validity={validity_accepted} rejected by the LLM; stay accepted, "
-          f"no llm row)")
+          f"(validity={validity_accepted} rejected by the LLM; kept, no llm row)")
 
     l.log("LLM review by validity code (pairs):")
     l.log(f"  {'Code':<6} {'Reason':<40} {'Reviewed':>8} {'Accepted':>9} {'Rejected':>9} {'Other':>6} {'Rejection Rate':>15}")

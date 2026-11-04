@@ -111,7 +111,7 @@ def addMethod(
     included.append(method)
 
     if len(included) > 1:
-        l.log(f"New pairs added by {method}: {len(cumulative.index) - before}")
+        l.log(f"New pairs added by {method}: {len(cumulative.index) - before}.")
         evaluation(
             cumulative,
             gold,
@@ -122,7 +122,7 @@ def addMethod(
     return cumulative
 
 def logPairs(data: pd.DataFrame, id_col: str) -> str:
-    """Short summary of a mapping DataFrame for 'completed' log lines."""
+    """Short summary of a mapping DataFrame for result log rows."""
     return f"{len(data.index)} pairs for {data[id_col].nunique()} HPO concepts."
 
 if __name__ == "__main__":
@@ -160,7 +160,8 @@ if __name__ == "__main__":
     valid_hpo_ids  = set(hpo[id_col].tolist())
 
     l.log(f"Thresholds: Jaccard > {threshold_jaccard_similarity}, " \
-        f"cosine > {threshold_cosine_similarity}. CPUs: {n_cpus}.")
+        f"cosine > {threshold_cosine_similarity}.")
+    l.log(f"CPUs: {n_cpus}.")
 
     # ======================================================================
     # 2. Collecting cross-references
@@ -216,12 +217,12 @@ if __name__ == "__main__":
         else:
             invalid_sct_count += 1
 
-    l.log("Collecting HPO and SNOMED CT references in UMLS completed. " \
-        f"{len(umls_references.index)} references, " \
-        f"{len(umls_hpo_maps)} UMLS concepts with HPO references, " \
-        f"{len(umls_sct_maps)} with SNOMED CT references. Invalid HPO " \
-        f"references: {invalid_hpo_count}. Invalid SNOMED CT references: " \
-        f"{invalid_sct_count}.")
+    l.log(f"References in UMLS: {len(umls_references.index)}.")
+    l.log(f"UMLS concepts with HPO references: {len(umls_hpo_maps)}, " \
+        f"with SNOMED CT references: {len(umls_sct_maps)}.")
+    l.log(f"Invalid HPO references in UMLS: {invalid_hpo_count}.")
+    l.log(f"Invalid SNOMED CT references in UMLS: {invalid_sct_count}.")
+    l.log("Collecting HPO and SNOMED CT references in UMLS completed.")
 
     # HPO -> UMLS. HPO stores its xrefs as prefixed values ("UMLS:C0036572"),
     # while the UMLS data uses bare CUIs as IDs, so the prefix is stripped
@@ -242,9 +243,9 @@ if __name__ == "__main__":
         else:
             invalid_count += 1
 
-    l.log("Collecting UMLS references in HPO completed. " \
-        f"{len(hpo_umls_maps)} HPO concepts with UMLS references. " \
-        f"Invalid UMLS references: {invalid_count}.")
+    l.log(f"HPO concepts with UMLS references: {len(hpo_umls_maps)}.")
+    l.log(f"Invalid UMLS references in HPO: {invalid_count}.")
+    l.log("Collecting UMLS references in HPO completed.")
 
     # HPO -> SCT
 
@@ -263,9 +264,9 @@ if __name__ == "__main__":
         else:
             invalid_count += 1
 
-    l.log("Collecting SNOMED CT references in HPO completed. " \
-        f"{len(hpo_sct_maps)} HPO concepts with SNOMED CT references. " \
-        f"Invalid SNOMED CT references: {invalid_count}.")
+    l.log(f"HPO concepts with SNOMED CT references: {len(hpo_sct_maps)}.")
+    l.log(f"Invalid SNOMED CT references in HPO: {invalid_count}.")
+    l.log("Collecting SNOMED CT references in HPO completed.")
 
     # cumulative: deduplicated (hpo_id, sct_id) pairs of all methods so far,
     # used only for evaluation. included: the methods in cumulative.
@@ -288,8 +289,8 @@ if __name__ == "__main__":
     hpo_sct_maps_df[confidence_column] = 1.0
     hpo_sct_maps_df = dedupePairs(hpo_sct_maps_df, id_col, val_col)
 
-    l.log(f"Creating {hpo_sct_mappings} mappings completed. " \
-        f"{logPairs(hpo_sct_maps_df, id_col)}")
+    l.log(f"{hpo_sct_mappings} mappings: {logPairs(hpo_sct_maps_df, id_col)}")
+    l.log(f"Creating {hpo_sct_mappings} mappings completed.")
 
     cumulative = addMethod(cumulative, included, hpo_sct_maps_df,
         hpo_sct_mappings, graham, hpo_ontology)
@@ -319,8 +320,8 @@ if __name__ == "__main__":
     hpo_umls_sct_maps_df[confidence_column] = 1.0
     hpo_umls_sct_maps_df = dedupePairs(hpo_umls_sct_maps_df, id_col, val_col)
 
-    l.log(f"Creating {hpo_umls_sct_mappings} mappings completed. " \
-        f"{logPairs(hpo_umls_sct_maps_df, id_col)}")
+    l.log(f"{hpo_umls_sct_mappings} mappings: {logPairs(hpo_umls_sct_maps_df, id_col)}")
+    l.log(f"Creating {hpo_umls_sct_mappings} mappings completed.")
 
     cumulative = addMethod(cumulative, included, hpo_umls_sct_maps_df,
         hpo_umls_sct_mappings, graham, hpo_ontology)
@@ -351,8 +352,8 @@ if __name__ == "__main__":
     umls_hpo_sct_maps_df[confidence_column] = 1.0
     umls_hpo_sct_maps_df = dedupePairs(umls_hpo_sct_maps_df, id_col, val_col)
 
-    l.log(f"Creating {umls_hpo_sct_mappings} mappings completed. " \
-        f"{logPairs(umls_hpo_sct_maps_df, id_col)}")
+    l.log(f"{umls_hpo_sct_mappings} mappings: {logPairs(umls_hpo_sct_maps_df, id_col)}")
+    l.log(f"Creating {umls_hpo_sct_mappings} mappings completed.")
 
     cumulative = addMethod(cumulative, included, umls_hpo_sct_maps_df,
         umls_hpo_sct_mappings, graham, hpo_ontology)
@@ -386,13 +387,13 @@ if __name__ == "__main__":
     only_in_hpo  = hpo_side - umls_side
     only_in_umls = umls_side - hpo_side
 
-    l.log("Comparing HPO -> UMLS and UMLS -> HPO references completed.")
     l.log(f"References in both directions:   {len(hpo_side & umls_side):7} " \
         f"edges")
     l.log(f"HPO -> UMLS missing in UMLS:      {len(only_in_hpo):7} edges, " \
         f"{len({hpo_id for hpo_id, _ in only_in_hpo})} HPO concepts")
     l.log(f"UMLS -> HPO missing in HPO:       {len(only_in_umls):7} edges, " \
         f"{len({hpo_id for hpo_id, _ in only_in_umls})} HPO concepts")
+    l.log("Comparing HPO -> UMLS and UMLS -> HPO references completed.")
 
     # ======================================================================
     # 7. Preparing terms
@@ -427,8 +428,8 @@ if __name__ == "__main__":
     hpo_ids_arr = hpo_terms_subset[id_col].to_numpy()
     sct_ids_arr = sct_terms_subset[sct_ontology.config.id_column].to_numpy()
 
-    l.log(f"Collecting labels and synonyms completed. {len(hpo_terms)} HPO " \
-        f"terms, {len(sct_terms)} SNOMED CT terms.")
+    l.log(f"Terms: {len(hpo_terms)} HPO, {len(sct_terms)} SNOMED CT.")
+    l.log("Collecting labels and synonyms completed.")
 
     # The normaliser turns each term into a set of tokens (lower-casing,
     # lemmatising, stemming and stop-word removal as set in config.yaml).
@@ -542,10 +543,10 @@ if __name__ == "__main__":
     })
     jaccard_maps_df = dedupePairs(jaccard_maps_df, id_col, val_col)
 
-    l.log(f"Creating {jaccard_mappings} mappings completed. " \
-        f"{logPairs(jaccard_maps_df, id_col)} Terms without tokens after " \
-        f"normalisation (never matched): {int((sizes_b == 0).sum())} HPO, " \
-        f"{int((sizes_a == 0).sum())} SNOMED CT.")
+    l.log(f"{jaccard_mappings} mappings: {logPairs(jaccard_maps_df, id_col)}")
+    l.log(f"Terms without tokens after normalisation (never matched): " \
+        f"{int((sizes_b == 0).sum())} HPO, {int((sizes_a == 0).sum())} SNOMED CT.")
+    l.log(f"Creating {jaccard_mappings} mappings completed.")
 
     cumulative = addMethod(cumulative, included, jaccard_maps_df,
         jaccard_mappings, graham, hpo_ontology)
@@ -627,8 +628,8 @@ if __name__ == "__main__":
     })
     embedding_maps_df = dedupePairs(embedding_maps_df, id_col, val_col)
 
-    l.log(f"Creating {embedding_mappings} mappings completed. " \
-        f"{logPairs(embedding_maps_df, id_col)}")
+    l.log(f"{embedding_mappings} mappings: {logPairs(embedding_maps_df, id_col)}")
+    l.log(f"Creating {embedding_mappings} mappings completed.")
 
     cumulative = addMethod(cumulative, included, embedding_maps_df,
         embedding_mappings, graham, hpo_ontology)
@@ -670,8 +671,8 @@ if __name__ == "__main__":
     })
     exact_lexical_maps_df = dedupePairs(exact_lexical_maps_df, id_col, val_col)
 
-    l.log(f"Creating {exact_lexical_mappings} mappings completed. " \
-        f"{logPairs(exact_lexical_maps_df, id_col)}")
+    l.log(f"{exact_lexical_mappings} mappings: {logPairs(exact_lexical_maps_df, id_col)}")
+    l.log(f"Creating {exact_lexical_mappings} mappings completed.")
 
     cumulative = addMethod(cumulative, included, exact_lexical_maps_df,
         exact_lexical_mappings, graham, hpo_ontology)
@@ -697,11 +698,10 @@ if __name__ == "__main__":
         exact_lexical_maps_df
     ], ignore_index = True)
 
-    l.log(f"Rows per method: " + ", ".join(
-        f"{method} {count}"
-        for method, count in all_mappings_df[attr_col].value_counts().items()
-    ) + f". Total: {len(all_mappings_df.index)} rows, " \
-        f"{logPairs(cumulative, id_col)}")
+    l.log("Rows per method:")
+    for method, count in all_mappings_df[attr_col].value_counts().items():
+        l.log(f"  {method}: {count}")
+    l.log(f"Total: {len(all_mappings_df.index)} rows, {logPairs(cumulative, id_col)}")
 
     writeHugeCSV(all_mappings_df, mapping_path)
 

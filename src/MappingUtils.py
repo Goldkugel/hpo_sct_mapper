@@ -409,19 +409,19 @@ def loadOntologies(
         l.log(f"Loading {name} from source files...")
         if adapter.load() > 0:
             adapter.to_csv()
-            l.log(f"Loading {name} from source files completed.")
         else:
-            l.log(f"Loading {name} from source files skipped (load() returned "
-                  f"no rows, e.g. skip_if_present); using the existing output "
-                  f"CSV, which may be from an earlier run.")
+            l.log(f"No {name} rows loaded from source files (e.g. skip_if_present).")
+            l.log(f"The existing {name} output CSV is used; it may be from an earlier run.")
+        l.log(f"Loading {name} from source files completed.")
 
     def readCSV(adapter: BaseAdapter, name: str) -> pd.DataFrame:
         """Read an ontology's EAV CSV and log its size."""
         l.log(f"Reading {name} data...")
         path = os.path.join(adapter.config.output_folder, adapter.config.output_file)
         data = pd.read_csv(path, sep = separator, engine = "python")
-        l.log(f"Reading {name} data completed. {len(data.index)} rows, "
+        l.log(f"{name} data: {len(data.index)} rows, "
               f"{data[adapter.config.id_column].nunique()} concepts.")
+        l.log(f"Reading {name} data completed.")
         return data
 
     hpo_ontology  = HPOAdapter()
@@ -437,8 +437,8 @@ def loadOntologies(
     l.log("Removing non-exact HPO synonyms...")
     before = len(hpo.index)
     hpo = hpo[hpo[hpo_ontology.config.additional_column].apply(is_exact_synonym)]
-    l.log(f"Removing non-exact HPO synonyms completed. {before - len(hpo.index)} "
-          f"rows removed.")
+    l.log(f"Non-exact HPO synonyms: {before - len(hpo.index)} rows removed.")
+    l.log("Removing non-exact HPO synonyms completed.")
 
     umls = readCSV(umls_ontology, "UMLS")
 
@@ -551,13 +551,16 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
     # 7. Prefix SNOMED CT IDs with standard ontology namespace format (e.g., 'SNOMEDCT_US:12345')
     ret[sct_id_column] = sct_prefix + ret[sct_id_column]
 
-    # 8. Log completion with the counts of each filtering stage
+    # 8. Log the counts of each filtering stage, then the completion
     n_pairs = len(ret[[hpo_id_column, sct_id_column]].drop_duplicates().index)
-    l.log(f"Reading gold standard data completed. {rows_read} rows read, "
-          f"{rows_read - rows_matched} removed (match group not one-to-one "
-          f"or one-to-many), {rows_matched - len(ret.index)} removed "
-          f"(composite or unparsable SNOMED CT expression). {n_pairs} unique "
-          f"pairs for {ret[hpo_id_column].nunique()} HPO concepts.")
+    l.log(f"Gold standard: {rows_read} rows read.")
+    l.log(f"Gold standard: {rows_read - rows_matched} rows removed (match group "
+          f"not one-to-one or one-to-many).")
+    l.log(f"Gold standard: {rows_matched - len(ret.index)} rows removed (composite "
+          f"or unparsable SNOMED CT expression).")
+    l.log(f"Gold standard: {n_pairs} unique pairs for "
+          f"{ret[hpo_id_column].nunique()} HPO concepts.")
+    l.log("Reading gold standard data completed.")
 
     return ret
 
@@ -579,9 +582,9 @@ def loadInputs(
     l.log("Removing non-HPO concepts from the HPO data...")
     before = len(hpo.index)
     hpo = keepHPOConcepts(hpo, hpo_ontology.config.id_column)
-    l.log(f"Removing non-HPO concepts from the HPO data completed. "
-          f"{before - len(hpo.index)} rows removed, "
+    l.log(f"Non-HPO concepts: {before - len(hpo.index)} rows removed, "
           f"{hpo[hpo_ontology.config.id_column].nunique()} HPO concepts left.")
+    l.log("Removing non-HPO concepts from the HPO data completed.")
 
     gold = loadGold(gold_path, separator)
     return hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, gold

@@ -86,8 +86,9 @@ if __name__ == "__main__":
     mappings = pd.read_csv(mapping_path, sep=";")
     mappings = keepHPOConcepts(mappings, id_col)
     n_pairs  = len(mappings.drop_duplicates(subset=[id_col, val_col]).index)
-    l.log(f"Loading generated mappings completed. {len(mappings.index)} rows, "
-          f"{n_pairs} pairs, {mappings[id_col].nunique()} HPO concepts.")
+    l.log(f"Generated mappings: {len(mappings.index)} rows, {n_pairs} pairs, "
+          f"{mappings[id_col].nunique()} HPO concepts.")
+    l.log("Loading generated mappings completed.")
 
     # Initialise validity column to NA; filled in per-row as the pipeline runs.
     mappings[validity_column] = pd.NA
@@ -118,10 +119,11 @@ if __name__ == "__main__":
     sct_child_map   = build_child_map(sct, sct_ontology)
     sct_descendants = make_descendant_lookup(sct_child_map)
     sct_ancestors   = make_descendant_lookup(build_parent_map(sct, sct_ontology))
-    l.log(f"Building hierarchy lookups completed. SCT: {len(sct_child_map)} "
-          f"parent concepts, {sum(len(v) for v in sct_child_map.values())} edges. "
-          f"HPO: {len(hpo_child_map)} parent concepts, "
+    l.log(f"SCT hierarchy: {len(sct_child_map)} parent concepts, "
+          f"{sum(len(v) for v in sct_child_map.values())} edges.")
+    l.log(f"HPO hierarchy: {len(hpo_child_map)} parent concepts, "
           f"{sum(len(v) for v in hpo_child_map.values())} edges.")
+    l.log("Building hierarchy lookups completed.")
 
     # ------------------------------------------------------------------
     # Incremental accepted-mapping state, built up step by step below.
@@ -195,23 +197,24 @@ if __name__ == "__main__":
         rejected_by_evidence: int = 0,
     ) -> None:
         """
-        One summary line per acceptance step, always in the same order:
-        accepted, rejected, demoted, not accepted here, skipped. All counts
-        are pairs. rejected_by_evidence is the part of the rejections where
+        Summary rows of an acceptance step, one per count, always in the same
+        order: accepted, rejected, demoted, not accepted here, skipped. All
+        counts are pairs. rejected_by_evidence is the part of the rejections where
         the candidate was narrower but had weaker evidence than the accepted
         broader target.
         """
         parts = [
             f"{accepted} accepted",
-            f"{reversal} rejected (hierarchy reversal, validity={validity}; "
-            f"{rejected_by_evidence} of them narrower but with weaker evidence)",
+            f"{reversal} rejected (hierarchy reversal, validity={validity})",
+            f"{rejected_by_evidence} of the rejected are narrower but have weaker evidence",
             f"{demoted} demoted (broader target displaced, validity={validity})",
         ]
         if not_accepted is not None:
             parts.append(f"{not_accepted} not accepted here ({not_accepted_reason})")
         for reason, count in (skipped or {}).items():
             parts.append(f"{count} skipped ({reason})")
-        l.log(f"{step} completed (pairs): " + ", ".join(parts) + ".")
+        for part in parts:
+            l.log(f"{step} (pairs): {part}.")
 
     def evaluate_accepted(step: str) -> None:
         """Evaluate the accepted set (validity=10) after a step."""
@@ -398,9 +401,10 @@ if __name__ == "__main__":
             mark_validity(hpo_id, sct_id, validity_domain_mismatch)
             domain_invalid.add((hpo_id, sct_id))
 
-    l.log(f"Step 1 completed (pairs): {len(domain_invalid)} marked as domain "
-          f"mismatch (validity={validity_domain_mismatch}).")
+    l.log(f"Step 1 (pairs): {len(domain_invalid)} marked as domain mismatch "
+          f"(validity={validity_domain_mismatch}).")
     evaluate_pairs(domain_invalid, f"step 1, domain mismatch, validity={validity_domain_mismatch}")
+    l.log("Step 1: Marking pairs with an SCT target outside the acceptable domains completed.")
 
     # ======================================================================
     # Step 2: anchors
@@ -426,8 +430,7 @@ if __name__ == "__main__":
 
     l.printHeader("Step 2: Anchors (HPO xref + exact lexical)")
 
-    l.log("Step 2: Accepting HPO xrefs to SNOMED CT that are confirmed by an "
-          "exact lexical match (case-insensitive)...")
+    l.log("Step 2: Accepting HPO xrefs confirmed by an exact lexical match (case-insensitive)...")
 
     hpo_sct_pairs     = pairs_of(mappings[mappings[attr_col] == hpo_sct_mappings])
     anchor_candidates = hpo_sct_pairs & exact_lexical_pairs
@@ -493,6 +496,9 @@ if __name__ == "__main__":
     for domain, count in sorted(anchor_domain_counts.items(), key=lambda x: -x[1]):
         l.log(f"  {domain}: {count}")
 
+    l.log("Step 2: Accepting HPO xrefs confirmed by an exact lexical match "
+          "(case-insensitive) completed.")
+
     # ======================================================================
     # Step 2b: remaining exact lexical mappings
     # ======================================================================
@@ -550,6 +556,7 @@ if __name__ == "__main__":
         skipped = {"domain mismatch": step2b_domain},
     )
     evaluate_accepted("step 2b")
+    l.log("Step 2b: Accepting exact lexical matches without an HPO xref completed.")
 
     # ======================================================================
     # Shared implementation for steps 2c, 3 and 4.
@@ -659,6 +666,7 @@ if __name__ == "__main__":
         hpo_sct_mappings,
         reversal_validity=validity_hpo_xref_reversal,
     )
+    l.log("Step 2c: Accepting HPO xrefs with Jaccard=1 or cosine=1 completed.")
 
     # ======================================================================
     # Step 3: HPO -> UMLS -> SNOMED CT mappings
@@ -674,6 +682,8 @@ if __name__ == "__main__":
         hpo_umls_sct_mappings,
         reversal_validity=validity_umls_bridge_reversal,
     )
+    l.log("Step 3: Accepting HPO -> UMLS -> SNOMED CT mappings with "
+          "Jaccard=1 or cosine=1 completed.")
 
     # ======================================================================
     # Step 4: shared UMLS CUI mappings
@@ -689,6 +699,8 @@ if __name__ == "__main__":
         umls_hpo_sct_mappings,
         reversal_validity=validity_umls_cui_reversal,
     )
+    l.log("Step 4: Accepting shared UMLS CUI mappings with Jaccard=1 or "
+          "cosine=1 completed.")
 
     # ======================================================================
     # Shared implementation for steps 5 and 6.
@@ -796,7 +808,7 @@ if __name__ == "__main__":
 
     l.printHeader("Step 5: Jaccard=1 and cosine=1 mappings")
 
-    l.log("Step 5: Accepting mappings with Jaccard=1 and cosine=1 and no "
+    l.log("Step 5: Accepting Jaccard=1 and cosine=1 mappings without "
           "reference-based backing...")
 
     process_similarity_step(
@@ -806,6 +818,8 @@ if __name__ == "__main__":
         "not both Jaccard=1 and cosine=1",
         reversal_validity=validity_jaccard_cosine_reversal,
     )
+    l.log("Step 5: Accepting Jaccard=1 and cosine=1 mappings without "
+          "reference-based backing completed.")
 
     # ======================================================================
     # Step 6: Jaccard=1 only, no reference-based backing
@@ -818,8 +832,7 @@ if __name__ == "__main__":
 
     l.printHeader("Step 6: Jaccard=1 only mappings")
 
-    l.log("Step 6: Accepting mappings with Jaccard=1 (cosine below 1 or none) "
-          "and no reference-based backing...")
+    l.log("Step 6: Accepting Jaccard=1-only mappings without reference-based backing...")
 
     process_similarity_step(
         "Step 6",
@@ -828,6 +841,7 @@ if __name__ == "__main__":
         "Jaccard<1",
         reversal_validity=validity_jaccard_only_reversal,
     )
+    l.log("Step 6: Accepting Jaccard=1-only mappings without reference-based backing completed.")
 
     # ------------------------------------------------------------------
     # Consistency check: after the automatic acceptance steps, no HPO
@@ -848,9 +862,11 @@ if __name__ == "__main__":
         if conflict:
             collapsed_concepts += 1
             collapsed_pairs    += conflict
-    l.log(f"Hierarchy consistency check after step 6: {collapsed_concepts} HPO "
-          f"concepts with accepted SCT targets in an ancestor/descendant "
-          f"relationship ({collapsed_pairs} related target pairs; expected 0).")
+    l.log(f"Hierarchy consistency check after step 6: {collapsed_concepts} HPO concepts "
+          f"with related accepted targets.")
+    l.log(f"Hierarchy consistency check after step 6: {collapsed_pairs} related target pairs.")
+    l.log("Related: SCT targets in an ancestor/descendant relationship; both counts "
+          "are expected to be 0.")
 
     # ======================================================================
     # Step 7: best-candidate fallback
@@ -873,8 +889,7 @@ if __name__ == "__main__":
 
     l.printHeader("Step 7: Best-candidate fallback")
 
-    l.log("Step 7: Marking agreeing best cosine and Jaccard candidates of "
-          "unmapped HPO concepts for LLM review...")
+    l.log("Step 7: Marking agreeing best cosine and Jaccard candidates for LLM review...")
 
     # HPO concepts with at least one row of validity 1–7 or 10 are handled.
     handled_hpo = set(
@@ -884,7 +899,7 @@ if __name__ == "__main__":
     # All HPO concepts that appear in the mappings dataframe.
     all_hpo = set(mappings[id_col].unique())
     unmapped_hpo = all_hpo - handled_hpo
-    l.log(f"HPO concepts without an accepted or classified mapping: {len(unmapped_hpo)}")
+    l.log(f"HPO concepts without an accepted or classified mapping: {len(unmapped_hpo)}.")
 
     # Build per-concept best-cosine and best-Jaccard lookups from the full
     # mappings pool, excluding domain-invalid pairs.
@@ -948,12 +963,15 @@ if __name__ == "__main__":
             # "reject" -> skip, no validity assigned.
             step7_skipped_reversal += 1
 
-    l.log(f"Step 7 completed (HPO concepts): {step7_count} candidates marked "
-          f"for LLM review (validity={validity_best_candidate}), "
-          f"{step7_skipped_missing} skipped (no cosine or no Jaccard candidate), "
-          f"{step7_skipped_disagree} skipped (cosine and Jaccard disagree), "
-          f"{step7_skipped_other} skipped (already accepted or domain mismatch), "
-          f"{step7_skipped_reversal} skipped (hierarchy reversal).")
+    l.log(f"Step 7 (HPO concepts): {step7_count} candidates marked for LLM review "
+          f"(validity={validity_best_candidate}).")
+    l.log(f"Step 7 (HPO concepts): {step7_skipped_missing} skipped (no cosine or no "
+          f"Jaccard candidate).")
+    l.log(f"Step 7 (HPO concepts): {step7_skipped_disagree} skipped (cosine and "
+          f"Jaccard disagree).")
+    l.log(f"Step 7 (HPO concepts): {step7_skipped_other} skipped (already accepted "
+          f"or domain mismatch).")
+    l.log(f"Step 7 (HPO concepts): {step7_skipped_reversal} skipped (hierarchy reversal).")
     evaluate_pairs(step7_pairs, f"step 7, best candidates, validity={validity_best_candidate}")
     # Steps 7 and 8 never accept anything, so the accepted set is the one
     # from step 6. Both views are logged to keep them apart.
@@ -969,6 +987,7 @@ if __name__ == "__main__":
     l.log(f"Confidence distribution (after step 7, candidates for LLM review, "
           f"validity=1–{validity_best_candidate}):")
     printCounts(mappings[mappings[validity_column].isin(review_after7)], hpo_ontology, similarity_steps, graham, True)
+    l.log("Step 7: Marking agreeing best cosine and Jaccard candidates for LLM review completed.")
 
     # ======================================================================
     # Step 8: last-resort fallback
@@ -981,14 +1000,14 @@ if __name__ == "__main__":
 
     l.printHeader("Step 8: Last-resort fallback")
 
-    l.log("Step 8: Marking the best cosine candidate of still unmapped HPO "
-          "concepts for LLM review...")
+    l.log("Step 8: Marking the best cosine candidate of unmapped HPO concepts "
+          "for LLM review...")
 
     handled_hpo_after7 = set(
         mappings.loc[mappings[validity_column].isin(review_after7 + [validity_accepted]), id_col].unique()
     )
     still_unmapped = all_hpo - handled_hpo_after7
-    l.log(f"HPO concepts still without an accepted or classified mapping: {len(still_unmapped)}")
+    l.log(f"HPO concepts still without an accepted or classified mapping: {len(still_unmapped)}.")
 
     # From the domain-valid cosine pool, find the highest-confidence
     # candidate for each still-unmapped concept.
@@ -1023,10 +1042,11 @@ if __name__ == "__main__":
 
     step8_no_candidate = len(still_unmapped) - step8_pool[id_col].nunique()
 
-    l.log(f"Step 8 completed (HPO concepts): {step8_count} candidates marked "
-          f"for LLM review (validity={validity_last_resort}), "
-          f"{step8_skipped} skipped (already classified), "
-          f"{step8_no_candidate} skipped (no domain-valid embedding candidate).")
+    l.log(f"Step 8 (HPO concepts): {step8_count} candidates marked for LLM review "
+          f"(validity={validity_last_resort}).")
+    l.log(f"Step 8 (HPO concepts): {step8_skipped} skipped (already classified).")
+    l.log(f"Step 8 (HPO concepts): {step8_no_candidate} skipped (no domain-valid "
+          f"embedding candidate).")
     evaluate_pairs(step8_pairs, f"step 8, last-resort candidates, validity={validity_last_resort}")
     evaluate_accepted("step 8")
     evaluation(
@@ -1036,6 +1056,8 @@ if __name__ == "__main__":
         f"validity=1–{validity_accepted}):",
         hpo_ontology,
     )
+    l.log("Step 8: Marking the best cosine candidate of unmapped HPO concepts "
+          "for LLM review completed.")
 
     # ======================================================================
     # Writing filtered mappings
