@@ -11,9 +11,8 @@ import ast
 import os
 
 # Column names of the gold standard (loadGold), of the confidence added by
-# MappingGeneration and of the validity code added by MappingSetBuilder.
-# The mapping files themselves use the
-# adapters' EAV column names (adapter.config.id_column etc.).
+# MappingGeneration and of the validity code added by MappingSetBuilder. The
+# mapping files otherwise use the adapters' EAV column names.
 sct_id_column           = "sct_id"
 hpo_id_column           = "hpo_id"
 validity_column         = "validity"
@@ -28,7 +27,6 @@ jaccard_mappings        = "jaccard"
 exact_lexical_mappings  = "exact_lexical"
 llm_mappings            = "llm"
 
-# All mapping methods, and the similarity-based subset.
 ALL_METHODS = [
     hpo_sct_mappings,
     hpo_umls_sct_mappings,
@@ -40,7 +38,6 @@ ALL_METHODS = [
 ]
 SIM_METHODS = [jaccard_mappings, embedding_mappings]
 
-# Concept ID prefixes.
 hpo_prefix = "HP:"
 sct_prefix = "SNOMEDCT_US:"
 umls_prefix = "UMLS:"
@@ -56,12 +53,8 @@ no_gold_path         = "./data/output/evaluation/accepted_without_gold.csv"
 llm_disagreements_path = "./data/output/evaluation/llm_disagreements.csv"
 gold_check_path      = "./data/output/evaluation/gold_check.csv"
 
-# ------------------------------------------------------------------
-# Validity codes written by MappingSetBuilder (and read by MappingLLM
-# and MappingErrorAnalysis). Rows not reached by any step keep
-# validity=NA and are written too: MappingErrorAnalysis uses them as the
-# universe of generated pairs.
-# ------------------------------------------------------------------
+# Validity codes written by MappingSetBuilder. Rows not reached by any step
+# keep validity=NA.
 validity_domain_mismatch          = 0   # step 1: SCT target outside acceptable domain
 validity_anchor_reversal          = 1   # step 2 failure: hierarchy reversal, anchor candidate
 validity_exact_lexical_reversal   = 2   # step 2b failure: hierarchy reversal, exact lexical
@@ -74,7 +67,6 @@ validity_best_candidate           = 8   # step 7 fallback: best candidate, for L
 validity_last_resort              = 9   # step 8 last resort: highest cosine candidate
 validity_accepted                 = 10  # accepted
 
-# Hierarchy-reversal failures of steps 2–6.
 validity_hierarchy_reversals = [
     validity_anchor_reversal,
     validity_exact_lexical_reversal,
@@ -90,10 +82,8 @@ validity_reviewable = validity_hierarchy_reversals + [
     validity_last_resort,
     validity_accepted,
 ]
-# Every code that is written to the output.
 validity_all = [validity_domain_mismatch] + validity_reviewable
 
-# Human-readable labels for the validity codes.
 VALIDITY_LABELS = {
     validity_domain_mismatch:         "domain mismatch",
     validity_anchor_reversal:         "step 2 failure — hierarchy reversal anchor",
@@ -108,10 +98,8 @@ VALIDITY_LABELS = {
     validity_accepted:                "accepted",
 }
 
-# Validity -> review reason label passed to the LLM prompt.
-# Code 0 (domain mismatch) is excluded from review entirely.
-# Code 10 (already accepted) is included so the LLM can act as a
-# judge over the full set of mappings for each HPO concept.
+# Review reason passed to the LLM prompt. Code 0 is not reviewed; code 10 is,
+# so the LLM judges all mappings of an HPO concept.
 REVIEW_REASON = {
     validity_anchor_reversal:         "HIERARCHY_REVERSAL_ANCHOR",
     validity_exact_lexical_reversal:  "HIERARCHY_REVERSAL_EXACT_LEXICAL",
@@ -130,16 +118,14 @@ REVIEW_REASON = {
 threshold_cosine_similarity     = 0.75
 threshold_jaccard_similarity    = 0.90
 
-# Confidence thresholds for printCounts: num_points evenly spaced steps
-# from 1.0 down to the cosine threshold, plus 0.99 to separate exact from
-# near-exact matches. With a cosine threshold of 0.75 the result is
-# [1.0, 0.99, 0.9375, 0.875, 0.8125, 0.75].
+# Confidence thresholds for printCounts: evenly spaced from 1.0 down to the
+# cosine threshold, plus 0.99 to separate exact from near-exact matches,
+# i.e. [1.0, 0.99, 0.9375, 0.875, 0.8125, 0.75]. Descending order is
+# required by printCounts(diff=True).
 num_points = 5
 similarity_steps = np.linspace(1.0, threshold_cosine_similarity,
     num = num_points).tolist()
 similarity_steps.append(0.99)
-# Keep the steps in descending order: printCounts(diff=True) builds its
-# buckets from consecutive thresholds and needs them sorted.
 similarity_steps = sorted(set(similarity_steps), reverse=True)
 
 # SCT semantic tags (the last parenthesised part of a fully specified
@@ -195,17 +181,11 @@ def dictToEAVDataFrame(data: dict, attribute: str, adapter: BaseAdapter) -> pd.D
 
 def is_exact_synonym(entry) -> bool:
     """
-    True if an EAV row's additional-column entry marks an exact synonym,
-    or carries no synonym type at all (including an empty or missing
-    entry). Entries may arrive as dicts or as stringified dicts (as pandas
-    reads them from CSV).
-
-    HPO synonyms are typed (exact, broad, narrow, related); only exact
-    synonyms name the same phenotype and are used for matching. Applied to
-    all HPO rows: labels, references, hierarchy rows etc. carry no
-    synonym type ("{}") and are kept. A synonym listed several times for a
-    concept is one row whose types are joined (adapter 1.4.0, e.g.
-    "exact, related"); it is exact if one of them is.
+    True if an EAV row's additional-column entry (dict or stringified dict)
+    marks an exact synonym or has no synonym type at all (labels, hierarchy
+    rows etc., also empty or missing entries). Only exact HPO synonyms name
+    the same phenotype. Joined types (adapter 1.4.0, e.g. "exact, related")
+    count as exact if one of them is.
     """
     if entry is None or (isinstance(entry, float) and np.isnan(entry)):
         return True
@@ -237,15 +217,10 @@ def buildAttributeLookup(data: pd.DataFrame, adapter: BaseAdapter, attribute: st
         .to_dict()
     )
 
-# ------------------------------------------------------------------
-# Hierarchy helpers. The adapters write hierarchy rows with
-# attribute=childrenClass as (id = parent, value = child).
-# ------------------------------------------------------------------
+# Hierarchy rows are written by the adapters with attribute=childrenClass as
+# (id = parent, value = child).
 def build_child_map(data: pd.DataFrame, adapter: BaseAdapter) -> dict:
-    """
-    Direct hierarchy lookup: parent -> set of direct children.
-    make_descendant_lookup walks this map downwards.
-    """
+    """Direct hierarchy lookup: parent -> set of direct children."""
     rows = data[data[adapter.config.attribute_column] == childrenClass]
     child_map = defaultdict(set)
     for parent, child in zip(rows[adapter.config.id_column], rows[adapter.config.value_column]):
@@ -253,9 +228,7 @@ def build_child_map(data: pd.DataFrame, adapter: BaseAdapter) -> dict:
     return child_map
 
 def build_parent_map(data: pd.DataFrame, adapter: BaseAdapter) -> dict:
-    """
-    Direct hierarchy lookup: child -> set of direct parents.
-    """
+    """Direct hierarchy lookup: child -> set of direct parents."""
     rows = data[data[adapter.config.attribute_column] == childrenClass]
     parent_map = defaultdict(set)
     for parent, child in zip(rows[adapter.config.id_column], rows[adapter.config.value_column]):
@@ -264,21 +237,10 @@ def build_parent_map(data: pd.DataFrame, adapter: BaseAdapter) -> dict:
 
 def make_descendant_lookup(child_map: dict):
     """
-    Returns a memoized function descendants(node) -> frozenset of ALL nodes
-    transitively reachable from `node` through child_map. Cycle-safe.
-    Computed lazily per node and cached.
-
-    Passed a parent -> children map (build_child_map) it returns
-    descendants; passed a child -> parents map (build_parent_map) it
-    returns ancestors.
-
-    The walk is an iterative depth-first search: `stack` holds nodes still
-    to expand, `seen` every node reached so far. A node is pushed only the
-    first time it is reached, so concepts with several parents (common in
-    SNOMED CT and HPO) are expanded once, and a cycle cannot loop forever.
-    The start node itself is not in the result (unless a cycle leads back
-    to it). Each node's result is cached, but a walk does not reuse the
-    cached results of the nodes it passes.
+    Returns a memoized function descendants(node) -> frozenset of all nodes
+    transitively reachable from `node` through child_map (cycle-safe). Given
+    a child -> parents map (build_parent_map) it returns ancestors instead.
+    The start node is not included unless a cycle leads back to it.
     """
     cache: dict = {}
 
@@ -300,14 +262,10 @@ def make_descendant_lookup(child_map: dict):
 
 def make_ancestor_distance_lookup(parent_map: dict):
     """
-    Returns a memoized function ancestor_distances(node) -> dict mapping
-    the node itself (0) and every transitive ancestor to the smallest
-    number of is_a steps up from `node`. parent_map: child -> set of
-    direct parents (build_parent_map). Cycle-safe.
-
-    The walk is a breadth-first search, so the first time an ancestor is
-    reached is over the shortest path, also for concepts with several
-    parents.
+    Returns a memoized function ancestor_distances(node) -> dict mapping the
+    node itself (0) and every transitive ancestor to the smallest number of
+    is_a steps up from `node` (breadth-first, cycle-safe). parent_map comes
+    from build_parent_map.
     """
     cache: dict = {}
 
@@ -337,21 +295,15 @@ def make_hierarchy_distance(ancestor_distances):
     of is_a edges on the shortest path from a up to a common ancestor and
     down to b. Equal concepts have distance 0, a parent and its child 1,
     siblings and grandparent/grandchild 2, uncle/nephew 3, cousins 4.
-    Paths over a common descendant (down, then up) are not counted, so two
-    parents of the same child are only related through their own common
-    ancestor.
-
-    None means that a and b have no common ancestor, e.g. because one of
-    them is not in the hierarchy. ancestor_distances is the lookup returned
-    by make_ancestor_distance_lookup, so its cache can be shared with other
-    uses (e.g. ancestor checks).
+    Paths over a common descendant are not counted. None means no common
+    ancestor (e.g. a concept not in the hierarchy). ancestor_distances comes
+    from make_ancestor_distance_lookup, so its cache can be shared.
     """
     def hierarchy_distance(a, b):
         if a == b:
             return 0
         up_a = ancestor_distances(a)
         up_b = ancestor_distances(b)
-        # Iterate over the smaller ancestor set and look up the larger one.
         if len(up_a) > len(up_b):
             up_a, up_b = up_b, up_a
         best = None
@@ -363,19 +315,12 @@ def make_hierarchy_distance(ancestor_distances):
 
     return hierarchy_distance
 
-# ------------------------------------------------------------------
-# (hpo_id, sct_id) pair helpers.
-# ------------------------------------------------------------------
 def pairSeries(data: pd.DataFrame, id_col: str, val_col: str) -> pd.Series:
     """Series of (id, value) tuples aligned to data.index."""
     return pd.Series(list(zip(data[id_col], data[val_col])), index=data.index)
 
 def inGoldSeries(data: pd.DataFrame, gold_pairs: set, id_col: str, val_col: str) -> pd.Series:
-    """
-    Boolean Series: True when the (id_col, val_col) pair is in gold_pairs.
-    The pairs are built once and looked up by hash, instead of filtering
-    the data per gold pair.
-    """
+    """Boolean Series: True when the (id_col, val_col) pair is in gold_pairs."""
     return pairSeries(data, id_col, val_col).isin(gold_pairs)
 
 def loadOntologies(
@@ -384,26 +329,21 @@ def loadOntologies(
     """
     Loads, processes, and exports HPO, UMLS, and SNOMED CT ontology data.
 
-    Runs the adapter of each ontology to (re)generate its EAV CSV file, then
-    reads the three CSV files into DataFrames. The adapters already format
-    the IDs (e.g. the "SNOMEDCT_US:" prefix); here only non-exact HPO
-    synonyms are removed and SNOMED CT values are read as strings.
+    Runs each adapter to (re)generate its EAV CSV, then reads the CSVs. Only
+    non-exact HPO synonyms are removed and SNOMED CT values made strings;
+    the adapters already format the IDs.
 
     Parameters:
         separator (str): Delimiter used for reading output CSV files. Defaults to ';'.
 
     Returns:
-        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, HPOAdapter, SCTAdapter, UMLSAdapter]:
-            The loaded (hpo, sct, umls) DataFrames alongside the adapter instances used to
-            load them (needed downstream for their .config, e.g. column names). Raises
-            rather than returning a sentinel value if a source file can't be read.
+        tuple: (hpo, sct, umls) DataFrames and the adapters used to load them
+            (needed downstream for their .config). Raises if a source file
+            can't be read.
 
     Note:
-        If an adapter's load() returns 0 (usually because skip_if_present is set and
-        the output CSV exists; also if no input files are configured or they yield
-        no rows; a missing source file raises instead), its
-        to_csv() is skipped and the corresponding DataFrame below is read from whatever
-        output CSV already exists on disk -- which may be stale from a previous run.
+        If an adapter's load() returns 0 (e.g. skip_if_present with an existing
+        output CSV), the existing CSV is read, which may be from an earlier run.
     """
     l = Logger()
 
@@ -447,8 +387,7 @@ def loadOntologies(
 
     sct = readCSV(sct_ontology, "SNOMED CT")
 
-    # Make all SCT values strings, whatever type pandas inferred while
-    # reading; missing values stay missing instead of becoming "nan".
+    # Missing values stay missing instead of becoming "nan".
     value_col = sct_ontology.config.value_column
     sct[value_col] = sct[value_col].map(lambda v: v if pd.isna(v) else str(v))
 
@@ -456,15 +395,12 @@ def loadOntologies(
 
 def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
     """
-    Loads, cleans, and standardizes gold standard mapping data between HPO
-    and SNOMED CT.
+    Loads the HPO -> SNOMED CT gold standard (Graham file).
 
-    Each row of the Graham file has an HPO concept (HP_ID), a "Match group"
-    and the SNOMED CT target in "SNOMED term/exp", written as
-    "<SCTID> |<term>|" for a single concept or as a post-coordinated
-    expression (e.g. "<SCTID>:<attribute>=<value>") for composite mappings.
-    If the file has a "canonical view" column, it is used as the bare
-    expression instead. Only single-concept targets are kept.
+    "SNOMED term/exp" holds "<SCTID> |<term>|" or a post-coordinated
+    expression (e.g. "<SCTID>:<attribute>=<value>"); a "canonical view"
+    column, if present, is used as the bare expression instead. Only
+    single-concept targets of the one-to-one / one-to-many groups are kept.
 
     Parameters:
         path (str): File path to the CSV dataset.
@@ -474,27 +410,22 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
         pd.DataFrame: A cleaned DataFrame containing mapped 'hpo_id' and 
             formatted 'sct_id'.
     """
-    # Initialize the custom logging utility
     l = Logger()
 
     l.log("Reading gold standard data...")
     
-    # 1. Load the raw dataset using the specified separator
     ret = pd.read_csv(
         path,
         sep=separator,
     )
     rows_read = len(ret.index)
 
-    # 2. Keep only the match groups used as gold mappings ("One to one
-    # match", "One to many"); rows of all other groups are removed.
     ret = ret[ret["Match group"].isin([
         "One to one match",
         "One to many"
     ])]
     rows_matched = len(ret.index)
 
-    # 3. Drop unneeded metadata columns to streamline the dataset
     ret = ret.drop([
         "Synonyms", 
         "Preferred Label", 
@@ -506,10 +437,7 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
         "Mapping Comment"
     ], axis=1)
 
-    # 4. Get the bare SNOMED CT expression into 'canonical view'. Without
-    # that column, it is the part of "SNOMED term/exp" before the first
-    # " |", i.e. "12345 |Seizure|" -> "12345".
-
+    # Without "canonical view": "12345 |Seizure|" -> "12345".
     if "canonical view" not in ret.columns:
         ret["SNOMED term/exp"] = ret["SNOMED term/exp"].astype(str)
         ret["canonical view"] = ret["SNOMED term/exp"].str.split(" |", regex=False).str[0]
@@ -518,13 +446,10 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
     
     ret["canonical view"] = ret["canonical view"].astype(str)
 
-    # 5. Extract numerical SNOMED CT IDs from the 'canonical view' string.
-    # Plain integers are parsed as Python ints, so long (extension) SCTIDs
-    # keep every digit. Scientific notation (e.g. '1.2e+08' or '1.2E+08')
-    # goes through float, as it has already lost precision in the file.
-    # Composite expressions (containing ':' or '+') and anything else
-    # unparsable yield None and are dropped below. Scientific notation also
-    # contains a '+', so it is exempted from the composite check.
+    # Integers are parsed as int so long (extension) SCTIDs keep every digit;
+    # scientific notation ('1.2E+08', precision already lost in the file)
+    # goes through float and is exempt from the '+' composite check.
+    # Composite or unparsable expressions give None and are dropped.
     def parseSCTID(text: str):
         text = text.strip()
         if "e+" not in text.lower() and (":" in text or "+" in text):
@@ -543,18 +468,14 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
 
     ret[sct_id_column] = ret["canonical view"].map(parseSCTID)
 
-    # 6. Post-processing and column renaming
     ret = ret.drop(["canonical view"], axis=1)
     ret = ret.rename(columns={"HP_ID": hpo_id_column})
 
-    # Keep only rows with valid, successfully extracted positive numeric IDs
     ret = ret[ret[sct_id_column].notna()]
     ret = ret.reset_index(drop = True)
 
-    # 7. Prefix SNOMED CT IDs with standard ontology namespace format (e.g., 'SNOMEDCT_US:12345')
     ret[sct_id_column] = sct_prefix + ret[sct_id_column]
 
-    # 8. Log the counts of each filtering stage, then the completion
     n_pairs = len(ret[[hpo_id_column, sct_id_column]].drop_duplicates().index)
     l.log(f"Gold standard: {rows_read} rows read.")
     l.log(f"Gold standard: {rows_read - rows_matched} rows removed (match group "
@@ -594,16 +515,9 @@ def loadInputs(
 
 def evaluation(data: pd.DataFrame, gold: pd.DataFrame, text: str, adapter: BaseAdapter) -> None:
     """
-    Log recall and precision of the (hpo_id, sct_id) pairs in data against
-    the gold standard. Both sides are reduced to unique pairs first, so
-    pairs found by several methods, and any other columns (confidence,
-    attribute, validity, LLM output, ...), do not affect the counts.
-
-    recall    = correct pairs / unique gold pairs
-    precision = correct pairs / unique predicted pairs
-
-    Every predicted pair counts in the precision, including pairs of HPO
-    concepts that the gold standard does not cover.
+    Log recall and precision of the unique (hpo_id, sct_id) pairs in data
+    against the unique gold pairs. Every predicted pair counts in the
+    precision, also pairs of HPO concepts the gold standard does not cover.
     """
     l = Logger()
 
@@ -613,7 +527,6 @@ def evaluation(data: pd.DataFrame, gold: pd.DataFrame, text: str, adapter: BaseA
     predicted  = data[[id_col, val_col]].drop_duplicates(ignore_index=True)
     gold_pairs = gold[[hpo_id_column, sct_id_column]].drop_duplicates()
 
-    # Predicted pairs that are present in the gold standard.
     matches = predicted.merge(
         gold_pairs,
         left_on     = [id_col,        val_col],
@@ -623,7 +536,6 @@ def evaluation(data: pd.DataFrame, gold: pd.DataFrame, text: str, adapter: BaseA
 
     count = len(matches)
 
-    # Avoid division by zero
     recall    = count / len(gold_pairs) if len(gold_pairs) else 0
     precision = count / len(predicted)  if len(predicted)  else 0
 
@@ -663,12 +575,10 @@ def printCounts(
     pairs reach it (confidence >= threshold) and how many of those appear
     in the gold standard; the percentage is the precision of that line.
 
-    Deduplication is by (id_col, val_col), keeping the row with the highest
-    confidence per pair, so mappings produced by multiple strategies are
-    counted once. When diff=True each bucket counts only pairs whose
-    confidence falls in [threshold, previous_threshold), so the lines add
-    up to the total; the first bucket has no upper bound. thresholds must
-    be in descending order.
+    A pair found by several methods counts once, with its highest
+    confidence. With diff=True each line counts [threshold, previous
+    threshold), so the lines add up; the first has no upper bound.
+    thresholds must be in descending order.
     """
     l = Logger()
  
@@ -678,22 +588,18 @@ def printCounts(
     id_col  = adapter.config.id_column
     val_col = adapter.config.value_column
 
-    # Unique gold pairs, so a pair listed twice in the gold standard is
-    # not counted twice.
     gold_pairs = (
         gold[[hpo_id_column, sct_id_column]].drop_duplicates()
         if gold is not None else None
     )
 
-    # One row per unique pair, highest confidence wins.
     deduped = (
         data
         .sort_values(confidence_column, ascending=False)
         .drop_duplicates(subset=[id_col, val_col])
     )
  
-    # Upper bound of the current bucket; 2.0 is above any confidence, so
-    # the first bucket is open-ended.
+    # 2.0 is above any confidence: the first bucket is open-ended.
     old_threshold = 2.0
     for threshold in thresholds:
         subset = deduped[deduped[confidence_column] >= threshold]
@@ -702,8 +608,6 @@ def printCounts(
  
         count = len(subset)
 
-        # In diff mode each line is a bin [threshold, previous threshold);
-        # the first bin has no upper bound.
         if diff and old_threshold < 2.0:
             label = f"in [{threshold:.2f}, {old_threshold:.2f})"
         else:

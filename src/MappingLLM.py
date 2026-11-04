@@ -1,6 +1,5 @@
 import sys
 
-# Prevent Python from generating .pyc files (compiled bytecode files)
 sys.dont_write_bytecode = True
 
 from logger         import Logger
@@ -29,44 +28,30 @@ import pandas       as pd
 #   Pass 2 : HPO concepts with several         -> group-level prompt
 #
 # Every pair the LLM accepts is added as a new row with attribute="llm" and
-# validity=10. Existing rows are not changed, so an auto-accepted pair that
-# the LLM rejects stays accepted; the rejection is visible only by the
-# missing "llm" row. The script therefore evaluates both sets:
-#   - LLM-accepted pairs only (the LLM's own verdict), and
-#   - auto-accepted + LLM-accepted pairs (all rows with validity=10).
+# validity=10. Existing rows are not changed, so an auto-accepted pair the
+# LLM rejects stays accepted, only without "llm" row; both the LLM-accepted
+# set and all validity=10 rows are evaluated.
 #
-# Output: filtered.csv plus the "llm" rows, written to
-# ./data/output/filtered/llm_filtered.csv, and every reviewed pair with the
-# LLM's decision, confidence and rationale, written to
-# ./data/output/filtered/llm_review.csv.
+# Output: llm_filtered.csv (filtered.csv plus the "llm" rows) and
+# llm_review.csv (every reviewed pair with decision, confidence, rationale).
 # ==========================================================================
 
-# ------------------------------------------------------------------
-# Constants.
-# ------------------------------------------------------------------
-
-# Confidence scale is 1–5; used to normalise LLM output to [0, 1].
+# LLM confidence is 1-5; divided by this to normalise to [0, 1].
 CONFIDENCE_MAX = 5
 
-# Fallback result when the LLM returns nothing or an unparseable response.
+# Used when the LLM answer is missing or unparsable.
 FALLBACK_RESULT = {"decision": "REJECT", "confidence": 1}
 
 # Prompt file indices in config.prompt_files.
 PAIR_PROMPT_INDEX  = 0   # One HPO concept vs. one SNOMED CT concept.
 GROUP_PROMPT_INDEX = 1   # One HPO concept vs. multiple SNOMED CT candidates.
 
-# Maximum number of children to include per concept (HPO and SNOMED CT) in
-# the prompt. SNOMED CT concepts can have 1,500+ children, which causes
-# prompts to exceed the model's context window. Children are the least
-# diagnostically useful field for equivalence decisions compared to parents
-# and definitions, so truncating them is the safest way to reduce prompt
-# length.
+# Children shown per concept in the prompt. SNOMED CT concepts can have
+# 1,500+ children, exceeding the context window; children matter least for
+# equivalence decisions.
 MAX_CHILDREN = 10
 
 
-# ------------------------------------------------------------------
-# Helper utilities.
-# ------------------------------------------------------------------
 def quote(txt: str, quotation_char: str = '"') -> str:
     if txt is None:
         return "None"
@@ -79,11 +64,9 @@ def quote_list(txt_list: list, quotation_char: str = '"') -> list:
 
 def build_ontology_lookups(df, ont):
     """
-    Build per-attribute lookup dicts for a loaded ontology dataframe.
-    Returns a dict keyed by attribute class (labelClass, definitionClass,
-    etc.) where each value is a concept-id -> [values] dict.
-    Parents and children are also included under "parents" and
-    childrenClass respectively, derived from the children relation rows.
+    Per-attribute lookups of an ontology: attribute class (labelClass,
+    definitionClass, ..., plus "parents") -> {concept id: [values]}.
+    Synonyms are exact synonyms only.
     """
     ont_config  = ont.config
     labels      = buildAttributeLookup(df, ont, labelClass)
@@ -96,9 +79,7 @@ def build_ontology_lookups(df, ont):
         syn_mask = syn_df[ont_config.additional_column].apply(is_exact_synonym)
         synonyms = syn_df[syn_mask].groupby(ont_config.id_column)[ont_config.value_column].apply(list).to_dict()
 
-    # childrenClass rows encode parent->child edges as (id=parent, value=child).
-    # "parents" maps each concept to its parent concept IDs.
-    # childrenClass maps each concept to its child concept IDs.
+    # childrenClass rows are (id=parent, value=child).
     parents   = df[df[ont_config.attribute_column] == childrenClass].groupby(ont_config.value_column)[ont_config.id_column].apply(list).to_dict()
     children  = buildAttributeLookup(df, ont, childrenClass)
 
@@ -123,9 +104,8 @@ def join_quoted(values: list) -> str:
 
 def children_text(concept_id: str, data: dict) -> str:
     """
-    Labels of at most MAX_CHILDREN children of a concept for the prompt,
-    with a note on how many are shown when the list is truncated, so the
-    LLM does not take a truncated list for the complete one.
+    Labels of at most MAX_CHILDREN children for the prompt, with a note
+    when truncated so the LLM does not take the list as complete.
     """
     child_ids = data[childrenClass].get(concept_id, [])
     text = join_quoted(get_labels_for_ids(child_ids[:MAX_CHILDREN], data[labelClass]))
@@ -166,9 +146,8 @@ def pair_prompt_fields(hpo_id: str, sct_id: str, reason: str, hpo_data: dict, sc
 
 def related_candidates_text(sct_id: str, group_sct_ids: list, sct_data: dict, sct_descendants) -> str:
     """
-    The other candidates of the group that are an ancestor (the
-    candidate is narrower than them) or a descendant (broader than
-    them) of sct_id in the SCT hierarchy, or "None".
+    The other candidates of the group that sct_id is broader or narrower
+    than in the SCT hierarchy, or "None".
     """
     parts = []
     for other in group_sct_ids:
@@ -185,16 +164,12 @@ def group_prompt_fields(hpo_id: str, candidates: list, hpo_data: dict, sct_data:
                         sct_descendants) -> dict:
     """
     All fields of the group-level prompt (multiple_mapping.md).
-    candidates is a list of (sct_id, review reason) tuples, one per
-    SNOMED CT candidate of the HPO concept.
+    candidates: (sct_id, review reason) per SNOMED CT candidate.
     """
     group_sct_ids = [sct_id for sct_id, _ in candidates]
     sct_blocks = []
     for sct_id, reason in candidates:
-        # The SNOMED CT ID is included explicitly so the LLM can
-        # populate the sct_id field in its output schema, enabling
-        # the code to match decisions back to rows by ID rather
-        # than by position.
+        # The ID lets the answers be matched to rows by ID, not position.
         sct_blocks.append(
             f"* SNOMED CT ID: {sct_id}\n"
             f"* Preferred Term / FSN: {join_quoted(sct_data[labelClass].get(sct_id, []))}\n"
@@ -212,14 +187,10 @@ def group_prompt_fields(hpo_id: str, candidates: list, hpo_data: dict, sct_data:
 def start_pass(m: Model, prompt_index: int, n_prompts: int, prefix: str = "prompt") -> None:
     """
     Give each pass its own answer store "<prefix>_<model>_<prompt_index>.json"
-    in data/tmp/ (so pass 2 does not reuse pass 1's answers, and
-    MappingGoldCheck not those of MappingLLM) and add the prompt template of
-    the pass to n_prompts histories, to be formatted by the caller.
-
-    The model (3.0) stores every answer with the SHA-256 of its prompts and
-    the settings it depends on: generate() takes the answers of an
-    interrupted run from the store and only generates the others, and never
-    reuses an answer of other prompts or settings.
+    in data/tmp/ and add the pass's prompt template to n_prompts histories,
+    to be formatted by the caller. The model keys stored answers by a hash of
+    prompts and settings, so an interrupted run resumes without reusing
+    answers of other prompts.
     """
     l = Logger()
     m.config.prompt_tmp_file = f"{prefix}.json"
@@ -236,20 +207,12 @@ if __name__ == "__main__":
     l = Logger()
     l.printHeader("LLM review of candidate mappings")
 
-    # ======================================================================
-    # Loading data
-    # ======================================================================
-
     l.printHeader("Loading data")
 
-    # umls is loaded by loadInputs but not used in this script.
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
     del umls, umls_ontology  # not used in this script; free the memory
 
-    # Note: in the mappings EAV frame, the HPO concept ID is in id_column
-    # and the SCT concept ID is stored in value_column (the "value" of the
-    # cross-reference relation). This is why hpo_ontology.config.value_column
-    # is used as the SCT ID column throughout this script.
+    # In the mappings the HPO ID is in id_column, the SCT ID in value_column.
     id_col   = hpo_ontology.config.id_column
     val_col  = hpo_ontology.config.value_column
     attr_col = hpo_ontology.config.attribute_column
@@ -263,34 +226,14 @@ if __name__ == "__main__":
     l.log("Building ontology lookup tables...")
     hpo_data = build_ontology_lookups(hpo, hpo_ontology)
     sct_data = build_ontology_lookups(sct, sct_ontology)
-    # All SCT descendants of a concept, used to tell the LLM which
-    # candidates of a group are ancestors/descendants of each other.
     sct_descendants = make_descendant_lookup(build_child_map(sct, sct_ontology))
     l.log("Building ontology lookup tables completed.")
 
-    # ======================================================================
-    # Selecting pairs for review
-    # ======================================================================
-
-    # Validity codes 1–9 are hierarchy reversals and fallback candidates
-    # from the MappingSetBuilder pipeline. Code 10 (already accepted) is
-    # also included so the LLM acts as a judge over the full set for each
-    # HPO concept — auto-accepted pairs are presented with review reason
-    # ACCEPTED and re-evaluated independently. Code 0 (domain mismatch) and
-    # pairs not reached by any step (validity=NA) are excluded.
-    #
-    # MappingSetBuilder gives all rows of a pair the same validity code,
-    # so deduplicating keeps one row per (hpo_id, sct_id) pair. The stable
-    # sort keeps the order, and thereby the prompt indices, reproducible.
-    #
-    # Routing is per HPO concept, by its number of SCT candidates:
-    #   one candidate      -> pair-level prompt (pass 1)
-    #   several candidates -> group-level prompt (pass 2)
-    # Whether an SCT concept is also a candidate of other HPO concepts does
-    # not matter here, so this split differs from MappingSetBuilder's 1:1 /
-    # 1:n / n:1 / m:n constellations: pass 1 covers its 1:1 and n:1 pairs,
+    # All rows of a pair have the same validity code, so deduplicating keeps
+    # one row per pair; the stable sort keeps the prompt indices
+    # reproducible. Routing is by the number of SCT candidates per HPO
+    # concept only, so pass 1 covers MappingSetBuilder's 1:1 and n:1 pairs,
     # pass 2 its 1:n and m:n pairs.
-
     l.printHeader("Selecting pairs for review")
 
     pair_candidates = (
@@ -313,7 +256,6 @@ if __name__ == "__main__":
     one_to_one = pair_candidates[pair_candidates["n_sct"] == 1].reset_index(drop=True)
     one_to_n   = pair_candidates[pair_candidates["n_sct"] >  1].reset_index(drop=True)
 
-    # Groups for the group-level pass: hpo_id -> list of rows.
     groups_1n = {}
     for row in one_to_n.itertuples(index=True):
         groups_1n.setdefault(getattr(row, id_col), []).append(row)
@@ -330,12 +272,6 @@ if __name__ == "__main__":
         f"Evaluation (before LLM review, auto-accepted, validity={validity_accepted}):",
         hpo_ontology,
     )
-
-    # ======================================================================
-    # Pass 1: pair-level review
-    # ======================================================================
-
-    # One conversation per (hpo_id, sct_id) pair.
 
     l.printHeader("Pass 1: Pair-level review")
 
@@ -368,7 +304,6 @@ if __name__ == "__main__":
                 pass1_unparsable += 1
             pair_results.append(result)
 
-    # Pass 1 results.
     pass1_out = one_to_one.copy()
     pass1_out["llm_decision"]    = [r.get("decision",   FALLBACK_RESULT["decision"])                    for r in pair_results]
     pass1_out[confidence_column] = [r.get("confidence", FALLBACK_RESULT["confidence"]) / CONFIDENCE_MAX for r in pair_results]
@@ -382,14 +317,8 @@ if __name__ == "__main__":
     l.log(f"Pass 1: {pass1_unparsable} unparsable answers, counted as rejected.")
     l.log(f"Pass 1: Reviewing {len(one_to_one)} pairs with the pair-level prompt completed.")
 
-    # ======================================================================
-    # Pass 2: group-level review
-    # ======================================================================
-
-    # One conversation per HPO concept; the prompt receives the full list of
-    # SNOMED CT candidates for that HPO concept and returns one decision per
-    # candidate, identified by its SNOMED CT ID.
-
+    # Pass 2: one prompt per HPO concept with all its SNOMED CT candidates;
+    # the answer has one decision per candidate, identified by SNOMED CT ID.
     l.printHeader("Pass 2: Group-level review")
 
     l.log(f"Pass 2: Reviewing {len(one_to_n)} pairs of {len(group_hpo_ids)} HPO "
@@ -405,7 +334,6 @@ if __name__ == "__main__":
         l.log("Formatting group-level prompts...")
         for g_idx, hpo_id in enumerate(group_hpo_ids):
 
-            # One (sct_id, review reason) per SNOMED CT candidate.
             candidates = [
                 (getattr(row, val_col),
                  REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN"))
@@ -425,15 +353,11 @@ if __name__ == "__main__":
             rows   = groups_1n[hpo_id]
 
             if result is None or "mappings" not in result:
-                # Fallback: reject all candidates in this group.
                 group_results[hpo_id] = [FALLBACK_RESULT.copy() for _ in rows]
                 pass2_unparsable += 1
                 continue
 
-            # Index the returned decisions by SCT ID so that if the LLM
-            # reorders its output or skips a candidate, each decision is
-            # still matched to the correct row rather than silently
-            # misaligned.
+            # By SCT ID, in case the LLM reorders or skips candidates.
             decisions_by_sct_id = {item.get("sct_id"): item for item in result["mappings"]}
 
             per_group = []
@@ -447,7 +371,6 @@ if __name__ == "__main__":
 
             group_results[hpo_id] = per_group
 
-    # Pass 2 results.
     group_rows_out = []
     for hpo_id, decisions in group_results.items():
         for row, decision in zip(groups_1n[hpo_id], decisions):
@@ -461,9 +384,7 @@ if __name__ == "__main__":
                 "llm_rationale":   decision.get("rationale", ""),
                 "llm_pass":        2,
             })
-    # Guard against the edge case where all HPO concepts had only one
-    # candidate and no group prompts were run — an empty list would
-    # produce a dataframe with no columns, breaking the concat.
+    # Without group prompts an empty list would give a frame without columns.
     pass2_out = (
         pd.DataFrame(group_rows_out)
         if group_rows_out
@@ -480,54 +401,27 @@ if __name__ == "__main__":
     l.log(f"Pass 2: Reviewing {len(one_to_n)} pairs of {len(group_hpo_ids)} HPO "
           f"concepts with the group-level prompt completed.")
 
-    # ======================================================================
-    # Writing LLM-reviewed mappings
-    # ======================================================================
-
     l.printHeader("Writing LLM-reviewed mappings")
 
     all_results = pd.concat([pass1_out, pass2_out], ignore_index=True)
 
-    # Ensure validity_column is an integer type after concat — pandas may
-    # promote it to float64 if any NaN values were introduced during the
-    # group result assembly, which would silently break equality comparisons.
+    # Read as float, since filtered.csv also has rows with validity=NA.
     all_results[validity_column] = all_results[validity_column].astype(int)
 
-    # ------------------------------------------------------------------
-    # Add LLM-accepted mappings as new rows (validity=10).
-    #
-    # Two groups are handled separately:
-    #
-    #   1. Previously under-review pairs (validity=1–9) that the LLM
-    #      accepted: added as new rows with attribute="llm", validity=10.
-    #
-    #   2. Previously auto-accepted pairs (validity=10) that the LLM
-    #      accepted: confirmed by the LLM, added as new rows with
-    #      attribute="llm", validity=10, alongside the existing row.
-    #      Auto-accepted pairs that the LLM rejected are simply not
-    #      added — their original validity=10 row remains in the output
-    #      but no llm row is written, making the rejection visible by
-    #      absence.
-    #
-    # In both cases validity=10 is used to ensure LLM-accepted pairs are
-    # treated identically to auto-accepted pairs by downstream consumers.
-    # ------------------------------------------------------------------
+    # Every LLM-accepted pair (candidate or auto-accepted) gets a new "llm"
+    # row with validity=10, so downstream it counts like an accepted pair.
     all_accepted_llm = all_results[all_results["llm_decision"] == "ACCEPT"].copy()
 
-    # Counts that depend on the original validity values, captured before
-    # the validity of the new rows is set to 10 below.
+    # Counted before the validity of the new rows is set to 10.
     was_accepted         = all_results[validity_column] == validity_accepted
     n_new_accepted       = int((all_accepted_llm[validity_column] != validity_accepted).sum())
     n_confirmed_accepted = int((all_accepted_llm[validity_column] == validity_accepted).sum())
     n_rejected_accepted  = int((was_accepted & (all_results["llm_decision"] == "REJECT")).sum())
 
-    # Mark all LLM-accepted rows as accepted and record the source.
     all_accepted_llm[validity_column] = validity_accepted
     all_accepted_llm[attr_col]        = llm_mappings
 
-    # Keep only the columns present in the original mappings dataframe,
-    # dropping LLM-specific columns (llm_decision, llm_rationale, llm_pass,
-    # n_sct).
+    # Drop the LLM-specific columns (llm_decision, llm_rationale, ...).
     retained_cols = [col for col in mappings.columns if col in all_accepted_llm.columns]
     assert validity_column in retained_cols, (
         f"validity_column '{validity_column}' was unexpectedly dropped during "
@@ -536,7 +430,6 @@ if __name__ == "__main__":
     )
     all_accepted_llm = all_accepted_llm[retained_cols]
 
-    # Append the new rows to the existing mappings.
     n_rows_before = len(mappings.index)
     mappings = pd.concat([mappings, all_accepted_llm], ignore_index=True)
 
@@ -546,22 +439,13 @@ if __name__ == "__main__":
 
     writeHugeCSV(mappings, llm_filtered_path)
 
-    # Audit trail: every reviewed pair with the LLM's decision, normalised
-    # confidence and rationale. Unparsable or missing answers have the
-    # fallback decision and an empty rationale.
+    # Audit trail; unparsable or missing answers have the fallback decision
+    # and an empty rationale.
     review_cols = [id_col, val_col, validity_column, "n_sct", "llm_pass",
                    "llm_decision", confidence_column, "llm_rationale"]
     l.log(f"Rows to write to the review file: {len(all_results.index)} "
           f"(one per reviewed pair).")
     writeHugeCSV(all_results[review_cols], llm_review_path)
-
-    # ======================================================================
-    # Summary
-    # ======================================================================
-
-    # Overall acceptance/rejection counts and a per-validity-code breakdown,
-    # so it is easy to see which pipeline steps benefited most from LLM
-    # review and which produced mostly noise.
 
     l.printHeader("Summary")
 
@@ -595,13 +479,8 @@ if __name__ == "__main__":
         l.log(f"  {code:<6} {REVIEW_REASON[code]:<40} {reviewed:>8} {accepted:>9} "
               f"{rejected:>9} {other:>6} {share(rejected, reviewed):>15}")
 
-    # ------------------------------------------------------------------
-    # Evaluations against the Graham gold standard:
-    #   - the LLM's own verdict: pairs accepted by the LLM, per pass and
-    #     in total (the new "llm" rows);
-    #   - the final set: all rows with validity=10, i.e. auto-accepted
-    #     pairs (also those the LLM rejected) + LLM-accepted pairs.
-    # ------------------------------------------------------------------
+    # The LLM's own verdict per pass and in total, then the final set
+    # (all validity=10 rows, including auto-accepted pairs the LLM rejected).
     evaluation(
         pass1_out[pass1_out["llm_decision"] == "ACCEPT"],
         graham,

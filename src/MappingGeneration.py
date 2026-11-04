@@ -1,6 +1,5 @@
 import sys
 
-# Prevent Python from generating .pyc files (compiled bytecode files)
 sys.dont_write_bytecode = True
 
 from logger                 import Logger
@@ -37,35 +36,21 @@ import logging
 #   6. exact_lexical : Case-insensitive exact string match on labels and
 #                      synonyms.
 #
-# The three cross-reference strategies (1-3) carry no score of their own and
-# get confidence 1.0, as does exact_lexical. Jaccard and embedding mappings
-# keep their similarity as confidence. Both thresholds are defined in
-# MappingUtils.
+# Strategies 1-3 and exact_lexical get confidence 1.0, Jaccard and embedding
+# keep their similarity. Each strategy is evaluated on its own and
+# cumulatively with the previous ones.
 #
-# Output:
-#   all_mappings_df  : One row per (method, hpo_id, sct_id) triple, with the
-#                      originating method preserved in the attribute column.
-#                      Written to ./data/output/mapped/mapping.csv and used
-#                      as input to the MappingSetBuilder script.
-#
-#   cumulative       : Deduplicated (hpo_id, sct_id) pairs of all methods
-#                      without the attribute column, used only for the
-#                      evaluations and log summaries; not written to disk.
-#
-# Each strategy is evaluated against the Graham gold standard on its own and,
-# from the second strategy on, cumulatively with all previous strategies, to
-# track the recall and precision contribution of each method.
+# Output: ./data/output/mapped/mapping.csv, one row per (method, hpo_id,
+# sct_id), the method in the attribute column.
 # ==========================================================================
 
 source_abbreviation = "source_abbreviation"
 
 def sourceAbbreviation(entry: str):
     """
-    Return the "source_abbreviation"s (target vocabularies, e.g. ["HPO"] or
-    ["SNOMEDCT_US"]) stored in a UMLS reference row's additional column,
-    which holds a Python-dict-like string, or [] if it can't be parsed. A
-    code given by several sources is one row whose sources are joined
-    (adapter 1.5.0, e.g. "SNOMEDCT_US, SNOMEDCT_VET").
+    Source vocabularies (e.g. ["HPO"] or ["SNOMEDCT_US"]) of a UMLS reference
+    row's additional column (a dict-like string), or [] if unparsable.
+    Joined sources (adapter 1.5.0, e.g. "SNOMEDCT_US, SNOMEDCT_VET") are split.
     """
     try:
         parsed = ast.literal_eval(entry)
@@ -141,15 +126,9 @@ if __name__ == "__main__":
 
     l.printHeader("Gather all mappings from HPO to SNOMED CT")
 
-    # ======================================================================
-    # 1. Loading data
-    # ======================================================================
-
     l.printHeader("1. Loading data")
 
-    # All three ontologies come in EAV form (id, attribute, value, additional).
-    # loadInputs keeps only HPO concepts ("HP:") in hpo and loads the Graham
-    # gold standard, which is used for the evaluations only.
+    # The gold standard is used for the evaluations only.
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = \
         loadInputs(separator = ";")
 
@@ -157,9 +136,8 @@ if __name__ == "__main__":
     val_col  = hpo_ontology.config.value_column
     attr_col = hpo_ontology.config.attribute_column
 
-    # Build ID sets for fast membership tests. Cross-references found in one
-    # ontology that point to a concept not present in the loaded version of the
-    # target ontology are treated as invalid and counted but not mapped.
+    # Cross-references to concepts missing from the loaded target ontology
+    # are counted as invalid and not mapped.
     valid_umls_ids = set(umls[umls_ontology.config.id_column].tolist())
     valid_sct_ids  = set(sct[sct_ontology.config.id_column].tolist())
     valid_hpo_ids  = set(hpo[id_col].tolist())
@@ -168,33 +146,19 @@ if __name__ == "__main__":
         f"cosine > {threshold_cosine_similarity}.")
     l.log(f"CPUs: {n_cpus}.")
 
-    # ======================================================================
-    # 2. Collecting cross-references
-    # ======================================================================
-
     l.printHeader("2. Collecting cross-references")
 
-    # Four lookups are built here and used by the strategies below:
-    #   umls_hpo_maps : UMLS CUI -> [HPO IDs]   (from UMLS)
-    #   umls_sct_maps : UMLS CUI -> [SCT IDs]   (from UMLS)
-    #   hpo_umls_maps : HPO ID   -> [UMLS CUIs] (from HPO)
-    #   hpo_sct_maps  : HPO ID   -> [SCT IDs]   (from HPO)
-    # All IDs carry their prefix ("UMLS:", "HP:", "SNOMEDCT_US:").
-
-    # In UMLS, a reference row links a CUI (id column) to a code of a source
-    # vocabulary (value column), e.g. C0036572 -> "HP:0001250" or
-    # C0036572 -> "91175000". HPO codes already carry the "HP:" prefix, SCT
-    # codes are bare and get the "SNOMEDCT_US:" prefix here.
-
+    # Lookups umls_hpo_maps, umls_sct_maps (UMLS CUI -> IDs, from UMLS) and
+    # hpo_umls_maps, hpo_sct_maps (HPO ID -> IDs, from HPO), all IDs prefixed.
+    # UMLS reference rows are CUI -> code, e.g. C0036572 -> "HP:0001250" or
+    # "91175000"; bare SCT codes get the "SNOMEDCT_US:" prefix here.
     l.log("Collecting HPO and SNOMED CT references in UMLS...")
 
     umls_references = umls[
         umls[umls_ontology.config.attribute_column] == referenceClass
     ].reset_index(drop = True)
 
-    # The additional column holds a Python-dict-like string such as
-    # "{'source_abbreviation': 'HPO'}". There are only few distinct values,
-    # so each one is parsed once and mapped onto all rows.
+    # Few distinct values, so each is parsed once.
     additional = umls_references[umls_ontology.config.additional_column].astype(str)
     parsed = {entry: sourceAbbreviation(entry) for entry in additional.unique()}
     sources = additional.map(parsed)
@@ -202,7 +166,6 @@ if __name__ == "__main__":
     umls_ids    = umls_prefix + umls_references[umls_ontology.config.id_column].astype(str)
     umls_values = umls_references[umls_ontology.config.value_column].astype(str)
 
-    # UMLS -> HPO, keyed by prefixed UMLS ID.
     umls_hpo_maps = {}
     invalid_hpo_count = 0
     is_hpo = sources.map(lambda s: "HPO" in s).to_numpy()
@@ -212,7 +175,6 @@ if __name__ == "__main__":
         else:
             invalid_hpo_count += 1
 
-    # UMLS -> SCT, keyed by prefixed UMLS ID.
     umls_sct_maps = {}
     invalid_sct_count = 0
     is_sct = sources.map(lambda s: "SNOMEDCT_US" in s).to_numpy()
@@ -229,10 +191,8 @@ if __name__ == "__main__":
     l.log(f"Invalid SNOMED CT references in UMLS: {invalid_sct_count}.")
     l.log("Collecting HPO and SNOMED CT references in UMLS completed.")
 
-    # HPO -> UMLS. HPO stores its xrefs as prefixed values ("UMLS:C0036572"),
-    # while the UMLS data uses bare CUIs as IDs, so the prefix is stripped
-    # only for the validity check.
-
+    # HPO xrefs are prefixed ("UMLS:C0036572"), UMLS IDs are bare CUIs, so
+    # the prefix is stripped for the validity check only.
     l.log("Collecting UMLS references in HPO...")
 
     hpo_umls_references = hpo[
@@ -251,8 +211,6 @@ if __name__ == "__main__":
     l.log(f"HPO concepts with UMLS references: {len(hpo_umls_maps)}.")
     l.log(f"Invalid UMLS references in HPO: {invalid_count}.")
     l.log("Collecting UMLS references in HPO completed.")
-
-    # HPO -> SCT
 
     l.log("Collecting SNOMED CT references in HPO...")
 
@@ -273,14 +231,10 @@ if __name__ == "__main__":
     l.log(f"Invalid SNOMED CT references in HPO: {invalid_count}.")
     l.log("Collecting SNOMED CT references in HPO completed.")
 
-    # cumulative: deduplicated (hpo_id, sct_id) pairs of all methods so far,
-    # used only for evaluation. included: the methods in cumulative.
+    # cumulative: unique pairs of all methods so far, for the evaluations
+    # only (not written). included: the methods in cumulative.
     cumulative = None
     included   = []
-
-    # ======================================================================
-    # 3. hpo_sct: HPO -> SCT
-    # ======================================================================
 
     l.printHeader(f"3. {hpo_sct_mappings}: HPO -> SNOMED CT")
 
@@ -300,17 +254,10 @@ if __name__ == "__main__":
     cumulative = addMethod(cumulative, included, hpo_sct_maps_df,
         hpo_sct_mappings, graham, hpo_ontology)
 
-    # ======================================================================
-    # 4. hpo_umls_sct: HPO -> UMLS -> SCT
-    # ======================================================================
-
     l.printHeader(f"4. {hpo_umls_sct_mappings}: HPO -> UMLS -> SNOMED CT")
 
     l.log(f"Creating {hpo_umls_sct_mappings} mappings...")
 
-    # For each HPO concept, collect the SCT concepts reachable via every UMLS
-    # CUI the HPO concept references. HPO concepts without any reachable SCT
-    # concept are left out.
     hpo_umls_sct_maps = {}
     for hpo_id, hpo_umls_ids in hpo_umls_maps.items():
         for umls_id in hpo_umls_ids:
@@ -331,18 +278,12 @@ if __name__ == "__main__":
     cumulative = addMethod(cumulative, included, hpo_umls_sct_maps_df,
         hpo_umls_sct_mappings, graham, hpo_ontology)
 
-    # ======================================================================
-    # 5. umls_hpo_sct: HPO <- UMLS -> SCT (shared UMLS CUI)
-    # ======================================================================
-
     l.printHeader(f"5. {umls_hpo_sct_mappings}: HPO <- UMLS -> SNOMED CT")
 
     l.log(f"Creating {umls_hpo_sct_mappings} mappings...")
 
-    # For each UMLS CUI that lists both HPO and SCT codes, pair every HPO
-    # concept with every SCT concept of that CUI. Unlike section 4, this relies
-    # on UMLS's records only, so it also finds pairs whose HPO concept has no
-    # xref to that CUI (see the cross-check in section 6).
+    # Unlike section 4 this uses UMLS's records only, so it also finds pairs
+    # whose HPO concept has no xref to the CUI (see section 6).
     umls_hpo_sct_maps = {}
     for umls_id, hpo_ids in umls_hpo_maps.items():
         if umls_id in umls_sct_maps:
@@ -363,21 +304,13 @@ if __name__ == "__main__":
     cumulative = addMethod(cumulative, included, umls_hpo_sct_maps_df,
         umls_hpo_sct_mappings, graham, hpo_ontology)
 
-    # ======================================================================
-    # 6. HPO -> UMLS vs. UMLS -> HPO cross-check (diagnostic only)
-    # ======================================================================
-
-    # HPO records outgoing UMLS xrefs (HPO -> UMLS) and UMLS records incoming
-    # xrefs from HPO (UMLS -> HPO). In a fully consistent state these two edge
-    # sets would be mirrors of each other. The asymmetry logged here does not
-    # affect any mappings, but it shows how much the two UMLS-based strategies
-    # (sections 4 and 5) can differ.
-
+    # Section 6 is diagnostic only: in a consistent state the HPO -> UMLS and
+    # UMLS -> HPO edges would mirror each other; the asymmetry shows how much
+    # sections 4 and 5 can differ.
     l.printHeader("6. Cross-check of HPO -> UMLS and UMLS -> HPO")
 
     l.log("Comparing HPO -> UMLS and UMLS -> HPO references...")
 
-    # Both edge sets as (hpo_id, prefixed umls_id) pairs.
     hpo_side = {
         (hpo_id, umls_id)
         for hpo_id, hpo_umls_ids in hpo_umls_maps.items()
@@ -400,16 +333,8 @@ if __name__ == "__main__":
         f"{len({hpo_id for hpo_id, _ in only_in_umls})} HPO concepts")
     l.log("Comparing HPO -> UMLS and UMLS -> HPO references completed.")
 
-    # ======================================================================
-    # 7. Preparing terms
-    # ======================================================================
-
     l.printHeader("7. Preparing terms")
 
-    # Build term subsets for lexical and embedding methods.
-    # Non-string and empty-string terms are filtered out here once,
-    # so all downstream methods (Jaccard, embedding, exact lexical)
-    # are guaranteed to receive clean string input.
     l.log("Collecting labels and synonyms...")
 
     def termSubset(data: pd.DataFrame, adapter) -> pd.DataFrame:
@@ -426,22 +351,17 @@ if __name__ == "__main__":
     hpo_terms = hpo_terms_subset[val_col].tolist()
     sct_terms = sct_terms_subset[sct_ontology.config.value_column].tolist()
 
-    # ID arrays aligned with the term lists: position i of hpo_terms belongs
-    # to concept hpo_ids_arr[i]. Every similarity method below works on term
-    # positions and maps them back to concept IDs through these arrays, so a
-    # concept with several labels/synonyms can match through any of them.
+    # Aligned with the term lists: the similarity methods work on term
+    # positions and map them back to concept IDs through these arrays.
     hpo_ids_arr = hpo_terms_subset[id_col].to_numpy()
     sct_ids_arr = sct_terms_subset[sct_ontology.config.id_column].to_numpy()
 
     l.log(f"Terms: {len(hpo_terms)} HPO, {len(sct_terms)} SNOMED CT.")
     l.log("Collecting labels and synonyms completed.")
 
-    # The normaliser turns each term into a set of tokens (lower-casing,
-    # lemmatising, stemming and stop-word removal as set in config.yaml).
-    # The token sets are the input of the Jaccard similarity in section 8.
-    # n_process is the number of spaCy worker processes; the HPO term list
-    # is small enough that more processes would cost more to start than
-    # they save.
+    # Token sets for the Jaccard similarity (normalisation set in
+    # config.yaml). The HPO list is small: more worker processes would cost
+    # more to start than they save.
     n = Normalizer()
 
     l.log("Normalizing SNOMED CT terms...")
@@ -464,39 +384,21 @@ if __name__ == "__main__":
 
     l.log("Normalizing HPO terms completed.")
 
-    # ======================================================================
-    # 8. jaccard: Jaccard similarity
-    # ======================================================================
-
     l.printHeader(f"8. {jaccard_mappings}: Jaccard similarity")
 
     l.log(f"Creating {jaccard_mappings} mappings...")
 
-    # Jaccard similarity of two token sets S and H is |S ∩ H| / |S ∪ H|.
-    # Comparing 1.5M SCT terms with 54k HPO terms pair by pair in Python
-    # would be far too slow, so it is computed with sparse matrices:
-    #
-    #   1. Every distinct token gets a column number (vocab), shared by SCT
-    #      and HPO terms.
-    #   2. Each term becomes a row of 0/1 entries over these columns
-    #      (A for SCT, B for HPO).
-    #   3. A · Bᵀ then holds |S ∩ H| for every pair: the dot product of two
-    #      0/1 rows counts the tokens they share. Pairs without a shared
-    #      token are 0 and not stored at all, so the result stays small.
-    #   4. |S ∪ H| = |S| + |H| - |S ∩ H|, where |S| and |H| are the row sums.
-    #
-    # With threshold_jaccard_similarity = 0.90, a pair only passes when the
-    # token sets are identical, unless both terms together have more than
-    # 10 distinct tokens (e.g. 10 of 11 shared tokens gives 0.909).
+    # Jaccard |S ∩ H| / |S ∪ H| for 1.5M SCT x 54k HPO terms via sparse 0/1
+    # token matrices A (SCT) and B (HPO): A · Bᵀ holds |S ∩ H| for pairs
+    # sharing a token (others are not stored), |S ∪ H| = |S| + |H| - |S ∩ H|.
+    # With the 0.90 threshold only identical token sets pass, unless the
+    # union has more than 10 tokens (10 of 11 gives 0.909).
     vocab = {}
 
     def encode(term_lists):
         """
-        Encode a list of token sets into parallel (row, col) index lists
-        suitable for constructing a sparse binary matrix. Each row corresponds
-        to one term and each column to one vocabulary token. The vocab dict is
-        shared across calls so that SCT and HPO terms are encoded into the same
-        column space.
+        (row, col) indices of a sparse binary term x token matrix. vocab is
+        shared, so SCT and HPO terms use the same columns.
         """
         rows, cols = [], []
         for i, tokens in enumerate(term_lists):
@@ -511,10 +413,6 @@ if __name__ == "__main__":
 
     n_vocab = len(vocab)
 
-    # A: shape (n_sct_terms, n_vocab) — one row per SCT term, binary token presence.
-    # B: shape (n_hpo_terms, n_vocab) — one row per HPO term, binary token presence.
-    # A.dot(B.T): shape (n_sct, n_hpo) — entry [i, j] = number of shared tokens
-    # between SCT term i and HPO term j. Kept sparse throughout.
     A = sparse.csr_matrix((np.ones(len(rows_a), dtype=np.int32),
         (rows_a, cols_a)), shape=(len(sct_normalized_terms), n_vocab))
     B = sparse.csr_matrix((np.ones(len(rows_b), dtype=np.int32),
@@ -522,19 +420,15 @@ if __name__ == "__main__":
 
     intersection_sparse = A.dot(B.T).tocoo()   # STAYS SPARSE - do not call .toarray()
 
-    # One entry per pair sharing at least one token: rows[k] is the SCT term
-    # position, cols[k] the HPO term position, inter_vals[k] = |S ∩ H|.
+    # rows: SCT term positions, cols: HPO term positions.
     rows = intersection_sparse.row
     cols = intersection_sparse.col
     inter_vals = intersection_sparse.data.astype(np.float64)
 
-    # Number of distinct tokens per term (|S| per SCT term, |H| per HPO term).
     sizes_a = np.asarray(A.sum(axis = 1)).ravel()
     sizes_b = np.asarray(B.sum(axis = 1)).ravel()
 
-    # Only pairs that share at least one token are in the sparse matrix.
-    # Terms that normalise to an empty token set (e.g. only stop words) are
-    # therefore never matched: Jaccard is undefined for two empty sets.
+    # Terms with an empty token set (e.g. only stop words) are never matched.
     union_vals = sizes_a[rows] + sizes_b[cols] - inter_vals
     jaccard_vals = inter_vals / union_vals
 
@@ -555,10 +449,6 @@ if __name__ == "__main__":
 
     cumulative = addMethod(cumulative, included, jaccard_maps_df,
         jaccard_mappings, graham, hpo_ontology)
-
-    # ======================================================================
-    # 9. embedding: cosine similarity
-    # ======================================================================
 
     l.printHeader(f"9. {embedding_mappings}: cosine similarity")
 
@@ -582,9 +472,8 @@ if __name__ == "__main__":
 
     faiss.omp_set_num_threads(n_cpus)
 
-    # The embedder may already return unit vectors (normalization in
-    # config.yaml), but normalising here makes the inner product below a
-    # cosine similarity either way. FAISS requires float32.
+    # Normalised here so the inner product is a cosine whatever config.yaml
+    # sets; FAISS requires float32.
     def normalize(mat):
         """Scale rows to unit length (zero rows stay zero), as float32."""
         norms = np.linalg.norm(mat, axis = 1, keepdims = True)
@@ -594,32 +483,22 @@ if __name__ == "__main__":
     embedded_sct_n = normalize(embedded_sct)
     embedded_hpo_n = normalize(embedded_hpo)
 
-    # The HPO vectors form the index and every SCT vector is a query. The
-    # flat index compares each query with every HPO vector (exact search, no
-    # approximation), using batched matrix products; indexing the smaller
-    # HPO side keeps the index small. Both directions give the same pairs.
+    # Exact search; the smaller HPO side is indexed, SCT vectors are queries.
     index = faiss.IndexFlatIP(embedded_hpo_n.shape[1])
     index.add(embedded_hpo_n)
 
-    # range_search returns, for each SCT term, all HPO terms with similarity
-    # above the threshold, as flat arrays over all queries:
-    #   similarities[k], indices[k] : similarity and HPO term position of
-    #                                 result k
-    #   lims                        : length n_sct_terms + 1; the results of
-    #                                 SCT term i are at positions
-    #                                 lims[i] to lims[i+1] - 1
+    # Flat results over all queries; those of SCT term i are at
+    # lims[i]:lims[i+1].
     lims, similarities, indices = index.range_search(
         embedded_sct_n, threshold_cosine_similarity
     )
 
-    # float32 rounding makes the similarity of two identical embeddings
-    # come out as e.g. 0.9999997 or 1.0000001 instead of 1.0. Clipping to
-    # 1.0 and rounding to 6 decimals gives identical embeddings exactly 1.0,
-    # which MappingSetBuilder relies on for its "cosine=1" criterion.
+    # Identical embeddings give e.g. 0.9999997 or 1.0000001 in float32;
+    # clipping and rounding makes them exactly 1.0 for MappingSetBuilder's
+    # "cosine=1" criterion.
     similarities = np.round(np.minimum(similarities.astype(np.float64), 1.0), 6)
 
-    # Expand lims into the SCT term position of every result: SCT term i is
-    # repeated once per result it has (lims[i+1] - lims[i] times).
+    # SCT term position of every result.
     sct_row_indices = np.repeat(
         np.arange(len(sct_terms)),
         np.diff(lims).astype(np.int64)
@@ -639,27 +518,16 @@ if __name__ == "__main__":
     cumulative = addMethod(cumulative, included, embedding_maps_df,
         embedding_mappings, graham, hpo_ontology)
 
-    # ======================================================================
-    # 10. exact_lexical: case-insensitive exact match
-    # ======================================================================
-
     l.printHeader(f"10. {exact_lexical_mappings}: exact lexical match")
 
     l.log(f"Creating {exact_lexical_mappings} mappings...")
 
-    # Unlike Jaccard, this compares the raw strings (only lower-cased and
-    # trimmed), not normalised token sets, so it is stricter: word order,
-    # stop words and inflections must match too. Most of these pairs are
-    # also found by Jaccard or embedding; the separate method records that
-    # the strings are identical, which MappingSetBuilder uses as evidence.
-
-    # Build a lowercase term -> [SCT ID, ...] lookup from all SCT labels
-    # and synonyms.
+    # Stricter than Jaccard (raw strings, only lower-cased and trimmed);
+    # MappingSetBuilder uses identical strings as evidence of its own.
     sct_lower_lookup = {}
     for sct_id, term in zip(sct_ids_arr, sct_terms):
         sct_lower_lookup.setdefault(term.lower().strip(), []).append(sct_id)
 
-    # Match each HPO label/synonym against the SCT lookup.
     ids_exact_lexical    = []
     values_exact_lexical = []
 
@@ -682,18 +550,10 @@ if __name__ == "__main__":
     cumulative = addMethod(cumulative, included, exact_lexical_maps_df,
         exact_lexical_mappings, graham, hpo_ontology)
 
-    # ======================================================================
-    # 11. Writing mappings
-    # ======================================================================
-
     l.printHeader("11. Writing mappings")
 
-    # all_mappings_df preserves full provenance: one row per (method, hpo_id,
-    # sct_id) triple, with the originating method recorded in the attribute
-    # column. The same (hpo_id, sct_id) pair appears once per method that
-    # found it — that is intentional. The MappingSetBuilder script uses the
-    # attribute column to apply method-specific acceptance rules and to track
-    # which methods corroborate each pair.
+    # A pair appears once per method that found it, on purpose:
+    # MappingSetBuilder's rules depend on the methods.
     all_mappings_df = pd.concat([
         hpo_sct_maps_df,
         hpo_umls_sct_maps_df,

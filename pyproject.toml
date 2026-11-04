@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = [
     "logger @ git+https://github.com/Goldkugel/logger.git@v1.6.0",
     "adapter @ git+https://github.com/Goldkugel/adapter.git@v1.5.1",
-    "embedder @ git+https://github.com/Goldkugel/embedder.git@v2.2.5",
+    "embedder @ git+https://github.com/Goldkugel/embedder.git@v2.3.0",
     "model @ git+https://github.com/Goldkugel/model.git@v3.0.3",
     "normalizer @ git+https://github.com/Goldkugel/normalizer.git@v1.1.2"
 ]

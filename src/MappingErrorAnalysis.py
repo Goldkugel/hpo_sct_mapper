@@ -1,6 +1,5 @@
 import sys
 
-# Prevent Python from generating .pyc files (compiled bytecode files)
 sys.dont_write_bytecode = True
 
 from logger         import Logger
@@ -31,45 +30,29 @@ from itertools   import combinations
 # Graham gold standard. Everything is computed on unique (hpo_id, sct_id)
 # pairs.
 #
-# Each pair has two kinds of rows in llm_filtered.csv: one row per
-# generation method that found it, carrying the validity code assigned by
-# MappingSetBuilder, and, if the LLM accepted it, one extra row with
-# attribute="llm" and validity=10. Three accepted sets follow from this:
-#
+# Accepted sets:
 #   auto-accepted : original validity code 10 (before the LLM review)
 #   LLM-accepted  : pairs with an "llm" row
-#   final         : auto-accepted + LLM-accepted (an auto-accepted pair
-#                   the LLM rejected stays accepted)
-#
-# The "original validity code" of a pair is taken from its generation rows
-# only, so an LLM-accepted pair still counts under the code it had before
-# the review. Unless stated otherwise, "accepted" means the final set.
+#   final         : auto-accepted + LLM-accepted (the default "accepted")
+# The original validity code comes from the generation rows only, i.e. the
+# code before the LLM review.
 # ==========================================================================
 
-# How many examples to print per error-analysis category
 ERROR_EXAMPLE_LIMIT = 20
 
-# Number of evenly-spaced thresholds in the precision–recall sweep (section 8)
+# Thresholds in the precision-recall sweep (section 8).
 PR_STEPS = 50
 
-# Hierarchy distance analysis (section 16): distances of MAX_DISTANCE or
-# more share one bucket, and up to DISTANCE_EXAMPLE_LIMIT examples are
-# printed per distance.
+# Section 16: distances of MAX_DISTANCE or more share one bucket.
 MAX_DISTANCE           = 5
 DISTANCE_EXAMPLE_LIMIT = 5
 
-# Bucket of pairs whose gold targets are all missing from sct.csv
-# (inactive or not in the SNOMED CT release), so no distance exists.
+# Bucket of pairs whose gold targets are all missing from sct.csv.
 GOLD_NOT_IN_SCT = "gold target not in SCT"
 
-# The methods that generate candidate pairs; "llm" only re-accepts pairs
-# that one of them generated, so it is excluded wherever methods are
-# compared with each other.
+# "llm" only re-accepts generated pairs, so it is left out wherever methods
+# are compared.
 GENERATION_METHODS = [method for method in ALL_METHODS if method != llm_mappings]
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _safe_div(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
@@ -84,16 +67,8 @@ def _f1(precision: float, recall: float) -> float:
 
 def _metrics(tp: int, pred_total: int, gold_total: int, universe_total: int) -> dict:
     """
-    Returns precision, recall, F1, and universe share given:
-      tp             — true positives (correct predictions)
-      pred_total     — total predictions made
-      gold_total     — total gold-standard pairs
-      universe_total — total unique (HPO, SCT) pairs ever considered
-                       (denominator for universe share)
-
-    universe_share is tp / universe_total, i.e. the fraction of all
-    considered pairs that are correct predictions. It is not accuracy:
-    true negatives are not counted.
+    Precision, recall, F1 and universe share (tp / all generated pairs; not
+    accuracy, as true negatives are not counted).
     """
     precision      = _safe_div(tp, pred_total)
     recall         = _safe_div(tp, gold_total)
@@ -109,11 +84,9 @@ def _pair_set(df: pd.DataFrame, id_col: str, val_col: str) -> set:
 
 def _hpo_depth(hpo_id: str, parent_map: dict) -> int:
     """
-    Returns the depth of hpo_id in the HPO hierarchy (a root = 0), measured
-    as the number of breadth-first levels needed to reach all ancestors:
-    the largest shortest-path distance to any ancestor. With several paths
-    to the root this can differ slightly from the shortest distance to the
-    root. parent_map: child -> set of parent ids. Cycle-safe.
+    Depth of hpo_id (a root = 0): the largest shortest-path distance to any
+    ancestor, which can differ from the shortest distance to the root.
+    parent_map: child -> set of parent ids. Cycle-safe.
     """
     visited  = {hpo_id}
     frontier = {hpo_id}
@@ -132,18 +105,11 @@ def _hpo_depth(hpo_id: str, parent_map: dict) -> int:
     return depth
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
 
     l = Logger()
     l.printHeader("Evaluation of HPO → SNOMED CT mapping pipeline")
 
-    # -----------------------------------------------------------------------
-    # 1. Load data
-    # -----------------------------------------------------------------------
     l.printHeader("1. Loading data")
 
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
@@ -159,15 +125,11 @@ if __name__ == "__main__":
     l.log(f"LLM-reviewed mappings: {len(final_df)} rows.")
     l.log("Loading LLM-reviewed mappings (llm_filtered.csv) completed.")
 
-    # Gold-standard pair set
     gold_pairs = set(zip(graham[hpo_id_column], graham[sct_id_column]))
     gold_hpo   = set(graham[hpo_id_column].unique())
     gold_total = len(gold_pairs)
     l.log(f"Gold standard: {gold_total} unique pairs for {len(gold_hpo)} HPO concepts.")
 
-    # -----------------------------------------------------------------------
-    # 2. Build lookup tables
-    # -----------------------------------------------------------------------
     l.printHeader("2. Building lookup tables")
     l.log("Building label, hierarchy and pair lookup tables...")
 
@@ -181,23 +143,14 @@ if __name__ == "__main__":
         terms = hpo_labels_dict.get(hpo_id, [])
         return terms[0] if terms else hpo_id
 
-    # Hierarchy lookups (transitive, memoized):
-    #   hpo_parent_map[child] = set of direct parents (for depth, section 13)
-    #   *_descendants(c)      = all concepts below c
-    #   hpo_ancestors(c)      = all concepts above c
+    # hpo_parent_map holds direct parents (for the depth, section 13).
     hpo_parent_map  = build_parent_map(hpo, hpo_ontology)
     hpo_ancestors   = make_descendant_lookup(hpo_parent_map)
     hpo_descendants = make_descendant_lookup(build_child_map(hpo, hpo_ontology))
     sct_descendants = make_descendant_lookup(build_child_map(sct, sct_ontology))
 
-    # Generation rows only (without the "llm" rows). Their validity is the
-    # code MappingSetBuilder assigned, i.e. before the LLM review; all rows
-    # of a pair share it, so "first" picks that code (or NA if the pair was
-    # not reached by any step). pair_table has one row per generated pair:
-    #   validity  : original validity code
-    #   n_methods : number of generation methods that found the pair
-    #   best_conf : highest confidence of any of its rows (cross-reference
-    #               and exact lexical rows always have 1.0)
+    # Generation rows carry MappingSetBuilder's code, shared by all rows of a
+    # pair, so "first" gives the original validity (or NA).
     gen_rows = final_df[final_df[attr_col] != llm_mappings]
 
     pair_table = (
@@ -214,7 +167,6 @@ if __name__ == "__main__":
     pair_n_methods = dict(zip(pair_keys, pair_table["n_methods"]))
     pair_best_conf = dict(zip(pair_keys, pair_table["best_conf"]))
 
-    # Universe = all unique pairs ever generated (universe-share denominator).
     universe_pairs = set(pair_keys)
     universe_total = len(universe_pairs)
 
@@ -234,10 +186,8 @@ if __name__ == "__main__":
 
     def log_pairs(label: str, pairs: set, share: bool = False, indent: str = "  ") -> None:
         """
-        One metric line for a set of pairs, the same in every section:
-        precision over all pairs in the set (including HPO concepts the
-        gold standard does not cover), recall over all gold pairs, and,
-        with share=True, TP share = correct pairs / all generated pairs.
+        One metric line for a set of pairs. Precision counts all pairs, also
+        of HPO concepts without gold; share=True adds the TP share.
         """
         tp = len(pairs & gold_pairs)
         m  = _metrics(tp, len(pairs), gold_total, universe_total)
@@ -255,17 +205,6 @@ if __name__ == "__main__":
         if len(pairs) > limit:
             l.log(f"{indent}... and {len(pairs) - limit} more.")
 
-    # -----------------------------------------------------------------------
-    # 3. Stage-by-stage comparison
-    #
-    #   Stage 1  — All generated pairs
-    #   Stage 2  — After filtering: original validity 1–10 (domain mismatches
-    #              and pairs not reached by any step excluded); these were
-    #              reviewed by the LLM
-    #   Stage 3a — Auto-accepted (original validity 10, before the LLM)
-    #   Stage 3b — LLM-accepted only
-    #   Stage 3c — Final: auto-accepted + LLM-accepted
-    # -----------------------------------------------------------------------
     l.printHeader("3. Stage-by-stage comparison")
 
     log_pairs("Stage 1 — all generated pairs",                   universe_pairs,                 share=True)
@@ -277,10 +216,6 @@ if __name__ == "__main__":
           f"answer): {len(auto_pairs - llm_pairs)}.")
     l.log("These auto-accepted pairs stay in the final set.")
 
-    # -----------------------------------------------------------------------
-    # 4. Validity-level breakdown
-    # By original validity code, i.e. before the LLM review.
-    # -----------------------------------------------------------------------
     l.printHeader("4. Validity-level breakdown")
 
     l.log("Pairs by original validity code (before LLM review):")
@@ -289,10 +224,6 @@ if __name__ == "__main__":
     not_reached = {p for p, v in pair_validity.items() if pd.isna(v)}
     log_pairs("validity=NA (not reached by any step)", not_reached)
 
-    # -----------------------------------------------------------------------
-    # 5. Method-level breakdown
-    # All pairs a method produced, and those of them in the final set.
-    # -----------------------------------------------------------------------
     l.printHeader("5. Method-level breakdown")
 
     for method in ALL_METHODS:
@@ -304,14 +235,6 @@ if __name__ == "__main__":
         log_pairs("all pairs",          method_pairs)
         log_pairs("in the final set",   method_pairs & final_pairs)
 
-    # -----------------------------------------------------------------------
-    # 6. Method-agreement analysis
-    #
-    # For each final pair, count how many distinct generation methods
-    # produced it ("llm" is not counted). Bucket the pairs by that count and
-    # report metrics — both exact ("exactly k methods") and cumulative
-    # ("≥ k methods").
-    # -----------------------------------------------------------------------
     l.printHeader("6. Method-agreement analysis")
 
     final_n_methods = {p: pair_n_methods.get(p, 0) for p in final_pairs}
@@ -329,15 +252,9 @@ if __name__ == "__main__":
         if bucket:
             log_pairs(f"k ≥ {k}", bucket)
 
-    # -----------------------------------------------------------------------
-    # 7. Confidence threshold analysis
-    #
-    # Sweep confidence thresholds for the similarity-based methods over all
-    # generated pairs, deduplicating by keeping the highest confidence per
-    # pair. "Jaccard or embedding" pools both methods and keeps, per pair,
-    # the higher of its Jaccard and cosine confidence; as the two scales are
-    # not the same measure, read its thresholds as "either method reaches t".
-    # -----------------------------------------------------------------------
+    # Sections 7 and 8 cover all generated pairs of a method, i.e. what a
+    # pure threshold would achieve. "Jaccard or embedding" keeps the higher
+    # of both per pair: read its thresholds as "either method reaches t".
     l.printHeader("7. Confidence threshold analysis")
 
     def similarity_pools():
@@ -362,16 +279,6 @@ if __name__ == "__main__":
             subset = pool_deduped[pool_deduped[confidence_column] >= thresh]
             log_pairs(f"confidence ≥ {thresh:.2f}", _pair_set(subset, id_col, val_col))
 
-    # -----------------------------------------------------------------------
-    # 8. Precision–recall curve (fine-grained threshold sweep)
-    #
-    # For each similarity method and their combination, sweep PR_STEPS
-    # evenly spaced thresholds between the lowest and highest confidence and
-    # log the metrics at each, so the operating-point trade-off can be
-    # plotted or inspected. As in section 7, this covers all generated
-    # pairs of the method (not only accepted ones): it shows what a pure
-    # threshold on that method alone would achieve.
-    # -----------------------------------------------------------------------
     l.printHeader("8. Precision–recall curve (fine-grained threshold sweep)")
 
     for method_label, pool in similarity_pools():
@@ -399,17 +306,6 @@ if __name__ == "__main__":
         if best_f1_thresh is not None:
             l.log(f"  Best F1 {best_f1_val:.3f} at confidence ≥ {best_f1_thresh:.4f}.")
 
-    # -----------------------------------------------------------------------
-    # 9. LLM-specific analysis
-    #
-    #   A. Overall: pairs reviewed (original validity 1–10, all of which
-    #      MappingLLM sends to review), accepted (pairs with an "llm" row)
-    #      and not accepted, plus the LLM's decisions per pass from
-    #      llm_review.csv, which also shows answers that were not usable.
-    #   B. Per review reason (original validity code): acceptance rate and
-    #      metrics of the accepted pairs.
-    #   C. LLM false positives: accepted pairs NOT in the gold standard.
-    # -----------------------------------------------------------------------
     l.printHeader("9. LLM-specific analysis")
 
     reviewed_pairs = pairs_with(REVIEW_REASON.keys())
@@ -423,8 +319,7 @@ if __name__ == "__main__":
           f"({_safe_div(n_reviewed - n_accepted, n_reviewed):.2%}).")
     log_pairs("LLM-accepted", llm_pairs)
 
-    # The LLM's decision, confidence and rationale per reviewed pair, written
-    # by MappingLLM; None for runs from before the review file existed.
+    # None for runs from before MappingLLM wrote the review file.
     review = pd.read_csv(llm_review_path, sep=";") if os.path.exists(llm_review_path) else None
 
     if review is not None:
@@ -458,14 +353,6 @@ if __name__ == "__main__":
     l.log(f"C. LLM false positives (accepted but NOT in gold): {len(llm_fp)} pairs.")
     log_examples(llm_fp, indent="  ")
 
-    # -----------------------------------------------------------------------
-    # 10. Mapping completeness
-    #
-    #   A. Coverage: fraction of all HPO concepts that received ≥1 final
-    #      mapping, vs. fraction that received ≥1 generated pair.
-    #   B. Multi-mapping rate: how many HPO concepts have more than one
-    #      final SCT target, and are those multi-mappings correct?
-    # -----------------------------------------------------------------------
     l.printHeader("10. Mapping completeness")
 
     all_hpo_concepts = set(hpo[hpo_ontology.config.id_column].unique())
@@ -507,29 +394,13 @@ if __name__ == "__main__":
         for sid in sorted(spurious):
             l.log(f"    not in gold: {sid} [{sct_label(sid)}]")
 
-    # -----------------------------------------------------------------------
-    # 11. Missed gold-pair diagnosis
-    #
-    # For every gold pair NOT in the final set, determine why, from its
-    # original validity code:
-    #   - NEVER_GENERATED                 : pair absent from llm_filtered.csv
-    #   - NOT_REACHED                     : validity=NA (generated, but not
-    #                                       reached by any filtering step)
-    #   - DOMAIN_REJECTED                 : validity=0 (domain mismatch)
-    #   - HIERARCHY_REVERSAL_LLM_REJECTED : validity 1–7, not accepted by the
-    #                                       LLM (rejected or no valid answer)
-    #   - FALLBACK_LLM_REJECTED           : validity 8–9, not accepted by the
-    #                                       LLM (rejected or no valid answer)
-    #   - INCONSISTENCY                   : validity 10 (should not happen:
-    #                                       auto-accepted pairs are always in
-    #                                       the final set)
-    # -----------------------------------------------------------------------
     l.printHeader("11. Missed gold-pair diagnosis")
 
     missed_gold = gold_pairs - final_pairs
     l.log(f"Missed gold pairs: {len(missed_gold)} of {gold_total}.")
 
     def diagnose(pair) -> str:
+        """Why a gold pair is missing, from its original validity code."""
         if pair not in pair_validity:
             return "NEVER_GENERATED"
         code = pair_validity[pair]
@@ -541,6 +412,7 @@ if __name__ == "__main__":
             return "HIERARCHY_REVERSAL_LLM_REJECTED"
         if code in (validity_best_candidate, validity_last_resort):
             return "FALLBACK_LLM_REJECTED"
+        # Validity 10 is always in the final set.
         return "INCONSISTENCY"
 
     diagnosis: dict = defaultdict(list)
@@ -551,8 +423,6 @@ if __name__ == "__main__":
         l.log(f"{category}: {len(pairs)} pairs")
         log_examples(pairs, limit=5, indent="  ")
 
-    # Best confidence of any generation method for the generated-but-missed
-    # gold pairs. Cross-reference methods always have confidence 1.0.
     generated_missed = [p for p in missed_gold if p in pair_best_conf]
     if generated_missed:
         conf_vals = pd.Series([pair_best_conf[p] for p in generated_missed]).dropna()
@@ -566,19 +436,6 @@ if __name__ == "__main__":
     else:
         l.log("All missed gold pairs were never generated.")
 
-    # -----------------------------------------------------------------------
-    # 12. Pairwise method overlap and unique contributions
-    #
-    #   For every pair of generation methods: how many (HPO, SCT) pairs did
-    #   BOTH produce, and what fraction of those overlapping pairs are in the
-    #   gold standard?
-    #
-    #   For each generation method: how many gold pairs does it find that NO
-    #   other generation method finds? (unique contribution — methods you
-    #   cannot remove.) "llm" is excluded: it only re-accepts pairs that a
-    #   generation method found, and counting it would hide those pairs'
-    #   unique contribution.
-    # -----------------------------------------------------------------------
     l.printHeader("12. Pairwise method overlap and unique contributions")
 
     method_pair_sets = {
@@ -599,15 +456,6 @@ if __name__ == "__main__":
         l.log(f"  {method}: {len(unique_gold)} gold pairs")
         log_examples(unique_gold, limit=5)
 
-    # -----------------------------------------------------------------------
-    # 13. Hierarchy-depth analysis
-    #
-    # Are accepted/missed mappings concentrated at particular depths in HPO?
-    # Reports mean depth and a histogram (depth buckets 0–2, 3–5, 6–9,
-    # 10–14, 15+) for: all HPO concepts, gold-covered concepts, correctly
-    # mapped concepts, and concepts with a missed gold pair. A concept can
-    # be in both of the last two groups.
-    # -----------------------------------------------------------------------
     l.printHeader("13. Hierarchy-depth analysis")
 
     def depth_stats(hpo_ids: set, label: str) -> None:
@@ -627,14 +475,7 @@ if __name__ == "__main__":
     depth_stats({h for h, _ in final_pairs & gold_pairs}, "HPO concepts with ≥1 correct final mapping")
     depth_stats({h for h, _ in missed_gold},             "HPO concepts with ≥1 missed gold pair")
 
-    # -----------------------------------------------------------------------
-    # 14. Hierarchy-reversal quality check
-    #
-    # Pairs with original validity 1–7 were rejected (or demoted) by
-    # MappingSetBuilder's narrower-wins rule and then reviewed by the LLM.
-    # How many of them are correct gold pairs, and how many of those did the
-    # LLM rescue? This diagnoses whether the rule over-prunes.
-    # -----------------------------------------------------------------------
+    # Section 14: does MappingSetBuilder's narrower-wins rule over-prune?
     l.printHeader("14. Hierarchy-reversal quality check")
 
     reversal_pairs = pairs_with(validity_hierarchy_reversals)
@@ -646,15 +487,6 @@ if __name__ == "__main__":
           f"set: {len(lost_gold)}.")
     log_examples(lost_gold, indent="  ")
 
-    # -----------------------------------------------------------------------
-    # 15. Error analysis
-    #
-    #   A. Gold HPO concepts with no generated mapping at all.
-    #   B. Gold HPO concepts generated but without a final mapping.
-    #   C. Final mappings for HPO concepts absent from gold.
-    #   D. HPO concepts in both gold and the final set, but wrong SCT target
-    #      (split into entirely wrong and partially wrong).
-    # -----------------------------------------------------------------------
     l.printHeader("15. Error analysis")
 
     def log_concepts(hpo_ids: list, describe=None) -> None:
@@ -710,39 +542,11 @@ if __name__ == "__main__":
     if len(cat_d_partial_wrong) > 10:
         l.log(f"  ... and {len(cat_d_partial_wrong) - 10} more.")
 
-    # -----------------------------------------------------------------------
-    # 16. Hierarchy distance to the gold standard
-    #
-    # How far are the mappings from the gold standard in the SNOMED CT is_a
-    # hierarchy? The distance of a pair is the number of is_a edges from its
-    # SCT target up to a common ancestor and down to the nearest gold target
-    # of the same HPO concept (MappingUtils.make_hierarchy_distance):
-    #   0 = correct, 1 = parent or child, 2 = sibling, grandparent or
-    #   grandchild, 3 = uncle or nephew, 4 = cousin, ...
-    # Paths over a common descendant (down, then up) are not counted.
-    # Distances of MAX_DISTANCE or more share one bucket. Ties between gold
-    # targets at the same distance go to the smallest SCT ID.
-    #
-    # Relation of the SCT target to the nearest gold target:
-    #   equal    : the gold target itself
-    #   broader  : a transitive ancestor of the gold target
-    #   narrower : a transitive descendant of the gold target
-    #   lateral  : neither (sibling, cousin, ...)
-    #
-    # Gold targets missing from sct.csv (inactive or not in the SNOMED CT
-    # release) have no position in the hierarchy; a pair whose HPO concept
-    # only has such gold targets is counted as GOLD_NOT_IN_SCT.
-    #
-    #   A. Distance of the auto-accepted, LLM-accepted and final pairs to
-    #      the gold standard. Only pairs of HPO concepts in the gold
-    #      standard are measured. "cumulative" is the share of pairs within
-    #      that distance, i.e. the precision if near misses up to that
-    #      distance counted as correct.
-    #   B. Examples per distance (final set).
-    #   C. Missed gold pairs whose HPO concept has a final mapping: distance
-    #      from the gold target to the nearest final target, i.e. how close
-    #      the misses came.
-    # -----------------------------------------------------------------------
+    # Section 16: is_a distance of a pair's SCT target to the nearest gold
+    # target of the same HPO concept (see make_hierarchy_distance), only for
+    # gold HPO concepts. "cumulative" is the precision if near misses up to
+    # that distance counted as correct. C measures how close the missed gold
+    # targets came to the nearest final target.
     l.printHeader("16. Hierarchy distance to the gold standard")
 
     l.log("Building SNOMED CT ancestor lookup...")
@@ -780,14 +584,14 @@ if __name__ == "__main__":
         return best_distance, best_target
 
     def distance_bucket(distance) -> str:
+        """Histogram bucket; None means the gold targets are not in sct.csv."""
         if distance is None:
             return GOLD_NOT_IN_SCT
         return f"{MAX_DISTANCE}+" if distance >= MAX_DISTANCE else str(distance)
 
     distance_buckets = [str(d) for d in range(MAX_DISTANCE)] + [f"{MAX_DISTANCE}+", GOLD_NOT_IN_SCT]
 
-    # pair_gold_distance[(hpo, sct)] = (distance, nearest gold target,
-    # relation of sct to it) for every final pair of a gold HPO concept.
+    # (hpo, sct) -> (distance, nearest gold target, relation of sct to it).
     # auto_pairs and llm_pairs are subsets of final_pairs.
     pair_gold_distance: dict = {}
     for hid, sid in final_pairs:
@@ -861,8 +665,7 @@ if __name__ == "__main__":
         if len(examples) > DISTANCE_EXAMPLE_LIMIT:
             l.log(f"    ... and {len(examples) - DISTANCE_EXAMPLE_LIMIT} more.")
 
-    # missed_gold_distance[(hpo, gold sct)] = (distance, nearest final
-    # target, relation of that final target to the gold target).
+    # (hpo, gold sct) -> (distance, nearest final target, its relation to gold).
     missed_gold_distance: dict = {}
     for hid, gid in missed_gold:
         if hid in accepted_hpo:
@@ -876,31 +679,15 @@ if __name__ == "__main__":
     log_distances("  missed gold pairs of HPO concepts with a final mapping "
                   "(relation = final target to gold target)", missed_gold_distance)
 
-    # -----------------------------------------------------------------------
-    # 17. Structural quality warnings (on the final set)
-    #
-    #   A. Source collapse: one HPO concept mapped to two SCT concepts where
-    #      one is a transitive ancestor of the other.
-    #   B. Target collapse: two HPO concepts in an ancestor/descendant
-    #      relationship both mapped to the same SCT concept.
-    #   C. Cross-pair hierarchy reversal: HPO_child is a transitive
-    #      descendant of HPO_parent, but the SCT target of HPO_child is a
-    #      transitive ancestor of the SCT target of HPO_parent.
-    #
-    # MappingSetBuilder removes source collapses among auto-accepted pairs,
-    # but the final set also contains LLM-accepted pairs, so A can be
-    # non-zero: e.g. the LLM accepts a narrower candidate next to an
-    # auto-accepted broader target of the same HPO concept. B and C are not
-    # checked by any earlier step.
-    # -----------------------------------------------------------------------
+    # Section 17: MappingSetBuilder removes source collapses (A) only among
+    # auto-accepted pairs, so LLM-accepted pairs can still cause them; B and
+    # C are not checked by any earlier step.
     l.printHeader("17. Structural quality warnings")
 
     def related_pairs(concepts: set, descendants) -> list:
         """
-        (broader, narrower) for every two concepts of the set that are in an
-        ancestor/descendant relation (over any number of levels). Each
-        unordered pair is checked once, in both directions; sorting makes
-        the order of the results reproducible.
+        (broader, narrower) for every two concepts of the set in an
+        ancestor/descendant relation, in reproducible order.
         """
         found = []
         for c1, c2 in combinations(sorted(concepts), 2):
@@ -910,7 +697,6 @@ if __name__ == "__main__":
                 found.append((c2, c1))
         return found
 
-    # A. Source collapse
     source_collapse = {
         hid: related_pairs(scts, sct_descendants)
         for hid, scts in accepted_sct_per_hpo.items() if len(scts) > 1
@@ -928,7 +714,6 @@ if __name__ == "__main__":
     if len(source_collapse) > ERROR_EXAMPLE_LIMIT:
         l.log(f"  ... and {len(source_collapse) - ERROR_EXAMPLE_LIMIT} more HPO concepts.")
 
-    # B. Target collapse
     target_collapse = {
         sid: related_pairs(hids, hpo_descendants)
         for sid, hids in accepted_hpo_per_sct.items() if len(hids) > 1
@@ -945,21 +730,13 @@ if __name__ == "__main__":
     if len(target_collapse) > ERROR_EXAMPLE_LIMIT:
         l.log(f"  ... and {len(target_collapse) - ERROR_EXAMPLE_LIMIT} more SCT concepts.")
 
-    # C. Cross-pair hierarchy reversal. For each mapped HPO concept
-    # (hpo_child), its mapped HPO ancestors (hpo_parent) come from the
-    # ancestor closure directly, so only related concept pairs are
-    # compared. Then every SCT target of the child is compared with every
-    # SCT target of the parent. Example: "Focal seizure" (child) mapped to
-    # "Seizure", and "Seizure" (parent) mapped to "Focal seizure", is a
-    # reversal: the mapping turns the HPO hierarchy upside down.
+    # C, e.g. "Focal seizure" (child) -> "Seizure" and "Seizure" (parent) ->
+    # "Focal seizure". Only HPO ancestors are compared, not all concept pairs.
     reversal_examples = []
     for hpo_child in sorted(accepted_sct_per_hpo):
         for hpo_parent in sorted(set(hpo_ancestors(hpo_child)) & set(accepted_sct_per_hpo)):
             for sct_of_child in sorted(accepted_sct_per_hpo[hpo_child]):
                 for sct_of_parent in sorted(accepted_sct_per_hpo[hpo_parent]):
-                    # Reversal: the child HPO maps to an SCT concept that is
-                    # a transitive ancestor of the SCT concept the parent
-                    # HPO maps to — the hierarchy direction is inverted.
                     if sct_of_parent in sct_descendants(sct_of_child):
                         reversal_examples.append((hpo_parent, hpo_child, sct_of_parent, sct_of_child))
 
@@ -975,49 +752,11 @@ if __name__ == "__main__":
     if len(reversal_examples) > ERROR_EXAMPLE_LIMIT:
         l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
 
-    # -----------------------------------------------------------------------
-    # 18. Writing output CSVs
-    #
-    # evaluation_final.csv: all rows of llm_filtered.csv whose (HPO, SCT)
-    # pair is in the final set — one row per contributing method, plus the
-    # "llm" row — so every mapping strategy that produced a given pair is
-    # visible in the output. The in_gold flag and the LLM's rationale from
-    # llm_review.csv are attached to every row.
-    #
-    # accepted_without_gold.csv: the final pairs of HPO concepts that have
-    # no mapping in the gold standard (category C of section 15), one row
-    # per pair. They cannot be checked against Graham, so they are written
-    # separately, e.g. for manual review. HPO concepts whose gold rows were
-    # all removed by loadGold (other match groups, composite expressions)
-    # count as concepts without a gold mapping.
-    #
-    # llm_disagreements.csv: the final pairs on which the LLM and
-    # MappingSetBuilder disagree, one row per pair:
-    #   auto_accepted_llm_rejected : auto-accepted, but not accepted by the
-    #                                LLM (rejected or no valid answer); the
-    #                                pair stays in the final set
-    #   candidate_llm_accepted     : not accepted by MappingSetBuilder
-    #                                (validity 1-9), accepted by the LLM
-    # with the LLM's pass, decision, confidence (normalised to 0.2-1.0) and
-    # rationale from llm_review.csv.
-    # -----------------------------------------------------------------------
     l.printHeader("18. Writing output CSVs")
 
-    # Pair-level information for every final pair, shared by both files:
-    #   auto_accepted     : original validity 10 (accepted by MappingSetBuilder)
-    #   llm_accepted      : has an "llm" row (accepted by the LLM)
-    #   original_validity : validity code before the LLM review
-    #   methods           : generation methods that found the pair (without
-    #                       "llm"), e.g. "embedding,jaccard"
-    #   best_conf         : highest confidence of those methods
-    #   gold_distance     : is_a distance to the nearest gold target of the
-    #                       HPO concept (section 16); empty if the concept
-    #                       has no gold mapping or its gold targets are not
-    #                       in sct.csv
-    #   nearest_gold_sct  : that gold target
-    #   gold_relation     : equal, broader, narrower or lateral (relation of
-    #                       the SCT target to nearest_gold_sct), no_gold, or
-    #                       gold_not_in_sct
+    # Pair-level columns of every final pair, used in all three files.
+    # gold_distance is empty if the HPO concept has no gold mapping or its
+    # gold targets are not in sct.csv.
     final_list = sorted(final_pairs)
 
     def gold_relation(pair) -> str:
@@ -1048,22 +787,16 @@ if __name__ == "__main__":
         "gold_relation":     [gold_relation(p) for p in final_list],
     })
 
-    # evaluation_final.csv: one row per method (and "llm" row) of each final
-    # pair, with its row-level columns, in_gold, the pair-level columns and
-    # the LLM's rationale.
-    # The ID columns are renamed to hpo_id / sct_id, as in the other files.
-    # Note the row-level validity column holds 10 on "llm" rows; use
-    # original_validity for the code before the LLM review.
+    # evaluation_final.csv: every row (method and "llm") of each final pair.
+    # The validity column holds 10 on "llm" rows; original_validity has the
+    # code before the LLM review.
     final_accepted = final_df[
         pairSeries(final_df, id_col, val_col).isin(final_pairs)
     ].copy().reset_index(drop=True)
     final_accepted["in_gold"] = inGoldSeries(final_accepted, gold_pairs, id_col, val_col)
     final_accepted = final_accepted.merge(pair_info, on=[id_col, val_col], how="left")
 
-    # The LLM's rationale from llm_review.csv (one row per reviewed pair),
-    # on every row of the pair. Whether the LLM accepted the pair is in
-    # llm_accepted. Empty for pairs the LLM did not review and for runs
-    # without the review file, so the file always has the same columns.
+    # Empty without the review file, so the columns are always the same.
     if review is not None:
         final_accepted = final_accepted.merge(
             review[[id_col, val_col, "llm_rationale"]].drop_duplicates(subset=[id_col, val_col]),
@@ -1078,8 +811,9 @@ if __name__ == "__main__":
           f"final pairs.")
     writeHugeCSV(final_accepted, evaluation_path)
 
-    # accepted_without_gold.csv: one row per final pair of an HPO concept
-    # without a gold mapping.
+    # accepted_without_gold.csv: final pairs that cannot be checked against
+    # the gold standard (section 15 C), e.g. for manual review. Concepts
+    # whose gold rows loadGold removed count as without gold mapping.
     no_gold_df = (
         pair_info[~pair_info[id_col].isin(gold_hpo)]
         .rename(columns={id_col: hpo_id_column, val_col: sct_id_column})
@@ -1093,9 +827,8 @@ if __name__ == "__main__":
           f"{int(no_gold_df['llm_accepted'].sum())} LLM-accepted; a pair can be both.")
     writeHugeCSV(no_gold_df, no_gold_path)
 
-    # llm_disagreements.csv: one row per pair on which the rule-based filter
-    # and the LLM disagree, i.e. auto-accepted but rejected by the LLM, or
-    # not auto-accepted but accepted by the LLM (symmetric difference).
+    # llm_disagreements.csv: pairs on which MappingSetBuilder and the LLM
+    # disagree (auto-accepted pairs the LLM rejected stay in the final set).
     disagreement_pairs = (auto_pairs - llm_pairs) | (llm_pairs - auto_pairs)
     disagreements = pair_info[
         pairSeries(pair_info, id_col, val_col).isin(disagreement_pairs)
@@ -1108,9 +841,7 @@ if __name__ == "__main__":
         lambda v: REVIEW_REASON.get(int(v), "") if pd.notna(v) else ""
     )
 
-    # Add the LLM's own answer from llm_review.csv (one row per reviewed
-    # pair). Without the review file the columns are kept but left empty,
-    # so the file always has the same columns.
+    # LLM confidence normalised to 0.2-1.0; empty columns without review file.
     llm_cols = ["llm_pass", "llm_decision", "llm_confidence", "llm_rationale"]
     if review is not None:
         disagreements = disagreements.merge(
@@ -1137,9 +868,6 @@ if __name__ == "__main__":
         l.log(f"{os.path.basename(llm_review_path)} not found; the LLM columns are empty.")
     writeHugeCSV(disagreements, llm_disagreements_path)
 
-    # -----------------------------------------------------------------------
-    # 19. Overall summary
-    # -----------------------------------------------------------------------
     l.printHeader("19. Overall summary")
 
     l.log(f"Gold standard: {gold_total} pairs.")
@@ -1148,9 +876,7 @@ if __name__ == "__main__":
     log_pairs("LLM-accepted only",                    llm_pairs,   share=True)
     log_pairs("final (auto-accepted + LLM-accepted)", final_pairs, share=True)
 
-    # Near misses (section 16): share of the final pairs of gold HPO
-    # concepts whose SCT target is within 0, 1 and 2 is_a edges of a gold
-    # target.
+    # Near misses (section 16).
     final_distances = [d for p, (d, _, _) in pair_gold_distance.items() if p in final_pairs]
     within = {k: _safe_div(sum(1 for d in final_distances if d is not None and d <= k),
                            len(final_distances)) for k in (0, 1, 2)}

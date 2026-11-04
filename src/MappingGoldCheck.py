@@ -1,6 +1,5 @@
 import sys
 
-# Prevent Python from generating .pyc files (compiled bytecode files)
 sys.dont_write_bytecode = True
 
 from logger         import Logger
@@ -30,32 +29,20 @@ import pandas       as pd
 #   Pass 2 : HPO concepts with several targets   -> group-level prompt
 #                                                   (multiple_mapping.md)
 #
-# The review reason is always ACCEPTED, so the LLM re-evaluates each pair
-# as a judge and rejects it if it finds a clinically meaningful mismatch.
-# A rejected gold pair is a candidate for an error in the gold standard.
+# The review reason is always ACCEPTED; a gold pair the LLM rejects is a
+# candidate for an error in the gold standard. Pairs whose HPO or SNOMED CT
+# concept is missing from the loaded data (obsolete or inactive) are not
+# reviewed. Only the ontologies and the gold standard are read, so the
+# script is independent of the mapping pipeline.
 #
-# Pairs whose HPO or SNOMED CT concept is missing from the loaded data
-# (e.g. obsolete HPO concepts, inactive SNOMED CT concepts) cannot be
-# described to the LLM. They are not reviewed and keep their status.
-#
-# Independent of the mapping pipeline: only the ontologies and the gold
-# standard are read, so the script can run before or after steps 1-4.
-#
-# Output: every gold pair with its status and the LLM's decision,
-# confidence and rationale, written to
+# Output: every gold pair with its status and the LLM's answer, written to
 # ./data/output/evaluation/gold_check.csv.
 # ==========================================================================
 
-# ------------------------------------------------------------------
-# Constants.
-# ------------------------------------------------------------------
-
-# Review reason shown to the LLM for every gold pair.
 GOLD_REVIEW_REASON = REVIEW_REASON[validity_accepted]
 
-# Prefix of the answer stores in data/tmp/: gold_<model>_0.json (pass 1)
-# and gold_<model>_1.json (pass 2). MappingLLM uses "prompt", so neither
-# script reuses the other's answers.
+# Answer stores gold_<model>_<pass>.json; MappingLLM uses "prompt", so
+# neither script reuses the other's answers.
 CHECKPOINT_PREFIX = "gold"
 
 # Status of a gold pair: reviewed by the LLM, or why it was not.
@@ -63,19 +50,15 @@ status_checked       = "CHECKED"
 status_hpo_not_found = "HPO_NOT_FOUND"
 status_sct_not_found = "SCT_NOT_FOUND"
 
-# How many rejected gold pairs to print as examples in the log.
+# Rejected gold pairs printed as examples in the log.
 REJECTED_EXAMPLE_LIMIT = 20
 
 
-# ------------------------------------------------------------------
-# Helper functions.
-# ------------------------------------------------------------------
 def select_gold_pairs(gold: pd.DataFrame, hpo_data: dict, sct_data: dict) -> pd.DataFrame:
     """
     Unique (hpo_id, sct_id) pairs of the gold standard with their status:
     CHECKED if both concepts have a label in the loaded data, otherwise
-    why the pair cannot be sent to the LLM. Sorted, so that the prompt
-    indices (and thereby the prompts of the answer stores) are reproducible.
+    why not. Sorted, so the prompt indices are reproducible.
     """
     pairs = (
         gold[[hpo_id_column, sct_id_column]]
@@ -93,11 +76,10 @@ def select_gold_pairs(gold: pd.DataFrame, hpo_data: dict, sct_data: dict) -> pd.
 
 def clean_result(result) -> dict | None:
     """
-    The decision, confidence and rationale of one LLM decision, or None if
-    it is missing or has no valid decision or confidence. The model
-    sometimes answers "accept" or "4" instead of "ACCEPT" or 4; both are
-    accepted. Unlike MappingLLM, any other decision counts as unusable, so
-    that every reviewed gold pair ends up accepted or rejected.
+    Decision, confidence and rationale of one LLM decision, or None if it is
+    missing or invalid. "accept" and "4" are accepted as "ACCEPT" and 4;
+    unlike in MappingLLM, any other decision is unusable, so every reviewed
+    gold pair ends up accepted or rejected.
     """
     if not isinstance(result, dict):
         return None
@@ -120,32 +102,18 @@ if __name__ == "__main__":
     l = Logger()
     l.printHeader("LLM check of the gold standard")
 
-    # ======================================================================
-    # Loading data
-    # ======================================================================
-
     l.printHeader("Loading data")
 
-    # umls is loaded by loadInputs but not used in this script.
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
     del umls, umls_ontology  # not used in this script; free the memory
 
     l.log("Building ontology lookup tables...")
     hpo_data = build_ontology_lookups(hpo, hpo_ontology)
     sct_data = build_ontology_lookups(sct, sct_ontology)
-    # All SCT descendants of a concept, used to tell the LLM which gold
-    # targets of an HPO concept are ancestors/descendants of each other.
     sct_descendants = make_descendant_lookup(build_child_map(sct, sct_ontology))
     l.log("Building ontology lookup tables completed.")
 
-    # ======================================================================
-    # Selecting gold pairs
-    # ======================================================================
-
-    # Routing is per HPO concept, by its number of reviewable gold targets,
-    # like in MappingLLM: targets missing from the SCT data are not shown
-    # and do not count.
-
+    # Routed like in MappingLLM, by the number of reviewable gold targets.
     l.printHeader("Selecting gold pairs")
 
     pairs   = select_gold_pairs(graham, hpo_data, sct_data)
@@ -155,7 +123,6 @@ if __name__ == "__main__":
     one_to_one = checked[checked["n_sct"] == 1].reset_index(drop=True)
     one_to_n   = checked[checked["n_sct"] >  1].reset_index(drop=True)
 
-    # Groups for the group-level pass: hpo_id -> list of its sct_ids.
     groups_1n     = one_to_n.groupby(hpo_id_column, sort=False)[sct_id_column].apply(list).to_dict()
     group_hpo_ids = list(groups_1n.keys())
 
@@ -168,12 +135,6 @@ if __name__ == "__main__":
     l.log(f"HPO concepts with several gold targets (pass 2, group-level prompt): "
           f"{len(group_hpo_ids)} concepts, {len(one_to_n)} pairs.")
     l.log(f"Review reason of all pairs: {GOLD_REVIEW_REASON}.")
-
-    # ======================================================================
-    # Pass 1: pair-level review
-    # ======================================================================
-
-    # One conversation per gold pair.
 
     l.printHeader("Pass 1: Pair-level review")
 
@@ -207,14 +168,8 @@ if __name__ == "__main__":
     l.log(f"Pass 1: {pass1_unparsable} unparsable answers, counted as rejected.")
     l.log(f"Pass 1: Reviewing {len(one_to_one)} gold pairs with the pair-level prompt completed.")
 
-    # ======================================================================
-    # Pass 2: group-level review
-    # ======================================================================
-
-    # One conversation per HPO concept with all its gold targets, so the
-    # LLM can judge them together (one-to-many mappings, specificity). The
-    # answer holds one decision per target, matched back by SNOMED CT ID.
-
+    # Pass 2: one prompt per HPO concept with all its gold targets, so the
+    # LLM judges them together; decisions are matched by SNOMED CT ID.
     l.printHeader("Pass 2: Group-level review")
 
     l.log(f"Pass 2: Reviewing {len(one_to_n)} gold pairs of {len(group_hpo_ids)} HPO "
@@ -241,14 +196,11 @@ if __name__ == "__main__":
             result = m.toJSON(g_idx)
 
             if not isinstance(result, dict) or not isinstance(result.get("mappings"), list):
-                # Fallback: reject all targets of this HPO concept.
                 for sct_id in groups_1n[hpo_id]:
                     group_results[hpo_id, sct_id] = FALLBACK_RESULT.copy()
                 pass2_unparsable += 1
                 continue
 
-            # Index the returned decisions by SCT ID, so a reordered or
-            # incomplete answer is still matched to the right target.
             decisions_by_sct_id = {
                 item.get("sct_id"): item for item in result["mappings"] if isinstance(item, dict)
             }
@@ -266,10 +218,6 @@ if __name__ == "__main__":
     l.log(f"Pass 2: Reviewing {len(one_to_n)} gold pairs of {len(group_hpo_ids)} HPO "
           f"concepts with the group-level prompt completed.")
 
-    # ======================================================================
-    # Writing results
-    # ======================================================================
-
     l.printHeader("Writing results")
 
     # Decisions in the row order of one_to_one and one_to_n.
@@ -282,9 +230,8 @@ if __name__ == "__main__":
     reviewed[confidence_column] = [r.get("confidence", FALLBACK_RESULT["confidence"]) / CONFIDENCE_MAX for r in results]
     reviewed["llm_rationale"]   = [r.get("rationale", "")                                               for r in results]
 
-    # All gold pairs: the reviewed ones with the LLM's answer, the others
-    # with their status and empty LLM columns. Both labels are added so
-    # the file can be read without the ontologies.
+    # Unreviewed pairs get empty LLM columns; the labels make the file
+    # readable without the ontologies.
     out = pd.concat([reviewed, pairs[pairs["status"] != status_checked]], ignore_index=True)
     out["hpo_label"] = out[hpo_id_column].map(lambda i: "; ".join(hpo_data[labelClass].get(i, [])))
     out["sct_label"] = out[sct_id_column].map(lambda i: "; ".join(sct_data[labelClass].get(i, [])))
@@ -298,10 +245,6 @@ if __name__ == "__main__":
     # The check can run before MappingErrorAnalysis has created the folder.
     os.makedirs(os.path.dirname(gold_check_path), exist_ok=True)
     writeHugeCSV(out, gold_check_path)
-
-    # ======================================================================
-    # Summary
-    # ======================================================================
 
     l.printHeader("Summary")
 
@@ -318,8 +261,6 @@ if __name__ == "__main__":
           f"usable decision.")
     l.log(f"  Rejections include the pairs of {pass2_unparsable} unparsable group answers.")
 
-    # The rejections the LLM is surest about come first; they are the first
-    # candidates for errors in the gold standard.
     rejected = (
         out[(out["status"] == status_checked) & (out["llm_decision"] == "REJECT")]
         .sort_values(confidence_column, ascending=False, kind="stable")
