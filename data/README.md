@@ -1,6 +1,6 @@
 # data
 
-Input data, outputs, logs and checkpoints of the pipeline. Except for the READMEs, the Slurm logs and `logs/output.log`, the contents are not tracked by git.
+Input data, outputs, logs and answer stores of the pipeline. Except for the READMEs, the Slurm logs and `logs/output.log`, the contents are not tracked by git.
 
 ```
 data/
@@ -27,7 +27,7 @@ data/
 │       └── gold_check.csv     # LLM check of the gold standard (MappingGoldCheck.py)
 ├── logs/                  # Logs and run metadata (see logs/README.md)
 ├── slurmlogs/             # stdout and stderr of the Slurm jobs (job_<id>.out / .err)
-└── tmp/                   # Checkpoints of the LLM review (see tmp/README.md)
+└── tmp/                   # Answer stores of the LLM review (see tmp/README.md)
 ```
 
 All CSV files use `;` as separator. The output files are described in the main README.

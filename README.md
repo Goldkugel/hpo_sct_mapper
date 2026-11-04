@@ -100,7 +100,7 @@ The columns from `n_sct` on are empty for pairs that were not reviewed. The log 
 .
 ├── config/
 │   └── config.yaml            # Configuration of all libraries (see config/README.md)
-├── data/                      # Input data, outputs, logs and checkpoints (see data/README.md)
+├── data/                      # Input data, outputs, logs and answer stores (see data/README.md)
 ├── prompts/
 │   ├── single_mapping.md      # LLM prompt for one candidate (pass 1 of step 3 and of the gold check)
 │   └── multiple_mapping.md    # LLM prompt for several candidates (pass 2 of step 3 and of the gold check)
@@ -167,7 +167,7 @@ sbatch ./startGoldCheck.sh
 
 `startGoldCheck.sh` submits the gold standard check as a Slurm job on two A40 GPUs, like `startLLM.sh`. It only needs the input data, not the outputs of steps 1–4.
 
-The LLM review and the gold standard check save a checkpoint after every chunk to `data/tmp/` (`prompt_<index>_<model>.tmp` and `gold_<index>_<model>.tmp`, with index 0 for pass 1 and 1 for pass 2, see `data/tmp/README.md`) and resume from it if the job is interrupted. **Delete these files before starting a new review or check**, otherwise answers from an earlier run are reused.
+The LLM review and the gold standard check store their answers after every chunk in `data/tmp/` (`prompt_<model>_<index>.json` and `gold_<model>_<index>.json`, with index 0 for pass 1 and 1 for pass 2, see `data/tmp/README.md`) and resume from them if the job is interrupted. Every answer is stored with its prompts and settings, so answers of other prompts, data or model settings are never reused.
 
 All scripts log to `data/logs/output.log`. New runs append to it. The file is tracked by git, so commit it with the results of a run to keep the log of the latest run in the repository (see `data/logs/README.md`).
 

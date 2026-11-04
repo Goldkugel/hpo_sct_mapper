@@ -6,4 +6,4 @@ Log output of the pipeline. `output.log` is tracked by git, so the log of the la
 
 New runs append to `output.log`. Rename or move it before a run to keep the logs of different runs apart (e.g. `output_old.log`).
 
-The full prompts and answers of the LLM review are not logged here: they are kept in the checkpoints in `data/tmp/`, and every decision with its rationale is written to `data/output/filtered/llm_review.csv` (LLM review) and `data/output/evaluation/gold_check.csv` (gold standard check).
+The full prompts and answers of the LLM review are not logged here: they are kept in the answer stores in `data/tmp/`, and every decision with its rationale is written to `data/output/filtered/llm_review.csv` (LLM review) and `data/output/evaluation/gold_check.csv` (gold standard check).

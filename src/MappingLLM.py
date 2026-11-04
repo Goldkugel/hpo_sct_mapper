@@ -209,35 +209,26 @@ def group_prompt_fields(hpo_id: str, candidates: list, hpo_data: dict, sct_data:
         "sct_concepts":   "\n\n---\n\n".join(sct_blocks),
     }
 
-def start_pass(m: Model, prompt_index: int, n_prompts: int, prefix: str = "prompt") -> bool:
+def start_pass(m: Model, prompt_index: int, n_prompts: int, prefix: str = "prompt") -> None:
     """
-    Give each pass its own checkpoint file "<prefix>_<prompt_index>_<model>.tmp"
-    (so pass 2 does not import pass 1's histories on a resumed run, and
-    MappingGoldCheck does not import those of MappingLLM) and try to
-    resume from it. Returns True if new prompts must be formatted, False
-    if the histories were imported from the checkpoint of an interrupted
-    run.
+    Give each pass its own answer store "<prefix>_<model>_<prompt_index>.json"
+    in data/tmp/ (so pass 2 does not reuse pass 1's answers, and
+    MappingGoldCheck not those of MappingLLM) and add the prompt template of
+    the pass to n_prompts histories, to be formatted by the caller.
+
+    The model (3.0) stores every answer with the SHA-256 of its prompts and
+    the settings it depends on: generate() takes the answers of an
+    interrupted run from the store and only generates the others, and never
+    reuses an answer of other prompts or settings.
     """
     l = Logger()
-    model_name = str(m.config.model_id[0].split("/")[-1])
-    m.config.prompt_tmp_file = f"{prefix}_{prompt_index}_{model_name}.tmp"
-
-    l.log(f"Looking for the checkpoint '{m.config.prompt_tmp_file}'...")
-    # model 2.x raises FileNotFoundError instead of returning 0.
-    try:
-        imported = m.importHistoriesFromFile()
-    except FileNotFoundError:
-        imported = 0
-    if imported > 0:
-        l.log(f"Checkpoint found with {imported} conversations "
-              f"({n_prompts} prompts expected); resuming from it.")
-        l.log(f"Looking for the checkpoint '{m.config.prompt_tmp_file}' completed.")
-        return False
-
-    l.log("No checkpoint found; starting a new review.")
-    l.log(f"Looking for the checkpoint '{m.config.prompt_tmp_file}' completed.")
+    m.config.prompt_tmp_file = f"{prefix}.json"
+    m.setPostfix(str(prompt_index))
+    if m.hasCheckpoint():
+        l.log("Answer store found; its answers are reused, the others are generated.")
+    else:
+        l.log("No answer store found; starting a new review.")
     m.addPromptFromFile(prompt_index, n_prompts)
-    return True
 
 
 if __name__ == "__main__":
@@ -354,19 +345,19 @@ if __name__ == "__main__":
     pass1_unparsable = 0
 
     with Model(index=0) as m:
-        if start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one)):
+        start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one))
 
-            l.log("Formatting pair-level prompts...")
-            for row in one_to_one.itertuples(index=True):
-                hpo_id = getattr(row, id_col)
-                sct_id = getattr(row, val_col)
-                reason = REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN")
+        l.log("Formatting pair-level prompts...")
+        for row in one_to_one.itertuples(index=True):
+            hpo_id = getattr(row, id_col)
+            sct_id = getattr(row, val_col)
+            reason = REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN")
 
-                m.formatPromptFromFile(
-                    row.Index, pair_prompt_fields(hpo_id, sct_id, reason, hpo_data, sct_data)
-                )
+            m.formatPromptFromFile(
+                row.Index, pair_prompt_fields(hpo_id, sct_id, reason, hpo_data, sct_data)
+            )
 
-            l.log("Formatting pair-level prompts completed.")
+        l.log("Formatting pair-level prompts completed.")
 
         m.generate()
 
@@ -409,23 +400,23 @@ if __name__ == "__main__":
     pass2_missing    = 0    # candidates without a decision in a usable answer
 
     with Model(index=0) as m:
-        if start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids)):
+        start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids))
 
-            l.log("Formatting group-level prompts...")
-            for g_idx, hpo_id in enumerate(group_hpo_ids):
+        l.log("Formatting group-level prompts...")
+        for g_idx, hpo_id in enumerate(group_hpo_ids):
 
-                # One (sct_id, review reason) per SNOMED CT candidate.
-                candidates = [
-                    (getattr(row, val_col),
-                     REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN"))
-                    for row in groups_1n[hpo_id]
-                ]
+            # One (sct_id, review reason) per SNOMED CT candidate.
+            candidates = [
+                (getattr(row, val_col),
+                 REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN"))
+                for row in groups_1n[hpo_id]
+            ]
 
-                m.formatPromptFromFile(g_idx, group_prompt_fields(
-                    hpo_id, candidates, hpo_data, sct_data, sct_descendants,
-                ))
+            m.formatPromptFromFile(g_idx, group_prompt_fields(
+                hpo_id, candidates, hpo_data, sct_data, sct_descendants,
+            ))
 
-            l.log("Formatting group-level prompts completed.")
+        l.log("Formatting group-level prompts completed.")
 
         m.generate()
 

@@ -53,9 +53,9 @@ import pandas       as pd
 # Review reason shown to the LLM for every gold pair.
 GOLD_REVIEW_REASON = REVIEW_REASON[validity_accepted]
 
-# Prefix of the checkpoint files in data/tmp/: gold_0_<model>.tmp (pass 1)
-# and gold_1_<model>.tmp (pass 2). MappingLLM uses "prompt", so neither
-# script resumes from the other's checkpoints.
+# Prefix of the answer stores in data/tmp/: gold_<model>_0.json (pass 1)
+# and gold_<model>_1.json (pass 2). MappingLLM uses "prompt", so neither
+# script reuses the other's answers.
 CHECKPOINT_PREFIX = "gold"
 
 # Status of a gold pair: reviewed by the LLM, or why it was not.
@@ -75,7 +75,7 @@ def select_gold_pairs(gold: pd.DataFrame, hpo_data: dict, sct_data: dict) -> pd.
     Unique (hpo_id, sct_id) pairs of the gold standard with their status:
     CHECKED if both concepts have a label in the loaded data, otherwise
     why the pair cannot be sent to the LLM. Sorted, so that the prompt
-    indices (and thereby the checkpoints) are reproducible.
+    indices (and thereby the prompts of the answer stores) are reproducible.
     """
     pairs = (
         gold[[hpo_id_column, sct_id_column]]
@@ -183,15 +183,15 @@ if __name__ == "__main__":
     pass1_unparsable = 0
 
     with Model(index=0) as m:
-        if start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one), CHECKPOINT_PREFIX):
+        start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one), CHECKPOINT_PREFIX)
 
-            l.log("Formatting pair-level prompts...")
-            for row in one_to_one.itertuples(index=True):
-                m.formatPromptFromFile(row.Index, pair_prompt_fields(
-                    getattr(row, hpo_id_column), getattr(row, sct_id_column),
-                    GOLD_REVIEW_REASON, hpo_data, sct_data,
-                ))
-            l.log("Formatting pair-level prompts completed.")
+        l.log("Formatting pair-level prompts...")
+        for row in one_to_one.itertuples(index=True):
+            m.formatPromptFromFile(row.Index, pair_prompt_fields(
+                getattr(row, hpo_id_column), getattr(row, sct_id_column),
+                GOLD_REVIEW_REASON, hpo_data, sct_data,
+            ))
+        l.log("Formatting pair-level prompts completed.")
 
         m.generate()
 
@@ -225,15 +225,15 @@ if __name__ == "__main__":
     pass2_missing    = 0    # targets without a usable decision in a usable answer
 
     with Model(index=0) as m:
-        if start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids), CHECKPOINT_PREFIX):
+        start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids), CHECKPOINT_PREFIX)
 
-            l.log("Formatting group-level prompts...")
-            for g_idx, hpo_id in enumerate(group_hpo_ids):
-                candidates = [(sct_id, GOLD_REVIEW_REASON) for sct_id in groups_1n[hpo_id]]
-                m.formatPromptFromFile(g_idx, group_prompt_fields(
-                    hpo_id, candidates, hpo_data, sct_data, sct_descendants,
-                ))
-            l.log("Formatting group-level prompts completed.")
+        l.log("Formatting group-level prompts...")
+        for g_idx, hpo_id in enumerate(group_hpo_ids):
+            candidates = [(sct_id, GOLD_REVIEW_REASON) for sct_id in groups_1n[hpo_id]]
+            m.formatPromptFromFile(g_idx, group_prompt_fields(
+                hpo_id, candidates, hpo_data, sct_data, sct_descendants,
+            ))
+        l.log("Formatting group-level prompts completed.")
 
         m.generate()
 

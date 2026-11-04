@@ -1,6 +1,7 @@
 from adapter                import BaseAdapter
 from adapter                import HPOAdapter, SCTAdapter, UMLSAdapter
 from adapter                import exactSynonymClass, semanticClass, childrenClass
+from adapter.BaseAdapterUtils import additionalSeparator
 from logger                 import Logger
 from collections            import defaultdict
 import pandas               as pd
@@ -202,7 +203,9 @@ def is_exact_synonym(entry) -> bool:
     HPO synonyms are typed (exact, broad, narrow, related); only exact
     synonyms name the same phenotype and are used for matching. Applied to
     all HPO rows: labels, references, hierarchy rows etc. carry no
-    synonym type ("{}") and are kept.
+    synonym type ("{}") and are kept. A synonym listed several times for a
+    concept is one row whose types are joined (adapter 1.4.0, e.g.
+    "exact, related"); it is exact if one of them is.
     """
     if entry is None or (isinstance(entry, float) and np.isnan(entry)):
         return True
@@ -213,7 +216,7 @@ def is_exact_synonym(entry) -> bool:
             return False
     if isinstance(entry, dict):
         if semanticClass in entry.keys():
-            return entry.get(semanticClass) == exactSynonymClass
+            return exactSynonymClass in str(entry.get(semanticClass)).split(additionalSeparator)
         else:
             return True
     return False

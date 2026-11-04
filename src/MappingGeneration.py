@@ -7,6 +7,7 @@ from logger                 import Logger
 from embedder               import Embedder
 from normalizer             import Normalizer
 from adapter                import writeHugeCSV, labelClass, synonymClass, referenceClass
+from adapter.BaseAdapterUtils import additionalSeparator
 from MappingUtils           import exact_lexical_mappings, loadInputs, evaluation, dictToEAVDataFrame, confidence_column, hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings, embedding_mappings, jaccard_mappings, threshold_cosine_similarity, threshold_jaccard_similarity, mapping_path, sct_prefix, umls_prefix
 from scipy                  import sparse
 import pandas               as pd
@@ -60,15 +61,19 @@ source_abbreviation = "source_abbreviation"
 
 def sourceAbbreviation(entry: str):
     """
-    Return the "source_abbreviation" (target vocabulary, e.g. "HPO" or
-    "SNOMEDCT_US") stored in a UMLS reference row's additional column,
-    which holds a Python-dict-like string, or None if it can't be parsed.
+    Return the "source_abbreviation"s (target vocabularies, e.g. ["HPO"] or
+    ["SNOMEDCT_US"]) stored in a UMLS reference row's additional column,
+    which holds a Python-dict-like string, or [] if it can't be parsed. A
+    code given by several sources is one row whose sources are joined
+    (adapter 1.5.0, e.g. "SNOMEDCT_US, SNOMEDCT_VET").
     """
     try:
         parsed = ast.literal_eval(entry)
     except (ValueError, SyntaxError):
-        return None
-    return parsed.get(source_abbreviation) if isinstance(parsed, dict) else None
+        return []
+    if not isinstance(parsed, dict) or parsed.get(source_abbreviation) is None:
+        return []
+    return str(parsed[source_abbreviation]).split(additionalSeparator)
 
 def dedupePairs(data: pd.DataFrame, id_col: str, val_col: str) -> pd.DataFrame:
     """
@@ -200,7 +205,7 @@ if __name__ == "__main__":
     # UMLS -> HPO, keyed by prefixed UMLS ID.
     umls_hpo_maps = {}
     invalid_hpo_count = 0
-    is_hpo = (sources == "HPO").to_numpy()
+    is_hpo = sources.map(lambda s: "HPO" in s).to_numpy()
     for umls_id, hpo_id in zip(umls_ids[is_hpo], umls_values[is_hpo]):
         if hpo_id in valid_hpo_ids:
             umls_hpo_maps.setdefault(umls_id, []).append(hpo_id)
@@ -210,7 +215,7 @@ if __name__ == "__main__":
     # UMLS -> SCT, keyed by prefixed UMLS ID.
     umls_sct_maps = {}
     invalid_sct_count = 0
-    is_sct = (sources == "SNOMEDCT_US").to_numpy()
+    is_sct = sources.map(lambda s: "SNOMEDCT_US" in s).to_numpy()
     for umls_id, sct_id in zip(umls_ids[is_sct], sct_prefix + umls_values[is_sct]):
         if sct_id in valid_sct_ids:
             umls_sct_maps.setdefault(umls_id, []).append(sct_id)

@@ -1,6 +1,8 @@
 data/input/*
 data/output/*
 data/tmp/*.tmp
+data/tmp/*.json
+data/tmp/*.lock
 src/test.ipynb
 
 # Byte-compiled / optimized / DLL files
