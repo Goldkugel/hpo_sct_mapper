@@ -53,11 +53,13 @@ MAX_CHILDREN = 10
 
 
 def quote(txt: str, quotation_char: str = '"') -> str:
+    """txt in quotation marks for the prompt; "None" for a missing value."""
     if txt is None:
         return "None"
     return quotation_char + str(txt) + quotation_char
 
 def quote_list(txt_list: list, quotation_char: str = '"') -> list:
+    """Every value quoted; ["None"] for an empty list, so the field is never blank."""
     if not txt_list:
         return ["None"]
     return [quote(txt, quotation_char) for txt in txt_list]
@@ -100,6 +102,7 @@ def get_labels_for_ids(id_list, label_dict):
     return result
 
 def join_quoted(values: list) -> str:
+    """Quoted values as one comma-separated prompt field."""
     return ", ".join(quote_list(values))
 
 def children_text(concept_id: str, data: dict) -> str:
@@ -153,6 +156,7 @@ def related_candidates_text(sct_id: str, group_sct_ids: list, sct_data: dict, sc
     for other in group_sct_ids:
         if other == sct_id:
             continue
+        # First label only, to keep the line short.
         label = join_quoted(sct_data[labelClass].get(other, [])[:1])
         if other in sct_descendants(sct_id):
             parts.append(f"broader than {other} ({label})")
@@ -188,9 +192,9 @@ def start_pass(m: Model, prompt_index: int, n_prompts: int, prefix: str = "promp
     """
     Give each pass its own answer store "<prefix>_<model>_<prompt_index>.json"
     in data/tmp/ and add the pass's prompt template to n_prompts histories,
-    to be formatted by the caller. The model keys stored answers by a hash of
-    prompts and settings, so an interrupted run resumes without reusing
-    answers of other prompts.
+    to be formatted by the caller. generate() reuses the stored answers of
+    identical prompts (keyed by their SHA-256), so an interrupted run resumes;
+    a store written with other model settings is refused.
     """
     l = Logger()
     m.config.prompt_tmp_file = f"{prefix}.json"
@@ -405,7 +409,8 @@ if __name__ == "__main__":
 
     all_results = pd.concat([pass1_out, pass2_out], ignore_index=True)
 
-    # Read as float, since filtered.csv also has rows with validity=NA.
+    # pandas reads validity as float (filtered.csv has NA rows); the reviewed
+    # pairs all have a code.
     all_results[validity_column] = all_results[validity_column].astype(int)
 
     # Every LLM-accepted pair (candidate or auto-accepted) gets a new "llm"

@@ -41,8 +41,8 @@ import pandas       as pd
 
 GOLD_REVIEW_REASON = REVIEW_REASON[validity_accepted]
 
-# Answer stores gold_<model>_<pass>.json; MappingLLM uses "prompt", so
-# neither script reuses the other's answers.
+# Answer stores gold_<model>_<prompt index>.json (see start_pass);
+# MappingLLM uses "prompt", so neither script reuses the other's answers.
 CHECKPOINT_PREFIX = "gold"
 
 # Status of a gold pair: reviewed by the LLM, or why it was not.

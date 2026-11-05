@@ -34,8 +34,8 @@ from itertools   import combinations
 #   auto-accepted : original validity code 10 (before the LLM review)
 #   LLM-accepted  : pairs with an "llm" row
 #   final         : auto-accepted + LLM-accepted (the default "accepted")
-# The original validity code comes from the generation rows only, i.e. the
-# code before the LLM review.
+# The original validity code is read from the generation rows only, since
+# the "llm" rows have validity 10.
 # ==========================================================================
 
 ERROR_EXAMPLE_LIMIT = 20
@@ -55,10 +55,12 @@ GOLD_NOT_IN_SCT = "gold target not in SCT"
 GENERATION_METHODS = [method for method in ALL_METHODS if method != llm_mappings]
 
 def _safe_div(numerator: float, denominator: float) -> float:
+    """numerator / denominator, 0.0 for an empty denominator."""
     return numerator / denominator if denominator else 0.0
 
 
 def _f1(precision: float, recall: float) -> float:
+    """Harmonic mean of precision and recall, 0.0 if both are 0."""
     return (
         2 * precision * recall / (precision + recall)
         if (precision + recall) else 0.0
@@ -137,9 +139,11 @@ if __name__ == "__main__":
     hpo_labels_dict = buildAttributeLookup(hpo, hpo_ontology, labelClass)
 
     def sct_label(sct_id: str) -> str:
+        """Readable label of an SCT concept (see getRepresentativeLabel), else its ID."""
         return getRepresentativeLabel(sct_labels_dict.get(sct_id, [])) or sct_id
 
     def hpo_label(hpo_id: str) -> str:
+        """First label of an HPO concept, else its ID."""
         terms = hpo_labels_dict.get(hpo_id, [])
         return terms[0] if terms else hpo_id
 
@@ -459,12 +463,14 @@ if __name__ == "__main__":
     l.printHeader("13. Hierarchy-depth analysis")
 
     def depth_stats(hpo_ids: set, label: str) -> None:
+        """Log the depth distribution (see _hpo_depth) of a set of HPO concepts."""
         if not hpo_ids:
             l.log(f"{label}: (empty)")
             return
         arr = np.array([_hpo_depth(h, hpo_parent_map) for h in hpo_ids])
         l.log(f"{label}: n={len(arr)}, mean={arr.mean():.2f}, "
               f"median={np.median(arr):.1f}, min={arr.min()}, max={arr.max()}")
+        # 999 marks the open-ended last bucket.
         for lo, hi in [(0, 2), (3, 5), (6, 9), (10, 14), (15, 999)]:
             count    = int(((arr >= lo) & (arr <= hi)).sum())
             label_hi = str(hi) if hi < 999 else "+"
@@ -490,6 +496,10 @@ if __name__ == "__main__":
     l.printHeader("15. Error analysis")
 
     def log_concepts(hpo_ids: list, describe=None) -> None:
+        """
+        Log up to ERROR_EXAMPLE_LIMIT HPO concepts with labels; describe(hid)
+        adds text per concept.
+        """
         for hid in hpo_ids[:ERROR_EXAMPLE_LIMIT]:
             extra = f"  {describe(hid)}" if describe else ""
             l.log(f"  {hid} [{hpo_label(hid)}]{extra}")
@@ -755,11 +765,11 @@ if __name__ == "__main__":
     l.printHeader("18. Writing output CSVs")
 
     # Pair-level columns of every final pair, used in all three files.
-    # gold_distance is empty if the HPO concept has no gold mapping or its
-    # gold targets are not in sct.csv.
+    # gold_distance is empty without gold mapping or gold targets in sct.csv.
     final_list = sorted(final_pairs)
 
     def gold_relation(pair) -> str:
+        """Relation of the pair's SCT target to its nearest gold target, or why there is none."""
         if pair not in pair_gold_distance:
             return "no_gold"
         return pair_gold_distance[pair][2] or "gold_not_in_sct"

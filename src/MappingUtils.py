@@ -183,9 +183,9 @@ def is_exact_synonym(entry) -> bool:
     """
     True if an EAV row's additional-column entry (dict or stringified dict)
     marks an exact synonym or has no synonym type at all (labels, hierarchy
-    rows etc., also empty or missing entries). Only exact HPO synonyms name
-    the same phenotype. Joined types (adapter 1.4.0, e.g. "exact, related")
-    count as exact if one of them is.
+    rows etc., also empty or missing entries); unparsable strings are False.
+    Only exact HPO synonyms name the same phenotype. Merged synonym classes
+    (adapter 1.4.0, e.g. "exact, related") count as exact if one of them is.
     """
     if entry is None or (isinstance(entry, float) and np.isnan(entry)):
         return True
@@ -245,6 +245,7 @@ def make_descendant_lookup(child_map: dict):
     cache: dict = {}
 
     def descendants(node):
+        """All nodes reachable from node, computed once per node."""
         if node in cache:
             return cache[node]
         seen = set()
@@ -270,6 +271,7 @@ def make_ancestor_distance_lookup(parent_map: dict):
     cache: dict = {}
 
     def ancestor_distances(node):
+        """{ancestor: steps up} including node itself, computed once per node."""
         if node in cache:
             return cache[node]
         distances = {node: 0}
@@ -300,10 +302,12 @@ def make_hierarchy_distance(ancestor_distances):
     from make_ancestor_distance_lookup, so its cache can be shared.
     """
     def hierarchy_distance(a, b):
+        """is_a distance of a and b over their nearest common ancestor, or None."""
         if a == b:
             return 0
         up_a = ancestor_distances(a)
         up_b = ancestor_distances(b)
+        # Loop over the smaller ancestor set, look up in the larger one.
         if len(up_a) > len(up_b):
             up_a, up_b = up_b, up_a
         best = None
@@ -327,11 +331,9 @@ def loadOntologies(
     separator: str = ";"
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, HPOAdapter, SCTAdapter, UMLSAdapter]:
     """
-    Loads, processes, and exports HPO, UMLS, and SNOMED CT ontology data.
-
-    Runs each adapter to (re)generate its EAV CSV, then reads the CSVs. Only
-    non-exact HPO synonyms are removed and SNOMED CT values made strings;
-    the adapters already format the IDs.
+    Runs the HPO, UMLS and SNOMED CT adapters to (re)generate their EAV CSVs,
+    then reads the CSVs. Only non-exact HPO synonyms are removed and SNOMED
+    CT values made strings; the adapters already format the IDs.
 
     Parameters:
         separator (str): Delimiter used for reading output CSV files. Defaults to ';'.
@@ -446,11 +448,14 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
     
     ret["canonical view"] = ret["canonical view"].astype(str)
 
-    # Integers are parsed as int so long (extension) SCTIDs keep every digit;
-    # scientific notation ('1.2E+08', precision already lost in the file)
-    # goes through float and is exempt from the '+' composite check.
-    # Composite or unparsable expressions give None and are dropped.
     def parseSCTID(text: str):
+        """
+        The SCTID of a bare expression as a string, or None for composite or
+        unparsable ones. Integers are parsed as int so long (extension)
+        SCTIDs keep every digit; scientific notation ('1.2E+08', precision
+        already lost in the file) goes through float and is exempt from the
+        '+' composite check.
+        """
         text = text.strip()
         if "e+" not in text.lower() and (":" in text or "+" in text):
             return None

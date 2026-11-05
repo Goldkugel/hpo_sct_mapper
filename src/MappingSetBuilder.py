@@ -195,24 +195,24 @@ if __name__ == "__main__":
             l.log(f"Confidence distribution ({label}, Jaccard and embedding rows):")
             printCounts(selected_sim, hpo_ontology, similarity_steps, graham, True)
 
-    # ------------------------------------------------------------------
-    # Hierarchy check. Mapping one HPO concept to an SCT concept and to one
-    # of its ancestors (at any distance) is a "source collapse", e.g. "Focal
-    # seizure" -> "Focal seizure" and "Seizure"; normally the narrower stays.
-    # Rules, in this order, against all accepted targets of the HPO concept:
-    #   1. candidate broader than an accepted target        -> "reject"
-    #   2. candidate narrower, a broader target has stronger
-    #      evidence (see evidence())                        -> "reject_evidence"
-    #   3. candidate narrower, no stronger evidence         -> "demote" ALL of them
-    #   4. no relationship                                  -> "ok"
-    # Rules 1 and 3 make the outcome independent of arrival order for equal
-    # evidence; rule 2 keeps e.g. a Jaccard-only pair from displacing a
-    # cross-referenced target.
-    # Returns (action, conflicting_sct_ids); empty list for "ok".
     # TODO: if there is no overlap in hierarchy in three generations above or
     # below, accept both candidates.
-    # ------------------------------------------------------------------
     def check_hierarchy(hpo_id: str, sct_id: str):
+        """
+        Hierarchy check against all accepted targets of the HPO concept.
+        Mapping it to an SCT concept and to one of its ancestors (at any
+        distance) is a "source collapse", e.g. "Focal seizure" -> "Focal
+        seizure" and "Seizure"; normally the narrower stays. Rules in order:
+          1. candidate broader than an accepted target        -> "reject"
+          2. candidate narrower, a broader target has stronger
+             evidence (see evidence())                        -> "reject_evidence"
+          3. candidate narrower, no stronger evidence         -> "demote" ALL of them
+          4. no relationship                                  -> "ok"
+        Rules 1 and 3 make the outcome independent of arrival order for equal
+        evidence; rule 2 keeps e.g. a Jaccard-only pair from displacing a
+        cross-referenced target. Returns (action, conflicting sct_ids), an
+        empty list for "ok".
+        """
         candidate_desc_sct = sct_descendants(sct_id)
         broader            = []    # accepted targets the candidate is narrower than
         narrower           = []    # accepted targets the candidate is broader than
@@ -241,6 +241,7 @@ if __name__ == "__main__":
     # Similarity lookups for steps 2c-6: a pair is "exact" if at least one
     # of its rows has 1.0.
     def pairs_of(rows: pd.DataFrame) -> set:
+        """Unique (hpo_id, sct_id) pairs of the rows."""
         return set(zip(rows[id_col], rows[val_col]))
 
     jaccard_rows   = mappings[mappings[attr_col] == jaccard_mappings]
@@ -262,11 +263,13 @@ if __name__ == "__main__":
         reference_rows.groupby([id_col, val_col])[attr_col].nunique().to_dict()
     )
 
-    # Evidence of a pair for check_hierarchy (not tuned on the gold
-    # standard), compared as a tuple: (number of reference sources 0-3,
-    # lexical: 2 exact lexical / 1 Jaccard=1 / 0, embedding: 1 cosine=1 / 0).
-    # One cross-reference outweighs any similarity; anchors are >= (1, 2, 0).
     def evidence(pair: tuple) -> tuple:
+        """
+        Evidence of a pair for check_hierarchy (not tuned on the gold
+        standard), compared as a tuple: (number of reference sources 0-3,
+        lexical: 2 exact lexical / 1 Jaccard=1 / 0, embedding: 1 cosine=1 / 0).
+        One cross-reference outweighs any similarity; anchors are >= (1, 2, 0).
+        """
         lexical = 2 if pair in exact_lexical_pairs else 1 if pair in jaccard_exact_pairs else 0
         return (
             reference_count.get(pair, 0),
@@ -855,6 +858,7 @@ if __name__ == "__main__":
     llm_pairs["n_hpo"] = llm_pairs[val_col].map(hpo_per_sct)
 
     def classify(row):
+        """Constellation of a pair row from its n_sct and n_hpo."""
         if row["n_sct"] == 1 and row["n_hpo"] == 1:
             return "1:1"
         elif row["n_sct"] > 1 and row["n_hpo"] == 1:
