@@ -47,8 +47,7 @@ import numpy                as np
 # ==========================================================================
 
 EXACT_SIMILARITY = 1.0
-# float32 cosine of identical embeddings can be 0.9999997; MappingGeneration
-# rounds to 6 decimals.
+# Tolerance for float rounding.
 _EPS             = 1e-6
 
 
@@ -65,7 +64,7 @@ if __name__ == "__main__":
 
     l.printHeader("Loading data")
 
-    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
+    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";", required=[mapping_path])
 
     id_col   = hpo_ontology.config.id_column
     val_col  = hpo_ontology.config.value_column
@@ -133,7 +132,7 @@ if __name__ == "__main__":
 
     def demote(hpo_id: str, sct_id: str, reversal_validity: int) -> None:
         """
-        Un-accept a pair displaced by a narrower candidate (see
+        Un-accept a pair displaced by a related candidate (see
         check_hierarchy) and mark it with the current step's reversal code.
         """
         accepted_pairs.discard((hpo_id, sct_id))
@@ -160,7 +159,7 @@ if __name__ == "__main__":
             f"{accepted} accepted",
             f"{reversal} rejected (hierarchy reversal, validity={validity})",
             f"{rejected_by_evidence} of the rejected are narrower but have weaker evidence",
-            f"{demoted} demoted (broader target displaced, validity={validity})",
+            f"{demoted} demoted (accepted target displaced, validity={validity})",
         ]
         if not_accepted is not None:
             parts.append(f"{not_accepted} not accepted here ({not_accepted_reason})")
@@ -202,16 +201,16 @@ if __name__ == "__main__":
         Hierarchy check against all accepted targets of the HPO concept.
         Mapping it to an SCT concept and to one of its ancestors (at any
         distance) is a "source collapse", e.g. "Focal seizure" -> "Focal
-        seizure" and "Seizure"; normally the narrower stays. Rules in order:
-          1. candidate broader than an accepted target        -> "reject"
-          2. candidate narrower, a broader target has stronger
-             evidence (see evidence())                        -> "reject_evidence"
-          3. candidate narrower, no stronger evidence         -> "demote" ALL of them
-          4. no relationship                                  -> "ok"
-        Rules 1 and 3 make the outcome independent of arrival order for equal
-        evidence; rule 2 keeps e.g. a Jaccard-only pair from displacing a
-        cross-referenced target. Returns (action, conflicting sct_ids), an
-        empty list for "ok".
+        seizure" and "Seizure". Of two related targets the narrower one is
+        kept, unless the broader one has stronger evidence (see evidence()):
+          1. a narrower target has equal or stronger evidence -> "reject"
+          2. a broader target has stronger evidence           -> "reject_evidence"
+          3. the candidate wins against all related targets   -> "demote" ALL of them
+          4. no related target                                -> "ok"
+        The winner of two related pairs does not depend on which comes
+        first; a pair rejected because of a target that is demoted later is
+        not reconsidered. Returns (action, conflicting sct_ids), an empty
+        list for "ok".
         """
         candidate_desc_sct = sct_descendants(sct_id)
         broader            = []    # accepted targets the candidate is narrower than
@@ -225,21 +224,24 @@ if __name__ == "__main__":
             elif other_sct in candidate_desc_sct:
                 narrower.append(other_sct)
 
-        if narrower:
-            return "reject", narrower
-
-        if not broader:
+        if not broader and not narrower:
             return "ok", []
 
         candidate_evidence = evidence((hpo_id, sct_id))
+
+        # The narrower target wins ties.
+        not_weaker = [s for s in narrower if evidence((hpo_id, s)) >= candidate_evidence]
+        if not_weaker:
+            return "reject", not_weaker
+
         stronger = [s for s in broader if evidence((hpo_id, s)) > candidate_evidence]
         if stronger:
             return "reject_evidence", stronger
 
-        return "demote", broader
+        return "demote", broader + narrower
 
-    # Similarity lookups for steps 2c-6: a pair is "exact" if at least one
-    # of its rows has 1.0.
+    # Similarity lookups for evidence() and steps 2c-6: a pair is "exact" if
+    # at least one of its rows has 1.0.
     def pairs_of(rows: pd.DataFrame) -> set:
         """Unique (hpo_id, sct_id) pairs of the rows."""
         return set(zip(rows[id_col], rows[val_col]))
@@ -301,8 +303,8 @@ if __name__ == "__main__":
 
     # Step 2: anchors are HPO xrefs confirmed by an exact lexical match, two
     # independent sources, so no Jaccard/cosine corroboration is needed.
-    # Narrowest first per HPO concept, so of two related anchors the broader
-    # one fails rule 1 of check_hierarchy instead of being demoted.
+    # Narrowest first per HPO concept, so of two related anchors with equal
+    # evidence the broader one is rejected rather than accepted and demoted.
     l.printHeader("Step 2: Anchors (HPO xref + exact lexical)")
 
     l.log("Step 2: Accepting HPO xrefs confirmed by an exact lexical match (case-insensitive)...")
@@ -345,7 +347,7 @@ if __name__ == "__main__":
         "Step 2", step2_accepted, step2_reversal, validity_anchor_reversal,
         demoted = step2_demoted,
         rejected_by_evidence = step2_evidence,
-        not_accepted = len(hpo_sct_pairs - anchor_candidates),
+        not_accepted = len(hpo_sct_pairs - anchor_candidates - domain_invalid),
         not_accepted_reason = "HPO xref without exact lexical match, left for step 2c",
         skipped = {"domain mismatch": step2_domain},
     )
@@ -546,7 +548,7 @@ if __name__ == "__main__":
         evidence_count       = 0
         demoted_count        = 0
         domain_count         = 0
-        reference_count      = 0
+        reference_skipped    = 0
         classified_count     = 0
         not_qualifying_pairs = set()
         reversal_pairs       = set()
@@ -559,7 +561,7 @@ if __name__ == "__main__":
                 continue
 
             if pair in reference_backed_pairs:
-                reference_count += 1
+                reference_skipped += 1
                 continue
 
             if pair in classified_pairs:
@@ -598,7 +600,7 @@ if __name__ == "__main__":
             not_accepted_reason = not_accepted_reason,
             skipped = {
                 "domain mismatch": domain_count,
-                "reference-backed, handled in steps 2-4": reference_count,
+                "reference-backed, handled in steps 2-4": reference_skipped,
                 "already classified in an earlier step": classified_count,
             },
         )
@@ -660,10 +662,9 @@ if __name__ == "__main__":
           "are expected to be 0.")
 
     # Step 7: for HPO concepts without a code 1-7 or 10, the best domain-valid
-    # cosine and Jaccard candidates are marked 8 if they agree. Few concepts
-    # have a Jaccard candidate here (threshold 0.9, mostly handled in steps
-    # 5/6), and the hierarchy check always passes for a concept without
-    # accepted targets; both kept on purpose for the evaluation.
+    # cosine and Jaccard candidates are marked 8 if they agree. Practically
+    # all Jaccard pairs have Jaccard=1 and are handled in steps 5/6, so this
+    # step rarely marks anything; it is kept for the evaluation.
     l.printHeader("Step 7: Best-candidate fallback")
 
     l.log("Step 7: Marking agreeing best cosine and Jaccard candidates for LLM review...")
@@ -674,7 +675,7 @@ if __name__ == "__main__":
 
     all_hpo = set(mappings[id_col].unique())
     unmapped_hpo = all_hpo - handled_hpo
-    l.log(f"HPO concepts without an accepted or classified mapping: {len(unmapped_hpo)}.")
+    l.log(f"HPO concepts without a pair with validity=1–7 or 10: {len(unmapped_hpo)}.")
 
     valid_mappings = mappings[~mappings_pairs.isin(domain_invalid)]
 
@@ -721,9 +722,11 @@ if __name__ == "__main__":
             step7_skipped_other += 1
             continue
 
+        # Always "ok" today (the concept has no accepted target); a code-8
+        # candidate must not displace an accepted target, hence no "demote".
         action, _ = check_hierarchy(hpo_id, sct_id)
 
-        if action in ("ok", "demote"):
+        if action == "ok":
             # Only for LLM review: no reference backing, no exact similarity.
             mark_validity(hpo_id, sct_id, validity_best_candidate)
             step7_pairs.add(pair)
@@ -757,7 +760,10 @@ if __name__ == "__main__":
     l.log("Step 7: Marking agreeing best cosine and Jaccard candidates for LLM review completed.")
 
     # Step 8: the best domain-valid cosine candidate of each concept still
-    # unhandled is marked 9, without hierarchy check (left to the LLM).
+    # unhandled is marked 9, without hierarchy check (left to the LLM). Tied
+    # best candidates (e.g. SCT concepts sharing a synonym) are all marked,
+    # so the LLM compares them in one group prompt instead of row order
+    # picking one.
     l.printHeader("Step 8: Last-resort fallback")
 
     l.log("Step 8: Marking the best cosine candidate of unmapped HPO concepts "
@@ -767,7 +773,7 @@ if __name__ == "__main__":
         mappings.loc[mappings[validity_column].isin(review_after7 + [validity_accepted]), id_col].unique()
     )
     still_unmapped = all_hpo - handled_hpo_after7
-    l.log(f"HPO concepts still without an accepted or classified mapping: {len(still_unmapped)}.")
+    l.log(f"HPO concepts still without a pair with validity=1–8 or 10: {len(still_unmapped)}.")
 
     step8_pool = valid_mappings[
         (valid_mappings[id_col].isin(still_unmapped)) &
@@ -776,20 +782,29 @@ if __name__ == "__main__":
 
     step8_count   = 0
     step8_skipped = 0
+    step8_tied    = 0     # HPO concepts with more than one best candidate
     step8_pairs   = set()
 
+    step8_pool = step8_pool.dropna(subset=[confidence_column])
+
     if not step8_pool.empty:
-        idx = step8_pool.groupby(id_col)[confidence_column].idxmax()
-        top = step8_pool.loc[idx]
+        best = step8_pool.groupby(id_col)[confidence_column].transform("max")
+        top  = (
+            step8_pool[step8_pool[confidence_column] >= best - _EPS]
+            .drop_duplicates(subset=[id_col, val_col])
+            .sort_values([id_col, val_col], kind="stable")
+        )
+        step8_tied = int((top[id_col].value_counts() > 1).sum())
 
         for hpo_id, sct_id in zip(top[id_col], top[val_col]):
             pair = (hpo_id, sct_id)
 
+            # Defensive: the pool holds no domain-invalid pairs, and the pairs
+            # of still unmapped concepts are NA, so nothing is skipped today.
             if pair in accepted_pairs or pair in domain_invalid:
                 step8_skipped += 1
                 continue
 
-            # Counted only if rows were still NA.
             if mark_validity(hpo_id, sct_id, validity_last_resort):
                 step8_pairs.add(pair)
                 step8_count += 1
@@ -798,9 +813,11 @@ if __name__ == "__main__":
 
     step8_no_candidate = len(still_unmapped) - step8_pool[id_col].nunique()
 
-    l.log(f"Step 8 (HPO concepts): {step8_count} candidates marked for LLM review "
-          f"(validity={validity_last_resort}).")
-    l.log(f"Step 8 (HPO concepts): {step8_skipped} skipped (already classified).")
+    l.log(f"Step 8 (pairs): {step8_count} candidates of "
+          f"{len({hpo_id for hpo_id, _ in step8_pairs})} HPO concepts marked for LLM "
+          f"review (validity={validity_last_resort}).")
+    l.log(f"Step 8 (HPO concepts): {step8_tied} with tied best candidates, all marked.")
+    l.log(f"Step 8 (pairs): {step8_skipped} skipped (already classified).")
     l.log(f"Step 8 (HPO concepts): {step8_no_candidate} skipped (no domain-valid "
           f"embedding candidate).")
     evaluate_pairs(step8_pairs, f"step 8, last-resort candidates, validity={validity_last_resort}")

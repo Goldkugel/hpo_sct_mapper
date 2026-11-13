@@ -13,8 +13,9 @@ from MappingUtils   import (
 from MappingLLM     import (
     build_ontology_lookups, pair_prompt_fields, group_prompt_fields, start_pass,
     share, CONFIDENCE_MAX, FALLBACK_RESULT, PAIR_PROMPT_INDEX, GROUP_PROMPT_INDEX,
+    missing_answer_reason, log_missing_answers,
 )
-import os
+from collections    import Counter
 import pandas       as pd
 
 # ==========================================================================
@@ -41,8 +42,8 @@ import pandas       as pd
 
 GOLD_REVIEW_REASON = REVIEW_REASON[validity_accepted]
 
-# Answer stores gold_<model>_<prompt index>.json (see start_pass);
-# MappingLLM uses "prompt", so neither script reuses the other's answers.
+# Answer stores gold_<model>_<prompt index>.json (see start_pass), separate
+# from the "prompt" stores of MappingLLM.
 CHECKPOINT_PREFIX = "gold"
 
 # Status of a gold pair: reviewed by the LLM, or why it was not.
@@ -141,31 +142,34 @@ if __name__ == "__main__":
     l.log(f"Pass 1: Reviewing {len(one_to_one)} gold pairs with the pair-level prompt...")
 
     pair_results     = []
-    pass1_unparsable = 0
+    pass1_unusable   = Counter()   # reason -> answers
 
-    with Model(index=0) as m:
-        start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one), CHECKPOINT_PREFIX)
+    if one_to_one.empty:
+        l.log("Pass 1: No HPO concept with exactly one gold target; pass skipped.")
+    else:
+        with Model(index=0) as m:
+            start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one), CHECKPOINT_PREFIX)
 
-        l.log("Formatting pair-level prompts...")
-        for row in one_to_one.itertuples(index=True):
-            m.formatPromptFromFile(row.Index, pair_prompt_fields(
-                getattr(row, hpo_id_column), getattr(row, sct_id_column),
-                GOLD_REVIEW_REASON, hpo_data, sct_data,
-            ))
-        l.log("Formatting pair-level prompts completed.")
+            l.log("Formatting pair-level prompts...")
+            for row in one_to_one.itertuples(index=True):
+                m.formatPromptFromFile(row.Index, pair_prompt_fields(
+                    getattr(row, hpo_id_column), getattr(row, sct_id_column),
+                    GOLD_REVIEW_REASON, hpo_data, sct_data,
+                ))
+            l.log("Formatting pair-level prompts completed.")
 
-        m.generate()
+            m.generate()
 
-        for i in range(len(one_to_one)):
-            result = clean_result(m.toJSON(i))
-            if result is None:
-                result = FALLBACK_RESULT.copy()
-                pass1_unparsable += 1
-            pair_results.append(result)
+            for i in range(len(one_to_one)):
+                result = clean_result(m.toJSON(i))
+                if result is None:
+                    result = FALLBACK_RESULT.copy()
+                    pass1_unusable[missing_answer_reason(m, i)] += 1
+                pair_results.append(result)
 
     one_to_one["llm_pass"] = 1
 
-    l.log(f"Pass 1: {pass1_unparsable} unparsable answers, counted as rejected.")
+    log_missing_answers("Pass 1", pass1_unusable, "answers")
     l.log(f"Pass 1: Reviewing {len(one_to_one)} gold pairs with the pair-level prompt completed.")
 
     # Pass 2: one prompt per HPO concept with all its gold targets, so the
@@ -176,44 +180,47 @@ if __name__ == "__main__":
           f"concepts with the group-level prompt...")
 
     group_results    = {}   # (hpo_id, sct_id) -> decision
-    pass2_unparsable = 0    # groups whose answer could not be used
+    pass2_unusable   = Counter()   # reason -> groups whose answer could not be used
     pass2_missing    = 0    # targets without a usable decision in a usable answer
 
-    with Model(index=0) as m:
-        start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids), CHECKPOINT_PREFIX)
+    if not group_hpo_ids:
+        l.log("Pass 2: No HPO concept with several gold targets; pass skipped.")
+    else:
+        with Model(index=0) as m:
+            start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids), CHECKPOINT_PREFIX)
 
-        l.log("Formatting group-level prompts...")
-        for g_idx, hpo_id in enumerate(group_hpo_ids):
-            candidates = [(sct_id, GOLD_REVIEW_REASON) for sct_id in groups_1n[hpo_id]]
-            m.formatPromptFromFile(g_idx, group_prompt_fields(
-                hpo_id, candidates, hpo_data, sct_data, sct_descendants,
-            ))
-        l.log("Formatting group-level prompts completed.")
+            l.log("Formatting group-level prompts...")
+            for g_idx, hpo_id in enumerate(group_hpo_ids):
+                candidates = [(sct_id, GOLD_REVIEW_REASON) for sct_id in groups_1n[hpo_id]]
+                m.formatPromptFromFile(g_idx, group_prompt_fields(
+                    hpo_id, candidates, hpo_data, sct_data, sct_descendants,
+                ))
+            l.log("Formatting group-level prompts completed.")
 
-        m.generate()
+            m.generate()
 
-        for g_idx, hpo_id in enumerate(group_hpo_ids):
-            result = m.toJSON(g_idx)
+            for g_idx, hpo_id in enumerate(group_hpo_ids):
+                result = m.toJSON(g_idx)
 
-            if not isinstance(result, dict) or not isinstance(result.get("mappings"), list):
+                if not isinstance(result, dict) or not isinstance(result.get("mappings"), list):
+                    for sct_id in groups_1n[hpo_id]:
+                        group_results[hpo_id, sct_id] = FALLBACK_RESULT.copy()
+                    pass2_unusable[missing_answer_reason(m, g_idx)] += 1
+                    continue
+
+                decisions_by_sct_id = {
+                    item.get("sct_id"): item for item in result["mappings"] if isinstance(item, dict)
+                }
                 for sct_id in groups_1n[hpo_id]:
-                    group_results[hpo_id, sct_id] = FALLBACK_RESULT.copy()
-                pass2_unparsable += 1
-                continue
-
-            decisions_by_sct_id = {
-                item.get("sct_id"): item for item in result["mappings"] if isinstance(item, dict)
-            }
-            for sct_id in groups_1n[hpo_id]:
-                decision = clean_result(decisions_by_sct_id.get(sct_id))
-                if decision is None:
-                    decision = FALLBACK_RESULT.copy()
-                    pass2_missing += 1
-                group_results[hpo_id, sct_id] = decision
+                    decision = clean_result(decisions_by_sct_id.get(sct_id))
+                    if decision is None:
+                        decision = FALLBACK_RESULT.copy()
+                        pass2_missing += 1
+                    group_results[hpo_id, sct_id] = decision
 
     one_to_n["llm_pass"] = 2
 
-    l.log(f"Pass 2: {pass2_unparsable} unparsable group answers, counted as rejected.")
+    log_missing_answers("Pass 2", pass2_unusable, "group answers")
     l.log(f"Pass 2: {pass2_missing} targets without a usable decision, counted as rejected.")
     l.log(f"Pass 2: Reviewing {len(one_to_n)} gold pairs of {len(group_hpo_ids)} HPO "
           f"concepts with the group-level prompt completed.")
@@ -242,8 +249,6 @@ if __name__ == "__main__":
                "llm_pass", "llm_decision", confidence_column, "llm_rationale"]]
 
     l.log(f"Rows to write: {len(out.index)} (one per gold pair).")
-    # The check can run before MappingErrorAnalysis has created the folder.
-    os.makedirs(os.path.dirname(gold_check_path), exist_ok=True)
     writeHugeCSV(out, gold_check_path)
 
     l.printHeader("Summary")
@@ -257,9 +262,9 @@ if __name__ == "__main__":
         rejected = len(subset) - accepted
         l.log(f"  {label:<34} {len(subset):>8} {accepted:>9} {rejected:>9} "
               f"{share(rejected, len(subset)):>15}")
-    l.log(f"  Rejections include {pass1_unparsable + pass2_missing} pairs without a "
+    l.log(f"  Rejections include {sum(pass1_unusable.values()) + pass2_missing} pairs without a "
           f"usable decision.")
-    l.log(f"  Rejections include the pairs of {pass2_unparsable} unparsable group answers.")
+    l.log(f"  Rejections include the pairs of {sum(pass2_unusable.values())} unusable group answers.")
 
     rejected = (
         out[(out["status"] == status_checked) & (out["llm_decision"] == "REJECT")]

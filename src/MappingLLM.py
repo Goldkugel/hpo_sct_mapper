@@ -15,6 +15,7 @@ from MappingUtils   import (
     buildAttributeLookup, is_exact_synonym, build_child_map,
     make_descendant_lookup,
 )
+from collections    import Counter
 import pandas       as pd
 
 # ==========================================================================
@@ -51,6 +52,25 @@ GROUP_PROMPT_INDEX = 1   # One HPO concept vs. multiple SNOMED CT candidates.
 # equivalence decisions.
 MAX_CHILDREN = 10
 
+
+def missing_answer_reason(m: Model, index: int) -> str:
+    """
+    Why history `index` of the last generate() has no usable answer: its
+    prompt was skipped, its answer was cut off, or the answer is invalid.
+    """
+    if index in m.skippedHistories:
+        return "skipped (prompt longer than max_model_len)"
+    if index in m.truncatedHistories:
+        return "cut off at max_tokens"
+    return "unparsable or invalid"
+
+def log_missing_answers(step: str, counts: Counter, unit: str) -> None:
+    """Log per reason how many answers of a pass were not usable."""
+    l = Logger()
+    if not counts:
+        l.log(f"{step}: all {unit} usable.")
+    for reason, count in sorted(counts.items()):
+        l.log(f"{step}: {count} {unit} {reason}, counted as rejected.")
 
 def quote(txt: str, quotation_char: str = '"') -> str:
     """txt in quotation marks for the prompt; "None" for a missing value."""
@@ -213,7 +233,7 @@ if __name__ == "__main__":
 
     l.printHeader("Loading data")
 
-    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
+    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";", required=[filtered_path])
     del umls, umls_ontology  # not used in this script; free the memory
 
     # In the mappings the HPO ID is in id_column, the SCT ID in value_column.
@@ -282,31 +302,34 @@ if __name__ == "__main__":
     l.log(f"Pass 1: Reviewing {len(one_to_one)} pairs with the pair-level prompt...")
 
     pair_results     = []
-    pass1_unparsable = 0
+    pass1_unusable   = Counter()   # reason -> answers
 
-    with Model(index=0) as m:
-        start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one))
+    if one_to_one.empty:
+        l.log("Pass 1: No HPO concept with exactly one candidate; pass skipped.")
+    else:
+        with Model(index=0) as m:
+            start_pass(m, PAIR_PROMPT_INDEX, len(one_to_one))
 
-        l.log("Formatting pair-level prompts...")
-        for row in one_to_one.itertuples(index=True):
-            hpo_id = getattr(row, id_col)
-            sct_id = getattr(row, val_col)
-            reason = REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN")
+            l.log("Formatting pair-level prompts...")
+            for row in one_to_one.itertuples(index=True):
+                hpo_id = getattr(row, id_col)
+                sct_id = getattr(row, val_col)
+                reason = REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN")
 
-            m.formatPromptFromFile(
-                row.Index, pair_prompt_fields(hpo_id, sct_id, reason, hpo_data, sct_data)
-            )
+                m.formatPromptFromFile(
+                    row.Index, pair_prompt_fields(hpo_id, sct_id, reason, hpo_data, sct_data)
+                )
 
-        l.log("Formatting pair-level prompts completed.")
+            l.log("Formatting pair-level prompts completed.")
 
-        m.generate()
+            m.generate()
 
-        for i in range(len(one_to_one)):
-            result = m.toJSON(i)
-            if result is None:
-                result = FALLBACK_RESULT.copy()
-                pass1_unparsable += 1
-            pair_results.append(result)
+            for i in range(len(one_to_one)):
+                result = m.toJSON(i)
+                if result is None:
+                    result = FALLBACK_RESULT.copy()
+                    pass1_unusable[missing_answer_reason(m, i)] += 1
+                pair_results.append(result)
 
     pass1_out = one_to_one.copy()
     pass1_out["llm_decision"]    = [r.get("decision",   FALLBACK_RESULT["decision"])                    for r in pair_results]
@@ -318,7 +341,7 @@ if __name__ == "__main__":
     p1_rejected = int((pass1_out["llm_decision"] == "REJECT").sum())
     l.log(f"Pass 1 (pairs): {p1_accepted} accepted, {p1_rejected} rejected, "
           f"{len(pass1_out.index) - p1_accepted - p1_rejected} with another decision.")
-    l.log(f"Pass 1: {pass1_unparsable} unparsable answers, counted as rejected.")
+    log_missing_answers("Pass 1", pass1_unusable, "answers")
     l.log(f"Pass 1: Reviewing {len(one_to_one)} pairs with the pair-level prompt completed.")
 
     # Pass 2: one prompt per HPO concept with all its SNOMED CT candidates;
@@ -329,51 +352,54 @@ if __name__ == "__main__":
           f"concepts with the group-level prompt...")
 
     group_results    = {}   # hpo_id -> list of per-sct decisions (same order as groups_1n[hpo_id])
-    pass2_unparsable = 0    # groups whose answer could not be used
+    pass2_unusable   = Counter()   # reason -> groups whose answer could not be used
     pass2_missing    = 0    # candidates without a decision in a usable answer
 
-    with Model(index=0) as m:
-        start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids))
+    if not group_hpo_ids:
+        l.log("Pass 2: No HPO concept with several candidates; pass skipped.")
+    else:
+        with Model(index=0) as m:
+            start_pass(m, GROUP_PROMPT_INDEX, len(group_hpo_ids))
 
-        l.log("Formatting group-level prompts...")
-        for g_idx, hpo_id in enumerate(group_hpo_ids):
+            l.log("Formatting group-level prompts...")
+            for g_idx, hpo_id in enumerate(group_hpo_ids):
 
-            candidates = [
-                (getattr(row, val_col),
-                 REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN"))
-                for row in groups_1n[hpo_id]
-            ]
+                candidates = [
+                    (getattr(row, val_col),
+                     REVIEW_REASON.get(int(getattr(row, validity_column)), "UNKNOWN"))
+                    for row in groups_1n[hpo_id]
+                ]
 
-            m.formatPromptFromFile(g_idx, group_prompt_fields(
-                hpo_id, candidates, hpo_data, sct_data, sct_descendants,
-            ))
+                m.formatPromptFromFile(g_idx, group_prompt_fields(
+                    hpo_id, candidates, hpo_data, sct_data, sct_descendants,
+                ))
 
-        l.log("Formatting group-level prompts completed.")
+            l.log("Formatting group-level prompts completed.")
 
-        m.generate()
+            m.generate()
 
-        for g_idx, hpo_id in enumerate(group_hpo_ids):
-            result = m.toJSON(g_idx)
-            rows   = groups_1n[hpo_id]
+            for g_idx, hpo_id in enumerate(group_hpo_ids):
+                result = m.toJSON(g_idx)
+                rows   = groups_1n[hpo_id]
 
-            if result is None or "mappings" not in result:
-                group_results[hpo_id] = [FALLBACK_RESULT.copy() for _ in rows]
-                pass2_unparsable += 1
-                continue
+                if result is None or "mappings" not in result:
+                    group_results[hpo_id] = [FALLBACK_RESULT.copy() for _ in rows]
+                    pass2_unusable[missing_answer_reason(m, g_idx)] += 1
+                    continue
 
-            # By SCT ID, in case the LLM reorders or skips candidates.
-            decisions_by_sct_id = {item.get("sct_id"): item for item in result["mappings"]}
+                # By SCT ID, in case the LLM reorders or skips candidates.
+                decisions_by_sct_id = {item.get("sct_id"): item for item in result["mappings"]}
 
-            per_group = []
-            for row in rows:
-                sct_id = getattr(row, val_col)
-                if sct_id in decisions_by_sct_id:
-                    per_group.append(decisions_by_sct_id[sct_id])
-                else:
-                    per_group.append(FALLBACK_RESULT.copy())
-                    pass2_missing += 1
+                per_group = []
+                for row in rows:
+                    sct_id = getattr(row, val_col)
+                    if sct_id in decisions_by_sct_id:
+                        per_group.append(decisions_by_sct_id[sct_id])
+                    else:
+                        per_group.append(FALLBACK_RESULT.copy())
+                        pass2_missing += 1
 
-            group_results[hpo_id] = per_group
+                group_results[hpo_id] = per_group
 
     group_rows_out = []
     for hpo_id, decisions in group_results.items():
@@ -388,7 +414,7 @@ if __name__ == "__main__":
                 "llm_rationale":   decision.get("rationale", ""),
                 "llm_pass":        2,
             })
-    # Without group prompts an empty list would give a frame without columns.
+    # A skipped pass 2 gives an empty list, i.e. a frame without columns.
     pass2_out = (
         pd.DataFrame(group_rows_out)
         if group_rows_out
@@ -400,8 +426,7 @@ if __name__ == "__main__":
     l.log(f"Pass 2 (pairs): {p2_accepted} accepted, {p2_rejected} rejected, "
           f"{len(pass2_out.index) - p2_accepted - p2_rejected} with another decision.")
     l.log(f"Pass 2: {pass2_missing} candidates missing in the answers, counted as rejected.")
-    l.log(f"Pass 2: The pairs of {pass2_unparsable} unparsable group answers are counted "
-          f"as rejected.")
+    log_missing_answers("Pass 2", pass2_unusable, "group answers")
     l.log(f"Pass 2: Reviewing {len(one_to_n)} pairs of {len(group_hpo_ids)} HPO "
           f"concepts with the group-level prompt completed.")
 

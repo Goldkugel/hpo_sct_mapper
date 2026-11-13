@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     l.printHeader("1. Loading data")
 
-    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";")
+    hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, graham = loadInputs(";", required=[llm_filtered_path])
     del umls, umls_ontology  # not used in this script; free the memory
 
     id_col   = hpo_ontology.config.id_column       # HPO concept ID
@@ -339,7 +339,7 @@ if __name__ == "__main__":
     else:
         l.log(f"  {os.path.basename(llm_review_path)} not found; decisions per "
               f"pass are not available.")
-        l.log("  The file is written by MappingLLM since the rationale field was added.")
+        l.log("  Run MappingLLM to create it.")
 
     l.log("B. Per review reason (original validity code):")
     for v_code, reason_label in sorted(REVIEW_REASON.items()):
@@ -851,7 +851,8 @@ if __name__ == "__main__":
         lambda v: REVIEW_REASON.get(int(v), "") if pd.notna(v) else ""
     )
 
-    # LLM confidence normalised to 0.2-1.0; empty columns without review file.
+    # LLM confidence divided by 5 (0.2-1.0 for valid answers); empty columns
+    # without review file.
     llm_cols = ["llm_pass", "llm_decision", "llm_confidence", "llm_rationale"]
     if review is not None:
         disagreements = disagreements.merge(

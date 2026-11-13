@@ -53,6 +53,11 @@ no_gold_path         = "./data/output/evaluation/accepted_without_gold.csv"
 llm_disagreements_path = "./data/output/evaluation/llm_disagreements.csv"
 gold_check_path      = "./data/output/evaluation/gold_check.csv"
 
+output_paths = [
+    mapping_path, filtered_path, llm_filtered_path, llm_review_path,
+    evaluation_path, no_gold_path, llm_disagreements_path, gold_check_path,
+]
+
 # Validity codes written by MappingSetBuilder. Rows not reached by any step
 # keep validity=NA.
 validity_domain_mismatch          = 0   # step 1: SCT target outside acceptable domain
@@ -114,7 +119,7 @@ REVIEW_REASON = {
 }
 
 # Minimum similarity for MappingGeneration to keep a candidate pair
-# (strictly greater than the threshold).
+# (strictly greater than the threshold before rounding).
 threshold_cosine_similarity     = 0.75
 threshold_jaccard_similarity    = 0.90
 
@@ -129,8 +134,8 @@ similarity_steps.append(0.99)
 similarity_steps = sorted(set(similarity_steps), reverse=True)
 
 # SCT semantic tags (the last parenthesised part of a fully specified
-# name) that are acceptable targets for HPO phenotype concepts. ""
-# accepts a label without any tag.
+# name) that are acceptable targets for HPO phenotype concepts. SCT labels
+# are FSNs; "" accepts an FSN without a tag.
 acceptableDomains = [
     "disorder",
     "finding",
@@ -181,11 +186,9 @@ def dictToEAVDataFrame(data: dict, attribute: str, adapter: BaseAdapter) -> pd.D
 
 def is_exact_synonym(entry) -> bool:
     """
-    True if an EAV row's additional-column entry (dict or stringified dict)
-    marks an exact synonym or has no synonym type at all (labels, hierarchy
-    rows etc., also empty or missing entries); unparsable strings are False.
-    Only exact HPO synonyms name the same phenotype. Merged synonym classes
-    (adapter 1.4.0, e.g. "exact, related") count as exact if one of them is.
+    True for exact HPO synonyms and rows without a synonym class (labels,
+    references, empty entries); False for other classes and unparsable
+    entries. Merged classes ("exact, related") count as exact.
     """
     if entry is None or (isinstance(entry, float) and np.isnan(entry)):
         return True
@@ -340,23 +343,35 @@ def loadOntologies(
 
     Returns:
         tuple: (hpo, sct, umls) DataFrames and the adapters used to load them
-            (needed downstream for their .config). Raises if a source file
+            (needed downstream for their .config). Raises if an output CSV
             can't be read.
 
     Note:
-        If an adapter's load() returns 0 (e.g. skip_if_present with an existing
-        output CSV), the existing CSV is read, which may be from an earlier run.
+        With skip_if_present and an existing output CSV, that CSV is read,
+        which may be from an earlier run. Otherwise an adapter that loads
+        no rows raises (see runAdapter).
     """
     l = Logger()
 
     def runAdapter(adapter: BaseAdapter, name: str) -> None:
-        """Load an ontology from its source files and write its EAV CSV."""
+        """
+        Load an ontology from its source files and write its EAV CSV. The
+        existing CSV is only reused on purpose (skip_if_present); if nothing
+        is loaded otherwise, e.g. no readable source file, this raises
+        instead of silently reading an old CSV.
+        """
         l.log(f"Loading {name} from source files...")
-        if adapter.load() > 0:
+        path = os.path.join(adapter.config.output_folder, adapter.config.output_file)
+        if adapter.config.skip_if_present and os.path.isfile(path):
+            l.log(f"skip_if_present is set: the existing {name} CSV '{path}' is used; "
+                  f"it may be from an earlier run (delete it to reload the sources).")
+        elif adapter.load() > 0:
             adapter.to_csv()
         else:
-            l.log(f"No {name} rows loaded from source files (e.g. skip_if_present).")
-            l.log(f"The existing {name} output CSV is used; it may be from an earlier run.")
+            raise RuntimeError(
+                f"No {name} rows loaded: check the input files of the "
+                f"'{adapter.config_section}' section in config/config.yaml."
+            )
         l.log(f"Loading {name} from source files completed.")
 
     def readCSV(adapter: BaseAdapter, name: str) -> pd.DataFrame:
@@ -416,9 +431,11 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
 
     l.log("Reading gold standard data...")
     
+    # As strings, so that long SCTIDs are not parsed as float and lose digits.
     ret = pd.read_csv(
         path,
         sep=separator,
+        dtype=str,
     )
     rows_read = len(ret.index)
 
@@ -493,18 +510,41 @@ def loadGold(path: str, separator: str = ";") -> pd.DataFrame:
 
     return ret
 
+def requireFiles(paths: list[str]) -> None:
+    """
+    Raises FileNotFoundError naming every missing file, so that a missing
+    input stops a script before the slow loading of the ontologies.
+    """
+    missing = [path for path in paths if not os.path.isfile(path)]
+    if missing:
+        raise FileNotFoundError(
+            "Missing input file(s): " + ", ".join(missing) +
+            ". Run the previous pipeline step first (see README)."
+        )
+
+def createOutputFolders() -> None:
+    """Creates the folders of all output files (data/output is not in git)."""
+    for path in output_paths:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
 def loadInputs(
-    separator: str = ";"
+    separator: str = ";",
+    required: list[str] = (),
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, HPOAdapter, SCTAdapter, UMLSAdapter, pd.DataFrame]:
     """
-    Shared setup of all pipeline scripts and the gold standard check: loads the
-    ontologies (see loadOntologies), keeps only HPO concepts ("HP:") in the
-    HPO data, and loads the gold standard from gold_path.
+    Shared setup of all pipeline scripts and the gold standard check: checks
+    that the gold standard and the `required` outputs of earlier steps exist,
+    creates the output folders, loads the ontologies (see loadOntologies),
+    keeps only HPO concepts ("HP:") in the HPO data, and loads the gold
+    standard from gold_path.
 
     Returns:
         (hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology, gold)
     """
     l = Logger()
+
+    requireFiles([gold_path, *required])
+    createOutputFolders()
 
     hpo, sct, umls, hpo_ontology, sct_ontology, umls_ontology = loadOntologies(separator)
 

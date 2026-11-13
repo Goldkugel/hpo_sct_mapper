@@ -150,8 +150,9 @@ if __name__ == "__main__":
 
     # Lookups umls_hpo_maps, umls_sct_maps (UMLS CUI -> IDs, from UMLS) and
     # hpo_umls_maps, hpo_sct_maps (HPO ID -> IDs, from HPO), all IDs prefixed.
-    # UMLS reference rows are CUI -> code, e.g. C0036572 -> "HP:0001250" or
-    # "91175000"; bare SCT codes get the "SNOMEDCT_US:" prefix here.
+    # UMLS reference rows are CUI -> code, e.g. "UMLS:C0036572" -> "HP:0001250"
+    # or "91175000"; the adapter has already prefixed the CUIs, bare SCT codes
+    # get the "SNOMEDCT_US:" prefix here.
     l.log("Collecting HPO and SNOMED CT references in UMLS...")
 
     umls_references = umls[
@@ -163,7 +164,7 @@ if __name__ == "__main__":
     parsed = {entry: sourceAbbreviation(entry) for entry in additional.unique()}
     sources = additional.map(parsed)
 
-    umls_ids    = umls_prefix + umls_references[umls_ontology.config.id_column].astype(str)
+    umls_ids    = umls_references[umls_ontology.config.id_column].astype(str)
     umls_values = umls_references[umls_ontology.config.value_column].astype(str)
 
     umls_hpo_maps = {}
@@ -191,8 +192,8 @@ if __name__ == "__main__":
     l.log(f"Invalid SNOMED CT references in UMLS: {invalid_sct_count}.")
     l.log("Collecting HPO and SNOMED CT references in UMLS completed.")
 
-    # HPO xrefs are prefixed ("UMLS:C0036572"), UMLS IDs are bare CUIs, so
-    # the prefix is stripped for the validity check only.
+    # HPO xrefs and the UMLS IDs of the adapter carry the same prefix
+    # ("UMLS:C0036572"), so they are compared as they are.
     l.log("Collecting UMLS references in HPO...")
 
     hpo_umls_references = hpo[
@@ -203,7 +204,7 @@ if __name__ == "__main__":
     hpo_umls_maps = {}
     invalid_count = 0
     for hpo_id, umls_id in zip(hpo_umls_references[id_col], hpo_umls_references[val_col]):
-        if umls_id.replace(umls_prefix, "", 1) in valid_umls_ids:
+        if umls_id in valid_umls_ids:
             hpo_umls_maps.setdefault(hpo_id, []).append(umls_id)
         else:
             invalid_count += 1
@@ -388,7 +389,7 @@ if __name__ == "__main__":
 
     l.log(f"Creating {jaccard_mappings} mappings...")
 
-    # Jaccard |S ∩ H| / |S ∪ H| for 1.5M SCT x 54k HPO terms via sparse 0/1
+    # Jaccard |S ∩ H| / |S ∪ H| for all SCT x HPO terms via sparse 0/1
     # token matrices A (SCT) and B (HPO): A · Bᵀ holds |S ∩ H| for pairs
     # sharing a token (others are not stored), |S ∪ H| = |S| + |H| - |S ∩ H|.
     # With the 0.90 threshold only identical token sets pass, unless the
@@ -494,8 +495,8 @@ if __name__ == "__main__":
     )
 
     # Identical embeddings give e.g. 0.9999997 or 1.0000001 in float32;
-    # clipping and rounding makes them exactly 1.0 for MappingSetBuilder's
-    # "cosine=1" criterion.
+    # clipping and rounding make them exactly 1.0, so cosine=1 is counted
+    # and compared exactly (printCounts, MappingSetBuilder).
     similarities = np.round(np.minimum(similarities.astype(np.float64), 1.0), 6)
 
     # SCT term position of every result.
