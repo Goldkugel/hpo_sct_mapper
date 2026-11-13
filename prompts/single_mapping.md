@@ -98,4 +98,8 @@ Output **ONLY** a single, valid JSON object with exactly these fields, in this o
 
 Example of the expected format (the content is illustrative only):
 
-{{"rationale": "Both concepts describe a focal seizure without further qualification; site, morphology and severity align.", "decision": "ACCEPT", "confidence": 5}}
+{{
+    "rationale": "Both concepts describe a focal seizure without further qualification; site, morphology and severity align.", 
+    "decision": "ACCEPT", 
+    "confidence": 5
+}}
