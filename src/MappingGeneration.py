@@ -389,7 +389,7 @@ if __name__ == "__main__":
 
     l.log(f"Creating {jaccard_mappings} mappings...")
 
-    # Jaccard |S ∩ H| / |S ∪ H| for 1.5M SCT x 54k HPO terms via sparse 0/1
+    # Jaccard |S ∩ H| / |S ∪ H| for all SCT x HPO terms via sparse 0/1
     # token matrices A (SCT) and B (HPO): A · Bᵀ holds |S ∩ H| for pairs
     # sharing a token (others are not stored), |S ∪ H| = |S| + |H| - |S ∩ H|.
     # With the 0.90 threshold only identical token sets pass, unless the
@@ -495,8 +495,8 @@ if __name__ == "__main__":
     )
 
     # Identical embeddings give e.g. 0.9999997 or 1.0000001 in float32;
-    # clipping and rounding makes them exactly 1.0 for MappingSetBuilder's
-    # "cosine=1" criterion.
+    # clipping and rounding make them exactly 1.0, so cosine=1 is counted
+    # and compared exactly (printCounts, MappingSetBuilder).
     similarities = np.round(np.minimum(similarities.astype(np.float64), 1.0), 6)
 
     # SCT term position of every result.

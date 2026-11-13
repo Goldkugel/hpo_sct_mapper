@@ -45,7 +45,7 @@ Assigns every pair a **validity code** in a fixed order of steps, from the stron
 | 6 | 5 | Hierarchy reversal of a Jaccard = 1 and cosine = 1 mapping |
 | 7 | 6 | Hierarchy reversal of a Jaccard = 1 only mapping |
 | 8 | 7 | Best candidate: the HPO concept has no accepted mapping, and the best cosine and best Jaccard candidate agree |
-| 9 | 8 | Last resort: the HPO concept has no accepted mapping, highest cosine candidate |
+| 9 | 8 | Last resort: the HPO concept has no accepted mapping; highest cosine candidate (all of them if several tie) |
 | 10 | 2–6 | Accepted |
 | NA | – | Not reached by any step |
 

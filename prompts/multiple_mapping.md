@@ -33,7 +33,7 @@ Each SNOMED CT candidate includes: SNOMED CT ID, Preferred Term / FSN, Synonyms,
 
 ### Review Reason Definitions
 
-**SNOMED CT hierarchy conflicts.** The reasons starting with `HIERARCHY_REVERSAL_` mean that this candidate and another SNOMED CT concept accepted by the pipeline for the same HPO concept are related in the SNOMED CT hierarchy: one is an ancestor of the other (see "Related Candidates"). The pipeline keeps only one of two related concepts: the more specific one, unless the broader one has stronger supporting evidence (more cross-references, then a stronger label match, then identical embeddings). So this candidate was either not accepted or displaced by a more specific candidate. The part after `HIERARCHY_REVERSAL_` says how the pipeline found the candidate:
+**SNOMED CT hierarchy conflicts.** The reasons starting with `HIERARCHY_REVERSAL_` mean that this candidate and another SNOMED CT concept accepted by the pipeline for the same HPO concept are related in the SNOMED CT hierarchy: one is an ancestor of the other (see "Related Candidates"). The pipeline keeps only one of two related concepts: the more specific one, unless the broader one has stronger supporting evidence (more cross-references, then a stronger label match, then identical embeddings). So this candidate was either not accepted or displaced by a related candidate. The part after `HIERARCHY_REVERSAL_` says how the pipeline found the candidate:
 
 * `HIERARCHY_REVERSAL_ANCHOR`: a direct HPO cross-reference confirmed by an exact label match. Minimum confidence to ACCEPT: **4**.
 * `HIERARCHY_REVERSAL_EXACT_LEXICAL`: an exact label match, without an HPO cross-reference. Minimum confidence to ACCEPT: **4**.
@@ -47,7 +47,7 @@ Each SNOMED CT candidate includes: SNOMED CT ID, Preferred Term / FSN, Synonyms,
 
 * `ACCEPTED`: The pipeline accepted this mapping automatically, based on a cross-reference (in HPO or via UMLS) or an exact match of labels or normalised label tokens. Re-evaluate it independently as a judge. If the concepts are genuinely equivalent, confirm with ACCEPT. If you find a clinically meaningful mismatch that the automated pipeline missed, reject with REJECT. Minimum confidence to ACCEPT: **4**.
 * `BEST_CANDIDATE_FALLBACK`: The pipeline found no accepted mapping for this HPO concept. This is the candidate that both the embedding similarity and the label-token similarity ranked highest. There is no cross-reference backing it. Evaluate with extra care whether clinical equivalence is genuinely supported. Minimum confidence to ACCEPT: **4**.
-* `LAST_RESORT`: The pipeline found no accepted mapping and no agreeing best candidate for this HPO concept. This is the candidate with the highest embedding similarity; other candidates had lower similarity. There is no cross-reference backing it. Apply maximum scrutiny. Minimum confidence to ACCEPT: **5**.
+* `LAST_RESORT`: The pipeline found no accepted mapping and no agreeing best candidate for this HPO concept. This is the candidate with the highest embedding similarity; other candidates had lower similarity. If several candidates have this reason, they tie for the highest similarity; the tie says nothing about which one is right, so judge each on its own merits. There is no cross-reference backing it. Apply maximum scrutiny. Minimum confidence to ACCEPT: **5**.
 
 ---
 
