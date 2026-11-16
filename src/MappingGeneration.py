@@ -7,7 +7,7 @@ from embedder               import Embedder
 from normalizer             import Normalizer
 from adapter                import writeHugeCSV, labelClass, synonymClass, referenceClass
 from adapter.BaseAdapterUtils import additionalSeparator
-from MappingUtils           import exact_lexical_mappings, loadInputs, evaluation, dictToEAVDataFrame, confidence_column, hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings, embedding_mappings, jaccard_mappings, threshold_cosine_similarity, threshold_jaccard_similarity, mapping_path, sct_prefix, umls_prefix
+from MappingUtils           import exact_lexical_mappings, loadInputs, evaluation, dictToEAVDataFrame, confidence_column, hpo_sct_mappings, hpo_umls_sct_mappings, umls_hpo_sct_mappings, embedding_mappings, jaccard_mappings, threshold_cosine_similarity, threshold_jaccard_similarity, mapping_path, sct_prefix, umls_prefix, strip_snomed_domain
 from scipy                  import sparse
 import pandas               as pd
 import numpy                as np
@@ -348,6 +348,16 @@ if __name__ == "__main__":
 
     hpo_terms_subset = termSubset(hpo, hpo_ontology)
     sct_terms_subset = termSubset(sct, sct_ontology)
+
+    # SCT labels are FSNs ending with their semantic tag, e.g.
+    # "Glomerulosclerosis (disorder)"; without it they compare like the other
+    # terms. Synonyms are left as they are, as their parentheses are part of
+    # the term; the domain filter reads the tag from the unchanged sct data.
+    sct_value_col = sct_ontology.config.value_column
+    is_fsn = sct_terms_subset[sct_ontology.config.attribute_column] == labelClass
+    sct_terms_subset.loc[is_fsn, sct_value_col] = \
+        sct_terms_subset.loc[is_fsn, sct_value_col].map(strip_snomed_domain)
+    l.log(f"Semantic tags removed from {int(is_fsn.sum())} SNOMED CT fully specified names.")
 
     hpo_terms = hpo_terms_subset[val_col].tolist()
     sct_terms = sct_terms_subset[sct_ontology.config.value_column].tolist()

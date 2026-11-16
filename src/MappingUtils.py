@@ -608,6 +608,16 @@ def extract_snomed_domain(term: str) -> str:
     match = re.search(r"\(([^)]+)\)$", term.strip())
     return match.group(1) if match else ""
 
+def strip_snomed_domain(term: str) -> str:
+    """
+    A fully specified name without its trailing semantic tag (see
+    extract_snomed_domain()), e.g. "Ependymoma (disorder)" -> "Ependymoma".
+    Names without a tag and non-string input are returned unchanged.
+    """
+    if not isinstance(term, str):
+        return term
+    return re.sub(r"\s*\([^)]+\)$", "", term.strip())
+
 def printCounts(
     data:       pd.DataFrame,
     adapter:    BaseAdapter,

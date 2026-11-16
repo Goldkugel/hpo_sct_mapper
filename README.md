@@ -28,7 +28,7 @@ Collects candidate pairs (HPO concept, SNOMED CT concept) with six methods. Each
 | `embedding` | Cosine similarity of SapBERT embeddings of labels and synonyms, > 0.75 (exact FAISS search) | similarity |
 | `exact_lexical` | Identical lower-cased label or synonym | 1.0 |
 
-Only cross-references that point to a concept present in the loaded version of the target terminology are kept. The SNOMED CT data contains active concepts only.
+Only cross-references that point to a concept present in the loaded version of the target terminology are kept. The SNOMED CT data contains active concepts only. The lexical and embedding methods compare the HPO labels and exact synonyms with the SNOMED CT fully specified names, without their semantic tag (e.g. "Glomerulosclerosis (disorder)" becomes "Glomerulosclerosis"), and synonyms.
 
 ### 2. Rule-based filter (`MappingSetBuilder.py`)
 
