@@ -42,7 +42,7 @@ Long lists of children are truncated; the note in parentheses tells you how many
 
 ### Target Mapping Definitions
 
-* `ACCEPT`: The concepts are sufficiently equivalent for clinical data integration purposes, including close subsets or supersets where the difference is not clinically significant.
+* `ACCEPT`: The concepts are sufficiently equivalent for clinical data integration purposes.
 * `REJECT`: The concepts are not sufficiently equivalent — tangential clinical relationship, or clinically significant difference in scope, severity, anatomy, or morphology.
 
 ---

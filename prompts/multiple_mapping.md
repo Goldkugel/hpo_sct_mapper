@@ -54,7 +54,7 @@ Each SNOMED CT candidate includes: SNOMED CT ID, Preferred Term / FSN, Synonyms,
 ### Target Mapping Definitions
 
 * `ACCEPT`: The SNOMED CT candidate is a valid mapping target for the HPO concept, either
-  * on its own: it is sufficiently equivalent for clinical data integration purposes, including close subsets or supersets where the difference is not clinically significant; or
+  * on its own: it is sufficiently equivalent for clinical data integration purposes; or
   * as part of a valid set mapping (see rule 9).
 * `REJECT`: The SNOMED CT candidate is not a valid mapping target. This includes tangential clinical relationships, clinically significant differences in scope, severity, anatomy, or morphology, and a candidate that loses to a related candidate under the specificity rule (rule 10).
 
