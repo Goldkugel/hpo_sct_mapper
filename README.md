@@ -49,7 +49,7 @@ Assigns every pair a **validity code** in a fixed order of steps, from the stron
 | 10 | 2–6 | Accepted |
 | NA | – | Not reached by any step |
 
-Steps 2–6 accept candidates. A **hierarchy reversal** means that a candidate and an SNOMED CT concept already accepted for the same HPO concept are ancestor and descendant of each other. Only one of the two is kept: the narrower one, unless the broader one has stronger evidence. The evidence of a pair is compared as the tuple (number of cross-reference sources, lexical match strength, cosine = 1). The pair that is not kept gets the reversal code of the step in which the conflict is found, so a demoted pair gets the code of the step that displaced it.
+Steps 2–6 accept candidates. A **hierarchy reversal** means that a candidate and an SNOMED CT concept already accepted for the same HPO concept are ancestor and descendant of each other. Only one of the two is kept: the narrower one, unless the broader one has stronger evidence. The evidence of a pair is compared as the tuple (number of cross-reference sources, lexical match strength, cosine = 1). The pair that is not kept gets a reversal code that says how it was found: a rejected candidate gets the code of the current step, a demoted (previously accepted) pair the code of the step that accepted it.
 
 ### 3. LLM review (`MappingLLM.py`)
 

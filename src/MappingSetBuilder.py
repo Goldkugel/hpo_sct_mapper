@@ -103,6 +103,7 @@ if __name__ == "__main__":
 
     accepted_pairs   = set()                # (hpo_id, sct_id) accepted so far
     accepted_by_hpo  = defaultdict(set)     # hpo_id -> accepted sct_ids
+    accepted_code    = {}                   # accepted pair -> reversal code of its step
     domain_invalid   = set()                # pairs marked validity=0
     classified_pairs = set()                # pairs with any validity code
 
@@ -124,19 +125,26 @@ if __name__ == "__main__":
             classified_pairs.add((hpo_id, sct_id))
         return changed
 
-    def accept(hpo_id: str, sct_id: str) -> None:
-        """Register a pair as accepted and mark all its rows validity=10."""
+    def accept(hpo_id: str, sct_id: str, reversal_validity: int) -> None:
+        """
+        Register a pair as accepted and mark all its rows validity=10.
+        reversal_validity is the reversal code of the accepting step; the
+        pair gets it if it is demoted later.
+        """
         accepted_pairs.add((hpo_id, sct_id))
         accepted_by_hpo[hpo_id].add(sct_id)
+        accepted_code[(hpo_id, sct_id)] = reversal_validity
         mark_validity(hpo_id, sct_id, validity_accepted)
 
-    def demote(hpo_id: str, sct_id: str, reversal_validity: int) -> None:
+    def demote(hpo_id: str, sct_id: str) -> None:
         """
         Un-accept a pair displaced by a related candidate (see
-        check_hierarchy) and mark it with the current step's reversal code.
+        check_hierarchy) and mark it with the reversal code of the step that
+        accepted it, so the code says how the pair was found.
         """
         accepted_pairs.discard((hpo_id, sct_id))
         accepted_by_hpo[hpo_id].discard(sct_id)
+        reversal_validity = accepted_code.pop((hpo_id, sct_id))
         mark_validity(hpo_id, sct_id, reversal_validity, replace=validity_accepted)
 
     def log_step_summary(
@@ -159,7 +167,7 @@ if __name__ == "__main__":
             f"{accepted} accepted",
             f"{reversal} rejected (hierarchy reversal, validity={validity})",
             f"{rejected_by_evidence} of the rejected are narrower but have weaker evidence",
-            f"{demoted} demoted (accepted target displaced, validity={validity})",
+            f"{demoted} demoted (accepted target displaced, code of the step that accepted it)",
         ]
         if not_accepted is not None:
             parts.append(f"{not_accepted} not accepted here ({not_accepted_reason})")
@@ -330,13 +338,13 @@ if __name__ == "__main__":
 
         action, conflicts = check_hierarchy(hpo_id, sct_id)
         if action == "ok":
-            accept(hpo_id, sct_id)
+            accept(hpo_id, sct_id, validity_anchor_reversal)
             step2_accepted += 1
         elif action == "demote":
             for other_sct in conflicts:
-                demote(hpo_id, other_sct, validity_anchor_reversal)
+                demote(hpo_id, other_sct)
             step2_demoted += len(conflicts)
-            accept(hpo_id, sct_id)
+            accept(hpo_id, sct_id, validity_anchor_reversal)
             step2_accepted += 1
         else:
             mark_validity(hpo_id, sct_id, validity_anchor_reversal)
@@ -393,13 +401,13 @@ if __name__ == "__main__":
         action, conflicts = check_hierarchy(hpo_id, sct_id)
 
         if action == "ok":
-            accept(hpo_id, sct_id)
+            accept(hpo_id, sct_id, validity_exact_lexical_reversal)
             step2b_accepted += 1
         elif action == "demote":
             for other_sct in conflicts:
-                demote(hpo_id, other_sct, validity_exact_lexical_reversal)
+                demote(hpo_id, other_sct)
             step2b_demoted += len(conflicts)
-            accept(hpo_id, sct_id)
+            accept(hpo_id, sct_id, validity_exact_lexical_reversal)
             step2b_accepted += 1
         else:
             mark_validity(hpo_id, sct_id, validity_exact_lexical_reversal)
@@ -455,15 +463,15 @@ if __name__ == "__main__":
             action, conflicts = check_hierarchy(hpo_id, sct_id)
 
             if action == "ok":
-                accept(hpo_id, sct_id)
+                accept(hpo_id, sct_id, reversal_validity)
                 accepted_count += 1
 
             elif action == "demote":
                 for other_sct in conflicts:
-                    demote(hpo_id, other_sct, reversal_validity)
+                    demote(hpo_id, other_sct)
                     reversal_pairs.add((hpo_id, other_sct))
                 demoted_count += len(conflicts)
-                accept(hpo_id, sct_id)
+                accept(hpo_id, sct_id, reversal_validity)
                 accepted_count += 1
 
             else:
@@ -487,7 +495,8 @@ if __name__ == "__main__":
         evaluate_pairs(low_similarity_pairs,
             f"{step.lower()}, not accepted here", include_printcounts=True)
         evaluate_pairs(reversal_pairs,
-            f"{step.lower()}, hierarchy reversals, validity={reversal_validity}")
+            f"{step.lower()}, hierarchy reversals (rejected: validity={reversal_validity}, "
+            f"demoted: code of their accepting step)")
 
     # Step 2c: HPO xrefs without exact lexical match, same criterion as the
     # UMLS-based steps 3 and 4.
@@ -575,15 +584,15 @@ if __name__ == "__main__":
             action, conflicts = check_hierarchy(hpo_id, sct_id)
 
             if action == "ok":
-                accept(hpo_id, sct_id)
+                accept(hpo_id, sct_id, reversal_validity)
                 accepted_count += 1
 
             elif action == "demote":
                 for other_sct in conflicts:
-                    demote(hpo_id, other_sct, reversal_validity)
+                    demote(hpo_id, other_sct)
                     reversal_pairs.add((hpo_id, other_sct))
                 demoted_count += len(conflicts)
-                accept(hpo_id, sct_id)
+                accept(hpo_id, sct_id, reversal_validity)
                 accepted_count += 1
 
             else:
@@ -608,7 +617,8 @@ if __name__ == "__main__":
         evaluate_pairs(not_qualifying_pairs,
             f"{step.lower()}, not accepted here", include_printcounts=True)
         evaluate_pairs(reversal_pairs,
-            f"{step.lower()}, hierarchy reversals, validity={reversal_validity}")
+            f"{step.lower()}, hierarchy reversals (rejected: validity={reversal_validity}, "
+            f"demoted: code of their accepting step)")
 
     l.printHeader("Step 5: Jaccard=1 and cosine=1 mappings")
 
