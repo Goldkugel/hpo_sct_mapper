@@ -11,7 +11,7 @@ The pipeline consists of four scripts in `src/`. They are run one after the othe
 | 1 | `MappingGeneration.py` | HPO, SNOMED CT, UMLS, gold standard | `data/output/mapped/mapping.csv` |
 | 2 | `MappingSetBuilder.py` | `mapping.csv` | `data/output/filtered/filtered.csv` |
 | 3 | `MappingLLM.py` | `filtered.csv` | `data/output/filtered/llm_filtered.csv`, `llm_review.csv` |
-| 4 | `MappingErrorAnalysis.py` | all of the above | `evaluation_final.csv`, `accepted_without_gold.csv`, `llm_disagreements.csv` in `data/output/evaluation/`, and the log |
+| 4 | `MappingErrorAnalysis.py` | all of the above | `evaluation_final.csv`, `accepted_without_gold.csv`, `llm_disagreements.csv` in `data/output/evaluation/`, plots and their tables in `data/output/evaluation/plots/`, and the log |
 
 Shared constants (file paths, method names, validity codes, thresholds) and helper functions live in `MappingUtils.py`.
 
@@ -51,6 +51,8 @@ Assigns every pair a **validity code** in a fixed order of steps, from the stron
 
 Steps 2–6 accept candidates. A **hierarchy reversal** means that a candidate and an SNOMED CT concept already accepted for the same HPO concept are ancestor and descendant of each other. Only one of the two is kept: the narrower one, unless the broader one has stronger evidence. The evidence of a pair is compared as the tuple (number of cross-reference sources, lexical match strength, cosine = 1). The pair that is not kept gets a reversal code that says how it was found: a rejected candidate gets the code of the current step, a demoted (previously accepted) pair the code of the step that accepted it.
 
+`filtered.csv` also has a `step` column with the step that set the code (`1`, `2`, `2b`, `2c`, `3`–`8`); for accepted pairs it is the step that accepted them. The evaluation uses it for the per-step plots. Runs from before this column existed must rerun `MappingSetBuilder.py` and `MappingLLM.py` for those plots.
+
 ### 3. LLM review (`MappingLLM.py`)
 
 Sends all pairs with a reviewable code (1–10) to a local LLM through the [`model`](https://github.com/Goldkugel/model) package (vLLM):
@@ -62,13 +64,24 @@ The model answers with a rationale, a decision (ACCEPT/REJECT) and a confidence 
 
 ### 4. Evaluation (`MappingErrorAnalysis.py`)
 
-Compares every stage with the gold standard and logs precision, recall and F1 per stage, per validity code and per method. At concept level it logs how many gold HPO concepts have at least one, all, or exactly the gold SCT target(s) in the final set, and how many mapped HPO concepts are not in the gold standard and cannot be verified (every `evaluation()` log line in steps 1–3 also reports the gold HPO concepts with at least one gold target). It also logs method agreement, confidence thresholds and precision–recall curves, the LLM's decisions per review reason, the reasons gold pairs were missed, hierarchy-depth and structural checks, and error examples. For HPO concepts in the gold standard it also logs how far each mapping is from the nearest gold target in the SNOMED CT is_a hierarchy (0 = correct, 1 = parent or child, 2 = sibling, grandparent or grandchild, ...), whether it is broader, narrower or lateral, and how close the missed gold pairs came. It writes three CSV files to `data/output/evaluation/`:
+Compares every stage with the gold standard and logs precision, recall and F1 per stage, per validity code and per method. At concept level it logs how many gold HPO concepts have at least one, all, or exactly the gold SCT target(s) in the final set, and how many mapped HPO concepts are not in the gold standard and cannot be verified (every `evaluation()` log line in steps 1–3 also reports the gold HPO concepts with at least one gold target). It also logs method agreement, confidence thresholds and precision–recall curves, the LLM's decisions per review reason, the reasons gold pairs were missed, hierarchy-depth checks, and error examples. The structural checks (source collapse: an HPO concept mapped to an SCT concept and one of its ancestors; target collapse: related HPO concepts mapped to the same SCT concept; cross-pair hierarchy reversal: an HPO child mapped to an ancestor of its HPO parent's target) are run on the final set and on the gold standard. For HPO concepts in the gold standard it also logs how far each mapping is from the nearest gold target in the SNOMED CT is_a hierarchy (0 = correct, 1 = parent or child, 2 = sibling, grandparent or grandchild, ...), whether it is broader, narrower or lateral, and how close the missed gold pairs came. It writes three CSV files to `data/output/evaluation/`:
 
 | File | Content |
 |---|---|
 | `evaluation_final.csv` | All rows of the final mapping set, with gold status and pair-level columns (`auto_accepted`, `llm_accepted`, `original_validity`, `methods`, `best_conf`, `gold_distance`, `nearest_gold_sct`, `gold_relation`) and the LLM's rationale from `llm_review.csv` (`llm_rationale`) |
 | `accepted_without_gold.csv` | Final pairs of HPO concepts that have no mapping in the gold standard |
 | `llm_disagreements.csv` | Pairs where the LLM and the rule-based filter disagree, with the LLM's decision, confidence and rationale |
+
+Section 19 of the log and `MappingPlots.py` write four plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
+
+| Plot | Content | Tables |
+|---|---|---|
+| `generation_metrics` | Precision, recall and F1 per generation method, each method alone and cumulative in run order | `generation_metrics_alone.csv`, `generation_metrics_cumulative.csv` |
+| `generation_counts` | Candidate pairs and HPO classes per generation method (log scale), alone and cumulative, plus the pairs a method adds to the methods run before it | as above |
+| `filter_metrics` | Precision, recall and F1 of the pairs each filter step accepted (steps 2–8) or marked for review (steps 9–10), and cumulative: auto-accepted up to step 8, all pairs passed to the LLM from step 9 on, then LLM-accepted and the final set | `filter_metrics_per_step.csv`, `filter_metrics_cumulative.csv` |
+| `filter_counts` | Pairs classified by each filter step by outcome (accepted, source-collapse conflict, fallback candidate, domain mismatch), and the HPO classes involved in each step | `filter_metrics_per_step.csv` |
+
+The plots number the filter steps as in the paper (1–10: the sub-steps 2b and 2c count as steps 3 and 4); the log and the `step` column use the step ids of the code (see the table above). Pairs accepted in a step and demoted later count as conflicts of that step, so the per-step numbers describe the final state, not the state right after the step.
 
 ### Gold standard check (`MappingGoldCheck.py`)
 
@@ -110,6 +123,7 @@ The columns from `n_sct` on are empty for pairs that were not reviewed. The log 
 │   ├── MappingLLM.py          # Step 3: LLM review
 │   ├── MappingErrorAnalysis.py# Step 4: evaluation
 │   ├── MappingGoldCheck.py    # LLM check of the gold standard
+│   ├── MappingPlots.py        # Plots of step 4 (generation methods, filter steps)
 │   └── MappingUtils.py        # Shared constants and helpers
 ├── start.sh                   # Runs steps 1 and 2
 ├── startLLM.sh                # Slurm job for step 3

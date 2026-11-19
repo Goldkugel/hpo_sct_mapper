@@ -10,7 +10,7 @@ from adapter        import (
 )
 from MappingUtils   import (
     loadInputs, evaluation, validity_column, confidence_column,
-    REVIEW_REASON, llm_mappings, filtered_path, llm_filtered_path,
+    REVIEW_REASON, llm_mappings, filtered_path, llm_filtered_path, step_column,
     llm_review_path, validity_accepted, validity_reviewable,
     buildAttributeLookup, is_exact_synonym, build_child_map,
     make_descendant_lookup,
@@ -242,7 +242,8 @@ if __name__ == "__main__":
     attr_col = hpo_ontology.config.attribute_column
 
     l.log("Loading filtered mappings...")
-    mappings = pd.read_csv(filtered_path, sep=";")
+    # Step ids ("2", "2b") as text, so "2" is not written back as 2.0.
+    mappings = pd.read_csv(filtered_path, sep=";", dtype={step_column: "string"})
     l.log(f"Filtered mappings: {len(mappings.index)} rows, "
           f"{len(mappings.drop_duplicates(subset=[id_col, val_col]).index)} pairs.")
     l.log("Loading filtered mappings completed.")

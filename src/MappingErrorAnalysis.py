@@ -16,7 +16,9 @@ from MappingUtils   import (
     similarity_steps, confidence_column, validity_column,
     hpo_id_column, sct_id_column,
     getRepresentativeLabel,
+    step_column, FILTER_STEPS, METHOD_LABELS, plots_dir,
 )
+from MappingPlots   import generation_tables, filter_tables, plot_generation, plot_filter
 import os
 import pandas as pd
 import numpy  as np
@@ -122,7 +124,8 @@ if __name__ == "__main__":
     attr_col = hpo_ontology.config.attribute_column # mapping method
 
     l.log("Loading LLM-reviewed mappings (llm_filtered.csv)...")
-    final_df = pd.read_csv(llm_filtered_path, sep=";")
+    # Step ids ("2", "2b") as text, so "2" is not read as 2.0.
+    final_df = pd.read_csv(llm_filtered_path, sep=";", dtype={step_column: "string"})
     final_df = keepHPOConcepts(final_df, id_col)
     l.log(f"LLM-reviewed mappings: {len(final_df)} rows.")
     l.log("Loading LLM-reviewed mappings (llm_filtered.csv) completed.")
@@ -157,12 +160,16 @@ if __name__ == "__main__":
     # pair, so "first" gives the original validity (or NA).
     gen_rows = final_df[final_df[attr_col] != llm_mappings]
 
+    # The step column (section 19) is missing in runs from before
+    # MappingSetBuilder wrote it.
+    step_agg = {step_column: (step_column, "first")} if step_column in gen_rows.columns else {}
     pair_table = (
         gen_rows.groupby([id_col, val_col])
         .agg(**{
             validity_column: (validity_column,   "first"),
             "n_methods":     (attr_col,          "nunique"),
             "best_conf":     (confidence_column, "max"),
+            **step_agg,
         })
         .reset_index()
     )
@@ -726,7 +733,8 @@ if __name__ == "__main__":
 
     # Section 17: MappingSetBuilder removes source collapses (A) only among
     # auto-accepted pairs, so LLM-accepted pairs can still cause them; B and
-    # C are not checked by any earlier step.
+    # C are not checked by any earlier step. The same checks on the gold
+    # standard show how often the expert's judgement contains them.
     l.printHeader("17. Structural quality warnings")
 
     def related_pairs(concepts: set, descendants) -> list:
@@ -742,60 +750,79 @@ if __name__ == "__main__":
                 found.append((c2, c1))
         return found
 
-    source_collapse = {
-        hid: related_pairs(scts, sct_descendants)
-        for hid, scts in accepted_sct_per_hpo.items() if len(scts) > 1
-    }
-    source_collapse = {hid: pairs for hid, pairs in source_collapse.items() if pairs}
-    l.log(f"WARNING A — Source collapse: {sum(len(p) for p in source_collapse.values())} "
-          f"related SCT pairs for {len(source_collapse)} HPO concepts.")
-    l.log("Source collapse: an HPO concept is mapped to an SCT concept and to one of "
-          "its ancestors.")
-    for hid in sorted(source_collapse)[:ERROR_EXAMPLE_LIMIT]:
-        l.log(f"  {hid} [{hpo_label(hid)}]")
-        for broader, narrower in source_collapse[hid]:
-            l.log(f"    broader:  {broader} [{sct_label(broader)}]")
-            l.log(f"    narrower: {narrower} [{sct_label(narrower)}]")
-    if len(source_collapse) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"  ... and {len(source_collapse) - ERROR_EXAMPLE_LIMIT} more HPO concepts.")
+    def structural_warnings(pairs: set, label: str) -> None:
+        """Log warnings A (source collapse), B (target collapse) and C
+        (cross-pair hierarchy reversal) for a set of (hpo_id, sct_id) pairs."""
+        sct_per_hpo: dict = defaultdict(set)
+        hpo_per_sct: dict = defaultdict(set)
+        for hid, sid in pairs:
+            sct_per_hpo[hid].add(sid)
+            hpo_per_sct[sid].add(hid)
 
-    target_collapse = {
-        sid: related_pairs(hids, hpo_descendants)
-        for sid, hids in accepted_hpo_per_sct.items() if len(hids) > 1
-    }
-    target_collapse = {sid: pairs for sid, pairs in target_collapse.items() if pairs}
-    l.log(f"WARNING B — Target collapse: {sum(len(p) for p in target_collapse.values())} "
-          f"related HPO pairs for {len(target_collapse)} SCT concepts.")
-    l.log("Target collapse: related HPO concepts are mapped to the same SCT concept.")
-    for sid in sorted(target_collapse)[:ERROR_EXAMPLE_LIMIT]:
-        l.log(f"  {sid} [{sct_label(sid)}]")
-        for broader, narrower in target_collapse[sid]:
-            l.log(f"    broader HPO:  {broader} [{hpo_label(broader)}]")
-            l.log(f"    narrower HPO: {narrower} [{hpo_label(narrower)}]")
-    if len(target_collapse) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"  ... and {len(target_collapse) - ERROR_EXAMPLE_LIMIT} more SCT concepts.")
+        l.log(f"{label}: {len(pairs)} pairs, {len(sct_per_hpo)} HPO concepts.")
 
-    # C, e.g. "Focal seizure" (child) -> "Seizure" and "Seizure" (parent) ->
-    # "Focal seizure". Only HPO ancestors are compared, not all concept pairs.
-    reversal_examples = []
-    for hpo_child in sorted(accepted_sct_per_hpo):
-        for hpo_parent in sorted(set(hpo_ancestors(hpo_child)) & set(accepted_sct_per_hpo)):
-            for sct_of_child in sorted(accepted_sct_per_hpo[hpo_child]):
-                for sct_of_parent in sorted(accepted_sct_per_hpo[hpo_parent]):
-                    if sct_of_parent in sct_descendants(sct_of_child):
-                        reversal_examples.append((hpo_parent, hpo_child, sct_of_parent, sct_of_child))
+        source_collapse = {
+            hid: related_pairs(scts, sct_descendants)
+            for hid, scts in sct_per_hpo.items() if len(scts) > 1
+        }
+        source_collapse = {hid: rel for hid, rel in source_collapse.items() if rel}
+        l.log(f"WARNING A — Source collapse ({label}): "
+              f"{sum(len(p) for p in source_collapse.values())} related SCT pairs for "
+              f"{len(source_collapse)} HPO concepts.")
+        l.log("Source collapse: an HPO concept is mapped to an SCT concept and to one of "
+              "its ancestors.")
+        for hid in sorted(source_collapse)[:ERROR_EXAMPLE_LIMIT]:
+            l.log(f"  {hid} [{hpo_label(hid)}]")
+            for broader, narrower in source_collapse[hid]:
+                l.log(f"    broader:  {broader} [{sct_label(broader)}]")
+                l.log(f"    narrower: {narrower} [{sct_label(narrower)}]")
+        if len(source_collapse) > ERROR_EXAMPLE_LIMIT:
+            l.log(f"  ... and {len(source_collapse) - ERROR_EXAMPLE_LIMIT} more HPO concepts.")
 
-    l.log(f"WARNING C — Cross-pair hierarchy reversal: {len(reversal_examples)} cases.")
-    l.log("Cross-pair hierarchy reversal: the HPO hierarchy direction is inverted in "
-          "the SCT targets.")
-    for hpo_parent, hpo_child, sct_of_parent, sct_of_child in reversal_examples[:ERROR_EXAMPLE_LIMIT]:
-        l.log(f"  HPO parent: {hpo_parent} [{hpo_label(hpo_parent)}]  →  "
-              f"SCT: {sct_of_parent} [{sct_label(sct_of_parent)}]")
-        l.log(f"  HPO child:  {hpo_child} [{hpo_label(hpo_child)}]  →  "
-              f"SCT: {sct_of_child} [{sct_label(sct_of_child)}]")
-        l.log("    The child's SCT target is an ancestor of the parent's SCT target.")
-    if len(reversal_examples) > ERROR_EXAMPLE_LIMIT:
-        l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
+        target_collapse = {
+            sid: related_pairs(hids, hpo_descendants)
+            for sid, hids in hpo_per_sct.items() if len(hids) > 1
+        }
+        target_collapse = {sid: rel for sid, rel in target_collapse.items() if rel}
+        l.log(f"WARNING B — Target collapse ({label}): "
+              f"{sum(len(p) for p in target_collapse.values())} related HPO pairs for "
+              f"{len(target_collapse)} SCT concepts.")
+        l.log("Target collapse: related HPO concepts are mapped to the same SCT concept.")
+        for sid in sorted(target_collapse)[:ERROR_EXAMPLE_LIMIT]:
+            l.log(f"  {sid} [{sct_label(sid)}]")
+            for broader, narrower in target_collapse[sid]:
+                l.log(f"    broader HPO:  {broader} [{hpo_label(broader)}]")
+                l.log(f"    narrower HPO: {narrower} [{hpo_label(narrower)}]")
+        if len(target_collapse) > ERROR_EXAMPLE_LIMIT:
+            l.log(f"  ... and {len(target_collapse) - ERROR_EXAMPLE_LIMIT} more SCT concepts.")
+
+        # C, e.g. "Focal seizure" (child) -> "Seizure" and "Seizure" (parent) ->
+        # "Focal seizure". Only HPO ancestors are compared, not all concept pairs.
+        reversal_examples = []
+        for hpo_child in sorted(sct_per_hpo):
+            for hpo_parent in sorted(set(hpo_ancestors(hpo_child)) & set(sct_per_hpo)):
+                for sct_of_child in sorted(sct_per_hpo[hpo_child]):
+                    for sct_of_parent in sorted(sct_per_hpo[hpo_parent]):
+                        if sct_of_parent in sct_descendants(sct_of_child):
+                            reversal_examples.append((hpo_parent, hpo_child, sct_of_parent, sct_of_child))
+
+        l.log(f"WARNING C — Cross-pair hierarchy reversal ({label}): "
+              f"{len(reversal_examples)} cases.")
+        l.log("Cross-pair hierarchy reversal: the HPO hierarchy direction is inverted in "
+              "the SCT targets.")
+        for hpo_parent, hpo_child, sct_of_parent, sct_of_child in reversal_examples[:ERROR_EXAMPLE_LIMIT]:
+            l.log(f"  HPO parent: {hpo_parent} [{hpo_label(hpo_parent)}]  →  "
+                  f"SCT: {sct_of_parent} [{sct_label(sct_of_parent)}]")
+            l.log(f"  HPO child:  {hpo_child} [{hpo_label(hpo_child)}]  →  "
+                  f"SCT: {sct_of_child} [{sct_label(sct_of_child)}]")
+            l.log("    The child's SCT target is an ancestor of the parent's SCT target.")
+        if len(reversal_examples) > ERROR_EXAMPLE_LIMIT:
+            l.log(f"  ... and {len(reversal_examples) - ERROR_EXAMPLE_LIMIT} more.")
+
+    l.log("A. Final mapping set:")
+    structural_warnings(final_pairs, "final set")
+    l.log("B. Gold standard (expert's judgement):")
+    structural_warnings(gold_pairs, "gold standard")
 
     l.printHeader("18. Writing output CSVs")
 
@@ -914,7 +941,53 @@ if __name__ == "__main__":
         l.log(f"{os.path.basename(llm_review_path)} not found; the LLM columns are empty.")
     writeHugeCSV(disagreements, llm_disagreements_path)
 
-    l.printHeader("19. Overall summary")
+    l.printHeader("19. Generation methods and filter steps (plots)")
+
+    def log_table(table: pd.DataFrame, extra: str = "") -> None:
+        """One line per table row: pairs, HPO classes, correct, P, R, F1."""
+        for _, row in table.iterrows():
+            line = (f"  {row['label'] + ':':<48} pairs {row['pairs']:7} | HPO classes "
+                    f"{row['hpo_classes']:6} | in gold {row['correct']:6} | "
+                    f"P {row['precision']:.3f} | R {row['recall']:.3f} | F1 {row['f1']:.3f}")
+            if extra:
+                line += f" | {extra} {row[extra]:7}"
+            l.log(line)
+
+    gen_alone, gen_cumulative = generation_tables(
+        gen_rows, id_col, val_col, attr_col, GENERATION_METHODS, METHOD_LABELS, gold_pairs,
+    )
+    l.log("A. Generation methods, each alone (new_pairs: not found by the methods before):")
+    log_table(gen_alone, extra="new_pairs")
+    l.log("B. Generation methods, cumulative (run order):")
+    log_table(gen_cumulative)
+    written = plot_generation(gen_alone, gen_cumulative, gold_total, plots_dir)
+
+    if step_column in pair_table.columns and pair_table[step_column].notna().any():
+        filter_step, filter_cumulative = filter_tables(
+            pair_table, id_col, val_col, validity_column, step_column,
+            FILTER_STEPS, llm_pairs, gold_pairs,
+        )
+        l.log("C. Filter steps: pairs accepted (acceptance steps), marked for review "
+              "(fallbacks) or removed (domain filter) by each step:")
+        log_table(filter_step)
+        l.log("   Pairs classified by each step, by outcome:")
+        for _, row in filter_step.iterrows():
+            l.log(f"  {row['label'] + ':':<48} {row['classified_pairs']:7} pairs of "
+                  f"{row['classified_hpo_classes']:6} HPO classes | accepted "
+                  f"{row['pairs_accepted']:6} | conflict {row['pairs_conflict']:5} | "
+                  f"review {row['pairs_review']:6} | removed {row['pairs_removed']:6}")
+        l.log("D. Filter steps, cumulative:")
+        log_table(filter_cumulative)
+        written += plot_filter(filter_step, filter_cumulative, gold_total, plots_dir)
+    else:
+        l.log(f"C./D. Filter steps skipped: {os.path.basename(llm_filtered_path)} has no "
+              f"'{step_column}' column (written by MappingSetBuilder since this "
+              f"version; rerun MappingSetBuilder and MappingLLM).")
+
+    l.log(f"Plots and tables written to {plots_dir}: "
+          f"{', '.join(sorted({os.path.splitext(os.path.basename(p))[0] for p in written}))}.")
+
+    l.printHeader("20. Overall summary")
 
     l.log(f"Gold standard: {gold_total} pairs.")
     l.log(f"Universe (generated pairs): {universe_total}.")
