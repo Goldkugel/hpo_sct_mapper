@@ -315,3 +315,319 @@ def _write_csv(table: pd.DataFrame, out_dir: str, name: str) -> list:
     path = os.path.join(out_dir, f"{name}.csv")
     table.round(4).to_csv(path, sep=";", index=False)
     return [path]
+
+
+# --------------------------------------------------------------------------
+# (5) Flow of the pairs through the pipeline (Sankey diagram)
+# --------------------------------------------------------------------------
+
+COLOR_FLOW = {
+    "start":    "#4D4D4D",
+    "removed":  COLOR_OUTCOME["removed"],
+    "accepted": COLOR_OUTCOME["accepted"],
+    "conflict": COLOR_OUTCOME["conflict"],
+    "review":   COLOR_OUTCOME["review"],
+    "final":    "#009E73",
+    "rejected": "#BBBBBB",
+}
+
+
+def pipeline_flow_tables(
+    universe: set, pairs_by_outcome: dict, llm_pairs: set, gold_pairs: set,
+) -> tuple:
+    """
+    Nodes and flows of the pipeline from the pairs the filter classified
+    (codes 0–10) over the outcome groups to the final alignment.
+    pairs_by_outcome: {"removed", "accepted", "conflict", "review"} -> pairs.
+    Auto-accepted pairs stay in the alignment whatever the LLM decides.
+    Returns (nodes, flows) DataFrames.
+    """
+    classified = set().union(*pairs_by_outcome.values())
+    conflict_final = pairs_by_outcome["conflict"] & llm_pairs
+    review_final   = pairs_by_outcome["review"] & llm_pairs
+    final    = pairs_by_outcome["accepted"] | conflict_final | review_final
+    rejected = (pairs_by_outcome["conflict"] | pairs_by_outcome["review"]) - final
+
+    node_sets = [
+        ("start",    0, "Classified by the filter",          classified),
+        ("removed",  1, "Domain mismatch (code 0)",           pairs_by_outcome["removed"]),
+        ("accepted", 1, "Auto-accepted (code 10)",            pairs_by_outcome["accepted"]),
+        ("conflict", 1, "Source-collapse conflicts (1–7)",    pairs_by_outcome["conflict"]),
+        ("review",   1, "Fallback candidates (8–9)",          pairs_by_outcome["review"]),
+        ("final",    2, "Final alignment",                    final),
+        ("rejected", 2, "Rejected by the LLM",                rejected),
+    ]
+    nodes = pd.DataFrame([
+        dict(node=key, column=col, label=label, pairs=len(s), correct=len(s & gold_pairs),
+             hpo_classes=len({h for h, _ in s}))
+        for key, col, label, s in node_sets
+    ])
+    flow_sets = [
+        ("start", "removed",  pairs_by_outcome["removed"]),
+        ("start", "accepted", pairs_by_outcome["accepted"]),
+        ("start", "conflict", pairs_by_outcome["conflict"]),
+        ("start", "review",   pairs_by_outcome["review"]),
+        ("accepted", "final",    pairs_by_outcome["accepted"]),
+        ("conflict", "final",    conflict_final),
+        ("conflict", "rejected", pairs_by_outcome["conflict"] - conflict_final),
+        ("review",   "final",    review_final),
+        ("review",   "rejected", pairs_by_outcome["review"] - review_final),
+    ]
+    flows = pd.DataFrame([
+        dict(source=src, target=dst, pairs=len(s), correct=len(s & gold_pairs))
+        for src, dst, s in flow_sets
+    ])
+    not_reached = universe - classified
+    nodes.attrs["universe"]            = len(universe)
+    nodes.attrs["universe_correct"]    = len(universe & gold_pairs)
+    nodes.attrs["not_reached"]         = len(not_reached)
+    nodes.attrs["not_reached_correct"] = len(not_reached & gold_pairs)
+    return nodes, flows
+
+
+def _band(ax, x0: float, y0: tuple, x1: float, y1: tuple, color: str) -> None:
+    """Filled band between the vertical spans y0 at x0 and y1 at x1 (cubic curves)."""
+    from matplotlib.path import Path
+    from matplotlib.patches import PathPatch
+    xm = (x0 + x1) / 2
+    verts = [
+        (x0, y0[1]), (xm, y0[1]), (xm, y1[1]), (x1, y1[1]),
+        (x1, y1[0]), (xm, y1[0]), (xm, y0[0]), (x0, y0[0]), (x0, y0[1]),
+    ]
+    codes = [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4,
+             Path.LINETO, Path.CURVE4, Path.CURVE4, Path.CURVE4, Path.CLOSEPOLY]
+    ax.add_patch(PathPatch(Path(verts, codes), facecolor=color, edgecolor="none", alpha=0.35))
+
+
+def plot_pipeline_flow(nodes: pd.DataFrame, flows: pd.DataFrame, gold_total: int,
+                       out_dir: str) -> list:
+    """Sankey diagram (5) and its tables; returns the written paths."""
+    node_w, gap = 0.035, 0.035
+    xs = {0: 0.0, 1: 0.45, 2: 0.9}
+    scale = 1.0 / max(nodes.groupby("column")["pairs"].sum().max(), 1)
+
+    # Node spans, stacked from the top of each column.
+    span = {}
+    for col, group in nodes.groupby("column"):
+        n_gaps = max(len(group) - 1, 0)
+        height = group["pairs"].sum() * scale + n_gaps * gap
+        top = 0.5 + height / 2
+        for _, row in group.iterrows():
+            h = row["pairs"] * scale
+            span[row["node"]] = (top - h, top)
+            top -= h + gap
+
+    fig, ax = plt.subplots(figsize=(12, 6.5))
+    out_cursor = {k: v[1] for k, v in span.items()}    # next free y (from top) for outgoing
+    in_cursor  = {k: v[1] for k, v in span.items()}    # next free y for incoming
+    node_col   = dict(zip(nodes["node"], nodes["column"]))
+    for _, f in flows.iterrows():
+        h = f["pairs"] * scale
+        s0, s1 = out_cursor[f["source"]] - h, out_cursor[f["source"]]
+        t0, t1 = in_cursor[f["target"]] - h, in_cursor[f["target"]]
+        out_cursor[f["source"]] = s0
+        in_cursor[f["target"]]  = t0
+        if h > 0:
+            _band(ax, xs[node_col[f["source"]]] + node_w, (s0, s1),
+                  xs[node_col[f["target"]]], (t0, t1), COLOR_FLOW[f["target"]])
+
+    for _, n in nodes.iterrows():
+        y0, y1 = span[n["node"]]
+        x = xs[n["column"]]
+        color = COLOR_FLOW[n["node"]]
+        ax.add_patch(plt.Rectangle((x, y0), node_w, y1 - y0, facecolor=color, alpha=0.45,
+                                   edgecolor="none"))
+        # Correct pairs as the solid lower part of the node.
+        h_correct = n["correct"] * scale
+        ax.add_patch(plt.Rectangle((x, y0), node_w, h_correct, facecolor=color, edgecolor="none"))
+        precision = n["correct"] / n["pairs"] if n["pairs"] else 0.0
+        text = (f"{n['label']}\n{n['pairs']:,} pairs, {n['hpo_classes']:,} HPO classes\n"
+                f"{n['correct']:,} correct (precision {precision:.2f})")
+        if n["column"] == 0:
+            ax.text(x - 0.01, (y0 + y1) / 2, text, ha="right", va="center", fontsize=8)
+        else:
+            ax.text(x + node_w + 0.01, (y0 + y1) / 2, text, ha="left", va="center", fontsize=8)
+
+    ax.set_xlim(-0.32, 1.25)
+    ax.set_ylim(-0.08, 1.08)
+    ax.axis("off")
+    a = nodes.attrs
+    fig.suptitle(
+        f"Flow of the candidate pairs; reference: {gold_total:,} pairs of the expert's judgement\n"
+        f"All candidates: {a.get('universe', 0):,} pairs ({a.get('universe_correct', 0):,} correct); "
+        f"not reached by any filter step: {a.get('not_reached', 0):,} "
+        f"({a.get('not_reached_correct', 0):,} correct). Solid part of a node: correct pairs. "
+        f"Auto-accepted pairs stay whatever the LLM decides.",
+        fontsize=9,
+    )
+    paths = _save(fig, out_dir, "pipeline_flow")
+    paths += _write_csv(nodes, out_dir, "pipeline_flow_nodes")
+    paths += _write_csv(flows, out_dir, "pipeline_flow_links")
+    return paths
+
+
+# --------------------------------------------------------------------------
+# (6) Overlap of the generation methods (UpSet plot)
+# --------------------------------------------------------------------------
+
+def method_overlap_table(pair_methods: dict, methods: list, gold_pairs: set) -> pd.DataFrame:
+    """
+    pair_methods: pair -> set of the generation methods that found it.
+    One row per method combination (exclusive: found by exactly these
+    methods), with candidate pairs, correct pairs and precision.
+    """
+    counts = {}
+    for pair, found_by in pair_methods.items():
+        key = tuple(m for m in methods if m in found_by)
+        total, correct = counts.get(key, (0, 0))
+        counts[key] = (total + 1, correct + (pair in gold_pairs))
+    rows = [
+        dict(combination=" + ".join(key), n_methods=len(key), pairs=total, correct=correct,
+             precision=correct / total if total else 0.0, **{m: m in key for m in methods})
+        for key, (total, correct) in counts.items()
+    ]
+    return (pd.DataFrame(rows)
+            .sort_values(["correct", "pairs"], ascending=False)
+            .reset_index(drop=True))
+
+
+def plot_method_overlap(table: pd.DataFrame, methods: list, method_labels: dict,
+                        gold_total: int, out_dir: str, top: int = 15) -> list:
+    """UpSet plot (6) of the top combinations by correct pairs; returns the written paths."""
+    methods = [m for m in methods if table[m].any()]
+    shown = table.head(top)
+    x = np.arange(len(shown))
+
+    fig = plt.figure(figsize=(12, 6.5))
+    grid = fig.add_gridspec(2, 2, width_ratios=[1, 4], height_ratios=[3, 1.6],
+                            wspace=0.02, hspace=0.05)
+    ax_bar  = fig.add_subplot(grid[0, 1])
+    ax_dots = fig.add_subplot(grid[1, 1], sharex=ax_bar)
+    ax_set  = fig.add_subplot(grid[1, 0], sharey=ax_dots)
+
+    bars = ax_bar.bar(x, shown["correct"], 0.6, color=COLOR_METRIC["precision"])
+    for bar, (_, row) in zip(bars, shown.iterrows()):
+        ax_bar.annotate(f"{row['correct']:,}\nP {row['precision']:.2f}\nof {row['pairs']:,}",
+                        (bar.get_x() + bar.get_width() / 2, bar.get_height()),
+                        xytext=(0, 2), textcoords="offset points",
+                        ha="center", va="bottom", fontsize=6.5)
+    ax_bar.set_ylabel("Correct pairs")
+    ax_bar.set_ylim(0, shown["correct"].max() * 1.3 if len(shown) else 1)
+    ax_bar.spines[["top", "right"]].set_visible(False)
+    ax_bar.tick_params(axis="x", bottom=False, labelbottom=False)
+
+    y = np.arange(len(methods))[::-1]
+    for xi, (_, row) in zip(x, shown.iterrows()):
+        member = [row[m] for m in methods]
+        ax_dots.scatter([xi] * len(methods), y, s=40,
+                        c=["#333333" if m else "#DDDDDD" for m in member], zorder=2)
+        ys = [yi for yi, m in zip(y, member) if m]
+        if len(ys) > 1:
+            ax_dots.plot([xi, xi], [min(ys), max(ys)], color="#333333", lw=1.5, zorder=1)
+    ax_dots.set_yticks(y)
+    ax_dots.tick_params(axis="y", labelleft=False)
+    ax_dots.tick_params(axis="x", bottom=False, labelbottom=False)
+    for spine in ax_dots.spines.values():
+        spine.set_visible(False)
+    ax_dots.tick_params(axis="y", left=False)
+
+    # Correct pairs per method (all its pairs, not exclusive).
+    per_method = [int(table.loc[table[m], "correct"].sum()) for m in methods]
+    ax_set.barh(y, per_method, 0.5, color=COLOR_METRIC["recall"])
+    ax_set.set_yticks(y)
+    ax_set.set_yticklabels([method_labels.get(m, m) for m in methods], fontsize=8)
+    ax_set.tick_params(axis="y", left=False)
+    ax_set.set_xlabel("Correct pairs per method", fontsize=8)
+    ax_set.set_xlim(max(per_method + [1]) * 1.35, 0)
+    ax_set.spines[["top", "left", "right"]].set_visible(False)
+    for yi, value in zip(y, per_method):
+        ax_set.annotate(f"{value:,}", (value, yi), xytext=(-2, 0), textcoords="offset points",
+                        ha="right", va="center", fontsize=7)
+
+    fig.suptitle(
+        f"Correct pairs per combination of generation methods (found by exactly these "
+        f"methods; top {len(shown)} of {len(table)} by correct pairs)\n"
+        f"Reference: {gold_total:,} pairs of the expert's judgement; P: precision of the "
+        f"combination's candidates",
+        fontsize=9,
+    )
+    paths = _save(fig, out_dir, "method_overlap")
+    paths += _write_csv(table, out_dir, "method_overlap")
+    return paths
+
+
+# --------------------------------------------------------------------------
+# (7) Is-a distance of the aligned pairs to the nearest correct target
+# --------------------------------------------------------------------------
+
+COLOR_RELATION = {"correct": "#009E73", "broader": "#0072B2", "narrower": "#E69F00",
+                  "lateral": "#999999"}
+
+
+def gold_distance_table(pair_info: dict, sets: dict, max_distance: int = 5) -> pd.DataFrame:
+    """
+    pair_info: pair -> (distance or None, nearest correct target, relation)
+    for pairs of expert-judged HPO classes. sets: label -> pairs.
+    One row per set and distance bucket (0 … max_distance+), with the
+    relation counts, the share of the set's measured pairs, and the
+    cumulative share. Pairs without a distance (correct target not in
+    SNOMED CT) are counted in "unmeasured".
+    """
+    buckets = [str(d) for d in range(max_distance)] + [f"{max_distance}+"]
+    rows = []
+    for label, pairs in sets.items():
+        info = [pair_info[p] for p in pairs if p in pair_info]
+        measured = [(d, rel) for d, _, rel in info if d is not None]
+        total = len(measured)
+        cumulative = 0
+        for bucket in buckets:
+            in_bucket = [rel for d, rel in measured
+                         if (str(d) if d < max_distance else f"{max_distance}+") == bucket]
+            cumulative += len(in_bucket)
+            row = dict(set=label, distance=bucket, pairs=len(in_bucket),
+                       share=len(in_bucket) / total if total else 0.0,
+                       cumulative_share=cumulative / total if total else 0.0,
+                       measured=total, unmeasured=len(info) - total)
+            for rel in ("broader", "narrower", "lateral"):
+                row[rel] = sum(1 for r in in_bucket if r == rel)
+            row["correct"] = len(in_bucket) if bucket == "0" else 0
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def plot_gold_distance(table: pd.DataFrame, gold_total: int, out_dir: str) -> list:
+    """Stacked bars (7), one panel per set; returns the written paths."""
+    sets = list(dict.fromkeys(table["set"]))
+    fig, axes = plt.subplots(1, len(sets), figsize=(4 * len(sets), 4.8), sharey=True,
+                             squeeze=False)
+    for ax, label in zip(axes[0], sets):
+        rows = table[table["set"] == label].reset_index(drop=True)
+        x = np.arange(len(rows))
+        bottom = np.zeros(len(rows))
+        for rel, color in COLOR_RELATION.items():
+            values = (rows[rel] / rows["measured"].replace(0, np.nan)).fillna(0).to_numpy() * 100
+            ax.bar(x, values, 0.65, bottom=bottom, color=color, label=rel)
+            bottom += values
+        for xi, top, cum in zip(x, bottom, rows["cumulative_share"]):
+            ax.annotate(f"{cum:.0%}", (xi, top), xytext=(0, 2), textcoords="offset points",
+                        ha="center", va="bottom", fontsize=7)
+        ax.set_xticks(x)
+        ax.set_xticklabels(rows["distance"])
+        ax.set_xlabel("Is-a distance to the nearest correct target")
+        measured = int(rows["measured"].iloc[0]) if len(rows) else 0
+        ax.set_title(f"{label}\n({measured:,} pairs of expert-judged HPO classes)", fontsize=10)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.set_ylim(0, 105)
+    axes[0][0].set_ylabel("Share of pairs (%)")
+    axes[0][0].legend(frameon=False, fontsize=8, loc="upper right")
+    fig.suptitle(
+        f"Distance in the SNOMED CT hierarchy to the nearest correct target "
+        f"(reference: {gold_total:,} pairs of the expert's judgement)\n"
+        f"Labels: cumulative share up to the distance; 1 = parent or child, 2 = sibling, "
+        f"grandparent or grandchild; pairs whose correct target is not in SNOMED CT are left out",
+        fontsize=9,
+    )
+    fig.tight_layout()
+    paths = _save(fig, out_dir, "gold_distance")
+    paths += _write_csv(table, out_dir, "gold_distance")
+    return paths

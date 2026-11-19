@@ -72,7 +72,7 @@ Compares every stage with the gold standard and logs precision, recall and F1 pe
 | `accepted_without_gold.csv` | Final pairs of HPO concepts that have no mapping in the gold standard |
 | `llm_disagreements.csv` | Pairs where the LLM and the rule-based filter disagree, with the LLM's decision, confidence and rationale |
 
-Section 19 of the log and `MappingPlots.py` write four plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
+Section 19 of the log and `MappingPlots.py` write seven plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
 
 | Plot | Content | Tables |
 |---|---|---|
@@ -80,6 +80,9 @@ Section 19 of the log and `MappingPlots.py` write four plots (PDF and PNG) and t
 | `generation_counts` | Candidate pairs and HPO classes per generation method (log scale), alone and cumulative, plus the pairs a method adds to the methods run before it | as above |
 | `filter_metrics` | Precision, recall and F1 of the pairs each filter step accepted (steps 2–8) or marked for review (steps 9–10), and cumulative: auto-accepted up to step 8, all pairs passed to the LLM from step 9 on, then LLM-accepted and the final set | `filter_metrics_per_step.csv`, `filter_metrics_cumulative.csv` |
 | `filter_counts` | Pairs classified by each filter step by outcome (accepted, source-collapse conflict, fallback candidate, domain mismatch), and the HPO classes involved in each step | `filter_metrics_per_step.csv` |
+| `pipeline_flow` | Sankey diagram of the pairs classified by the filter: domain mismatch, auto-accepted, source-collapse conflicts and fallback candidates, then the final alignment and the pairs rejected by the LLM; the solid part of each node are the correct pairs | `pipeline_flow_nodes.csv`, `pipeline_flow_links.csv` |
+| `method_overlap` | UpSet plot: correct pairs per combination of generation methods (pairs found by exactly these methods), with the precision of the combination, and correct pairs per method | `method_overlap.csv` |
+| `gold_distance` | Is-a distance of the auto-accepted, LLM-accepted and final pairs of expert-judged HPO classes to the nearest correct target, split into broader, narrower and lateral, with the cumulative share | `gold_distance.csv` |
 
 The plots number the filter steps as in the paper (1–10: the sub-steps 2b and 2c count as steps 3 and 4); the log and the `step` column use the step ids of the code (see the table above). Pairs accepted in a step and demoted later count as conflicts of that step, so the per-step numbers describe the final state, not the state right after the step.
 

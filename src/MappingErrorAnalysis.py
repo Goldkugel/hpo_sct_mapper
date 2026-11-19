@@ -18,7 +18,11 @@ from MappingUtils   import (
     getRepresentativeLabel,
     step_column, FILTER_STEPS, METHOD_LABELS, plots_dir,
 )
-from MappingPlots   import generation_tables, filter_tables, plot_generation, plot_filter
+from MappingPlots   import (
+    generation_tables, filter_tables, plot_generation, plot_filter,
+    pipeline_flow_tables, plot_pipeline_flow, method_overlap_table, plot_method_overlap,
+    gold_distance_table, plot_gold_distance,
+)
 import os
 import pandas as pd
 import numpy  as np
@@ -983,6 +987,41 @@ if __name__ == "__main__":
         l.log(f"C./D. Filter steps skipped: {os.path.basename(llm_filtered_path)} has no "
               f"'{step_column}' column (written by MappingSetBuilder since this "
               f"version; rerun MappingSetBuilder and MappingLLM).")
+
+    # Flow of the pairs (validity codes of section 4) into the final set.
+    pairs_by_outcome = {
+        "removed":  pairs_with([validity_domain_mismatch]),
+        "accepted": auto_pairs,
+        "conflict": pairs_with(validity_hierarchy_reversals),
+        "review":   pairs_with([validity_best_candidate, validity_last_resort]),
+    }
+    flow_nodes, flow_links = pipeline_flow_tables(universe_pairs, pairs_by_outcome, llm_pairs, gold_pairs)
+    l.log("E. Flow of the pairs (Sankey diagram):")
+    for _, row in flow_nodes.iterrows():
+        l.log(f"  {row['label'] + ':':<48} pairs {row['pairs']:7} | HPO classes "
+              f"{row['hpo_classes']:6} | in gold {row['correct']:6}")
+    l.log(f"  Not reached by any filter step: {flow_nodes.attrs['not_reached']} pairs, "
+          f"{flow_nodes.attrs['not_reached_correct']} in gold.")
+    written += plot_pipeline_flow(flow_nodes, flow_links, gold_total, plots_dir)
+
+    # Method combinations (section 12, exclusive: found by exactly these methods).
+    pair_methods = defaultdict(set)
+    for method, pairs in method_pair_sets.items():
+        for pair in pairs:
+            pair_methods[pair].add(method)
+    overlap = method_overlap_table(pair_methods, GENERATION_METHODS, gold_pairs)
+    l.log("F. Method combinations with the most gold pairs (found by exactly these methods):")
+    for _, row in overlap.head(10).iterrows():
+        l.log(f"  {row['combination'] + ':':<70} pairs {row['pairs']:7} | in gold "
+              f"{row['correct']:6} | P {row['precision']:.3f}")
+    written += plot_method_overlap(overlap, GENERATION_METHODS, METHOD_LABELS, gold_total, plots_dir)
+
+    # Is-a distance to the nearest gold target (section 16).
+    distance_table = gold_distance_table(pair_gold_distance, {
+        "Auto-accepted": auto_pairs, "LLM-accepted": llm_pairs, "Final alignment": final_pairs,
+    }, max_distance=MAX_DISTANCE)
+    l.log("G. Is-a distance to the nearest gold target: see section 16 for the numbers.")
+    written += plot_gold_distance(distance_table, gold_total, plots_dir)
 
     l.log(f"Plots and tables written to {plots_dir}: "
           f"{', '.join(sorted({os.path.splitext(os.path.basename(p))[0] for p in written}))}.")
