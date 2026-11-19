@@ -590,6 +590,14 @@ def evaluation(data: pd.DataFrame, gold: pd.DataFrame, text: str, adapter: BaseA
     l.log(f"{'Correct pairs (in gold):':<26}{count:7}")
     l.log(f"{'Pairs:':<26}{len(predicted):7}")
     l.log(f"{'HPO concepts:':<26}{predicted[id_col].nunique():7}")
+    # Concept level: gold HPO concepts with at least one gold target in data.
+    n_gold_hpo = gold_pairs[hpo_id_column].nunique()
+    n_hit_hpo  = matches[id_col].nunique()
+    share_hit  = n_hit_hpo / n_gold_hpo if n_gold_hpo else 0
+    l.log(f"{'Gold HPO concepts found:':<26}{n_hit_hpo:7} of {n_gold_hpo} ({share_hit:.2%}, "
+          f"≥1 gold target)")
+    n_no_gold_hpo = len(set(predicted[id_col]) - set(gold_pairs[hpo_id_column]))
+    l.log(f"{'HPO concepts not in gold:':<26}{n_no_gold_hpo:7} (cannot be verified)")
 
 def extract_snomed_domain(term: str) -> str:
     """

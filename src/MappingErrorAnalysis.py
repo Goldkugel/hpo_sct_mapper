@@ -384,8 +384,43 @@ if __name__ == "__main__":
     for hid, sid in gold_pairs:
         gold_sct_per_hpo[hid].add(sid)
 
+    # Concept level: for how many gold HPO concepts the final set contains a
+    # gold target. "all" = every gold target found; "exactly" = also no
+    # target beyond the gold ones.
+    gold_mapped = gold_hpo & accepted_hpo
+    n_gold      = len(gold_hpo)
+    n_any = n_all = n_exact = 0
+    for hid in gold_mapped:
+        our_scts  = accepted_sct_per_hpo[hid]
+        gold_scts = gold_sct_per_hpo[hid]
+        if our_scts & gold_scts:
+            n_any += 1
+        if gold_scts <= our_scts:
+            n_all += 1
+            if our_scts == gold_scts:
+                n_exact += 1
+
+    l.log("B. Gold HPO concepts with a correct final mapping:")
+    l.log(f"  {'Gold HPO concepts:':<46}{n_gold:7}")
+    l.log(f"  {'With ≥1 final mapping:':<46}{len(gold_mapped):7} "
+          f"({_safe_div(len(gold_mapped), n_gold):.2%})")
+    l.log(f"  {'With ≥1 gold target found:':<46}{n_any:7} "
+          f"({_safe_div(n_any, n_gold):.2%} of gold, "
+          f"{_safe_div(n_any, len(gold_mapped)):.2%} of mapped)")
+    l.log(f"  {'With all gold targets found:':<46}{n_all:7} "
+          f"({_safe_div(n_all, n_gold):.2%} of gold, "
+          f"{_safe_div(n_all, len(gold_mapped)):.2%} of mapped)")
+    l.log(f"  {'With exactly the gold targets (no extra):':<46}{n_exact:7} "
+          f"({_safe_div(n_exact, n_gold):.2%} of gold, "
+          f"{_safe_div(n_exact, len(gold_mapped)):.2%} of mapped)")
+    # The gold standard covers only part of HPO: mapped concepts outside it
+    # cannot be verified (listed in section 15, category C).
+    n_mapped_no_gold = len(accepted_hpo - gold_hpo)
+    l.log(f"  {'Mapped HPO concepts not in gold:':<46}{n_mapped_no_gold:7} "
+          f"({_safe_div(n_mapped_no_gold, len(accepted_hpo)):.2%} of mapped HPO concepts)")
+
     multi_mapped = {h: s for h, s in accepted_sct_per_hpo.items() if len(s) > 1}
-    l.log(f"B. HPO concepts with more than one final SCT target: {len(multi_mapped)} "
+    l.log(f"C. HPO concepts with more than one final SCT target: {len(multi_mapped)} "
           f"({_safe_div(len(multi_mapped), len(accepted_sct_per_hpo)):.2%} of mapped "
           f"concepts).")
     l.log("Examples with the most targets:")
