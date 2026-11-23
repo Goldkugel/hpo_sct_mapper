@@ -1,4 +1,5 @@
 import os
+import re
 
 import matplotlib
 matplotlib.use("Agg")   # no display on the cluster
@@ -20,8 +21,8 @@ import pandas            as pd
 #   (3b) filter_cumulative_metrics : precision, recall and F1 of the
 #                            cumulative set after each filter step, then
 #                            LLM-accepted and final
-#   (4b) filter_cumulative_counts  : pairs, HPO classes and correct pairs of
-#                            that cumulative set
+#   (4b) filter_cumulative_counts  : pairs, HPO classes, correct pairs and
+#                            rejected pairs of that cumulative set
 # Each plot is written as PDF (for the paper) and PNG, each table as CSV.
 #
 # Only pandas, numpy and matplotlib are used, so the module can be tested
@@ -46,9 +47,10 @@ OUTCOME_LABELS = {
     "removed":  "domain mismatch (code 0)",
 }
 METRIC_LABELS = {"precision": "Precision", "recall": "Recall", "f1": "F1"}
-COLOR_COUNT["correct"] = "#009E73"
+COLOR_COUNT["correct"]  = "#009E73"
+COLOR_COUNT["rejected"] = "#D55E00"
 COUNT_LABELS  = {"pairs": "Pairs", "hpo_classes": "HPO classes", "new_pairs": "New pairs",
-                 "correct": "Correct pairs (in gold)"}
+                 "correct": "Accepted by the expert", "rejected": "Rejected by the pipeline"}
 
 # Validity codes (as in MappingUtils; repeated so the module stays
 # independent of the pipeline packages).
@@ -126,6 +128,10 @@ def filter_tables(
     Cumulative: auto-accepted pairs of the steps so far; from the first
     fallback step on, the pairs passed to the LLM (codes 1–10) of the steps
     so far; then LLM-accepted and final (auto-accepted + LLM-accepted).
+    'rejected' are the classified pairs not in the set: after a step, the
+    pairs of the steps so far (domain filter included) left out of the set;
+    for LLM-accepted, the reviewed pairs (codes 1–9) the LLM did not accept;
+    for final, all classified pairs not in the final alignment.
     Returns (per_step, cumulative) DataFrames.
     """
     classified = pair_table[pair_table[step_col].notna()].copy()
@@ -168,14 +174,21 @@ def filter_tables(
             pool, kind = so_far[so_far["outcome"] != "removed"], "auto-accepted + review (codes 1–10)"
         else:
             pool, kind = so_far[so_far["outcome"] == "accepted"], "auto-accepted"
-        cumul_rows.append(dict(step=step_id, label=f"≤ {label}", set=kind,
-                               **pair_metrics(pairs_of(pool), gold_pairs)))
+        kept = pairs_of(pool)
+        # Without the step number: the x-axis is in processing order.
+        cumul_rows.append(dict(step=step_id, label=re.sub(r"^\d+\s+", "", label), set=kind,
+                               **pair_metrics(kept, gold_pairs),
+                               rejected=len(pairs_of(so_far) - kept)))
 
-    auto = pairs_of(classified[classified["outcome"] == "accepted"])
+    auto     = pairs_of(classified[classified["outcome"] == "accepted"])
+    reviewed = pairs_of(classified[classified["outcome"].isin(["conflict", "review"])]) - auto
+    final    = auto | llm_pairs
     cumul_rows.append(dict(step="llm", label="LLM-accepted", set="LLM-accepted",
-                           **pair_metrics(llm_pairs, gold_pairs)))
+                           **pair_metrics(llm_pairs, gold_pairs),
+                           rejected=len(reviewed - llm_pairs)))
     cumul_rows.append(dict(step="final", label="Final alignment", set="auto-accepted ∪ LLM-accepted",
-                           **pair_metrics(auto | llm_pairs, gold_pairs)))
+                           **pair_metrics(final, gold_pairs),
+                           rejected=len(pairs_of(classified) - final)))
     return pd.DataFrame(per_step_rows), pd.DataFrame(cumul_rows)
 
 
@@ -309,49 +322,47 @@ def plot_filter(per_step: pd.DataFrame, cumulative: pd.DataFrame, gold_total: in
     fig.tight_layout()
     paths += _save(fig, out_dir, "filter_counts")
 
-    paths += _plot_filter_cumulative(cumulative, subtitle, out_dir)
+    paths += _plot_filter_cumulative(cumulative, out_dir)
 
     paths += _write_csv(per_step, out_dir, "filter_metrics_per_step")
     paths += _write_csv(cumulative, out_dir, "filter_metrics_cumulative")
     return paths
 
 
-def _plot_filter_cumulative(cumulative: pd.DataFrame, subtitle: str, out_dir: str) -> list:
+def _plot_filter_cumulative(cumulative: pd.DataFrame, out_dir: str) -> list:
     """
     Plots (3b) and (4b): metrics and counts of the cumulative set after each
     filter step, then LLM-accepted and final. Dashed lines separate the
     groups of the cumulative table's 'set' column (auto-accepted; pairs
     passed to the LLM; LLM-accepted; final). Returns the written paths.
     """
-    note = ("\nCumulative set after each step: auto-accepted pairs up to step 8; from step 9 on "
-            "also the pairs marked for the LLM review (codes 1–9);\nthen the pairs the LLM "
-            "accepted and the final alignment (auto-accepted ∪ LLM-accepted)")
     # Positions between two rows whose set differs.
     sets = cumulative["set"].tolist()
     borders = [i - 0.5 for i in range(1, len(sets)) if sets[i] != sets[i - 1]]
-    width = max(6.5, 0.8 * len(cumulative) + 2)
+    width = max(6.5, 0.9 * len(cumulative) + 2)
 
-    def finish(fig, ax, ylabel: str, name: str) -> list:
+    def finish(fig, ax, title: str, ylabel: str, name: str) -> list:
         for x in borders:
             ax.axvline(x, color="#666666", linestyle="--", linewidth=0.8)
-        ax.set_title("Cumulative set after each filter step", fontsize=11)
+        ax.set_title(title, fontsize=11)
         ax.set_ylabel(ylabel)
-        fig.suptitle(subtitle + note, fontsize=8.5)
         fig.tight_layout()
         return _save(fig, out_dir, name)
 
     paths = []
-    fig, ax = plt.subplots(figsize=(width, 5.5))
+    fig, ax = plt.subplots(figsize=(width, 5))
     _grouped_bars(ax, cumulative, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
     ax.set_ylim(0, 1.12)
-    paths += finish(fig, ax, "Value", "filter_cumulative_metrics")
+    paths += finish(fig, ax, "Metrics after each filter step", "Value",
+                    "filter_cumulative_metrics")
 
-    columns = ["pairs", "hpo_classes", "correct"]
-    fig, ax = plt.subplots(figsize=(width, 5.5))
+    columns = ["pairs", "hpo_classes", "correct", "rejected"]
+    fig, ax = plt.subplots(figsize=(width, 5))
     _grouped_bars(ax, cumulative, columns, COLOR_COUNT, COUNT_LABELS, fmt="{:,.0f}")
     ax.set_ylim(0, max(cumulative[columns].to_numpy().max(), 1) * 1.25)
     ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
-    paths += finish(fig, ax, "Count", "filter_cumulative_counts")
+    paths += finish(fig, ax, "Counts after each filter step", "Count",
+                    "filter_cumulative_counts")
     return paths
 
 
