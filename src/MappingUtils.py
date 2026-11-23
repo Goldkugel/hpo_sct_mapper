@@ -52,6 +52,8 @@ evaluation_path      = "./data/output/evaluation/evaluation_final.csv"
 no_gold_path         = "./data/output/evaluation/accepted_without_gold.csv"
 llm_disagreements_path = "./data/output/evaluation/llm_disagreements.csv"
 gold_check_path      = "./data/output/evaluation/gold_check.csv"
+# Plots and plotted values of MappingErrorAnalysis (MappingPlots).
+plots_dir            = "./data/output/evaluation/plots"
 
 output_paths = [
     mapping_path, filtered_path, llm_filtered_path, llm_review_path,
@@ -101,6 +103,41 @@ VALIDITY_LABELS = {
     validity_best_candidate:          "step 7 fallback — best candidate",
     validity_last_resort:             "step 8 last resort",
     validity_accepted:                "accepted",
+}
+
+# Filter step that set a pair's validity code, written by MappingSetBuilder
+# to step_column: the step of the code, and for accepted pairs (code 10) the
+# step that accepted them. Demoted pairs carry the code of the step that
+# accepted them (see MappingSetBuilder.demote), so code and step agree.
+step_column = "step"
+
+# Filter steps in processing order: (step id as in the log, display label,
+# validity code the step gives its conflicts or candidates). The labels
+# follow the step numbering of the paper (Methods, "Alignment set building"),
+# which counts the sub-steps 2b and 2c as steps of their own.
+FILTER_STEPS = [
+    ("1",  "1 Domain filter",               validity_domain_mismatch),
+    ("2",  "2 Anchors",                     validity_anchor_reversal),
+    ("2b", "3 Exact label match",           validity_exact_lexical_reversal),
+    ("2c", "4 Remaining HPO xrefs",         validity_hpo_xref_reversal),
+    ("3",  "5 HPO → UMLS → SCT",  validity_umls_bridge_reversal),
+    ("4",  "6 Shared CUI",                  validity_umls_cui_reversal),
+    ("5",  "7 Jaccard = 1 and cosine = 1",  validity_jaccard_cosine_reversal),
+    ("6",  "8 Jaccard = 1 only",            validity_jaccard_only_reversal),
+    ("7",  "9 Best-candidate fallback",     validity_best_candidate),
+    ("8",  "10 Last-resort fallback",       validity_last_resort),
+]
+# validity code -> step id, for every code except 10 (accepted).
+VALIDITY_STEP = {code: step_id for step_id, _, code in FILTER_STEPS}
+
+# Display names of the generation methods for plots and tables.
+METHOD_LABELS = {
+    hpo_sct_mappings:       "HPO cross-references",
+    hpo_umls_sct_mappings:  "HPO → UMLS → SNOMED CT",
+    umls_hpo_sct_mappings:  "Shared CUI",
+    exact_lexical_mappings: "Exact lexical match",
+    jaccard_mappings:       "Jaccard > 0.90",
+    embedding_mappings:     "Cosine ≥ 0.75 (SapBERT)",
 }
 
 # Review reason passed to the LLM prompt. Code 0 is not reviewed; code 10 is,

@@ -16,6 +16,7 @@ from MappingUtils           import (
     validity_jaccard_cosine_reversal, validity_jaccard_only_reversal,
     validity_best_candidate, validity_last_resort, validity_accepted,
     validity_hierarchy_reversals, validity_reviewable, validity_all,
+    step_column, VALIDITY_STEP,
 )
 from adapter                import labelClass
 from collections            import defaultdict
@@ -44,6 +45,9 @@ import numpy                as np
 # check_hierarchy) overwrites an accepted 10. Pairs not reached by any step
 # keep validity=NA and are written to filtered.csv too (MappingErrorAnalysis
 # uses all generated pairs); MappingLLM reviews validity 1-10.
+#
+# The step column holds the step that set the code (for accepted pairs the
+# step that accepted them), for the per-step evaluation.
 # ==========================================================================
 
 EXACT_SIMILARITY = 1.0
@@ -843,6 +847,18 @@ if __name__ == "__main__":
           "for LLM review completed.")
 
     l.printHeader("Writing filtered mappings")
+
+    # Step that set the code: from the code itself, for accepted pairs from
+    # the reversal code of the accepting step (accepted_code).
+    accepted_step = {pair: VALIDITY_STEP[code] for pair, code in accepted_code.items()}
+    mappings[step_column] = mappings[validity_column].map(
+        lambda code: VALIDITY_STEP.get(code, pd.NA) if pd.notna(code) else pd.NA
+    )
+    is_accepted = mappings[validity_column] == validity_accepted
+    mappings.loc[is_accepted, step_column] = [
+        accepted_step[pair]
+        for pair in zip(mappings.loc[is_accepted, id_col], mappings.loc[is_accepted, val_col])
+    ]
 
     pair_validity = mappings.drop_duplicates(subset=[id_col, val_col, validity_column])
     l.log("Validity codes (pairs / rows):")
