@@ -1,0 +1,10 @@
+source;target;pairs;correct
+start;removed;17444;3
+start;accepted;6119;4825
+start;conflict;213;50
+start;review;11048;2563
+accepted;final;6119;4825
+conflict;final;28;12
+conflict;rejected;185;38
+review;final;3503;2088
+review;rejected;7545;475

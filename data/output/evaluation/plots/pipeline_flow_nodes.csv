@@ -1,0 +1,8 @@
+node;column;label;pairs;correct;hpo_classes
+start;0;Classified by the filter;34824;7441;17142
+removed;1;Domain mismatch (code 0);17444;3;5814
+accepted;1;Auto-accepted (code 10);6119;4825;5532
+conflict;1;Source-collapse conflicts (1–7);213;50;205
+review;1;Fallback candidates (8–9);11048;2563;10964
+final;2;Final alignment;9650;6925;9024
+rejected;2;Rejected by the LLM;7730;513;7702
