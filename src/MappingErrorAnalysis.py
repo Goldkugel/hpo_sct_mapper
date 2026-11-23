@@ -21,6 +21,7 @@ from MappingUtils   import (
 from MappingPlots   import (
     generation_tables, filter_tables, plot_generation, plot_filter,
     pipeline_flow_tables, plot_pipeline_flow, method_overlap_table, plot_method_overlap,
+    method_agreement_table, plot_method_agreement,
     gold_distance_table, plot_gold_distance,
 )
 import os
@@ -1015,6 +1016,14 @@ if __name__ == "__main__":
         l.log(f"  {row['combination'] + ':':<70} pairs {row['pairs']:7} | in gold "
               f"{row['correct']:6} | P {row['precision']:.3f}")
     written += plot_method_overlap(overlap, GENERATION_METHODS, METHOD_LABELS, gold_total, plots_dir)
+
+    # Precision by the number of methods that found a pair.
+    agreement = method_agreement_table(overlap)
+    l.log("F2. Precision by the number of generation methods that found a pair:")
+    for _, row in agreement.iterrows():
+        l.log(f"  {int(row['n_methods'])} method(s): pairs {int(row['pairs']):7} | in gold "
+              f"{int(row['correct']):6} | P {row['precision']:.3f}")
+    written += plot_method_agreement(agreement, plots_dir)
 
     # Is-a distance to the nearest gold target (section 16).
     distance_table = gold_distance_table(pair_gold_distance, {

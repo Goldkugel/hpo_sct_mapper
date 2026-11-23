@@ -72,7 +72,7 @@ Compares every stage with the gold standard and logs precision, recall and F1 pe
 | `accepted_without_gold.csv` | Final pairs of HPO concepts that have no mapping in the gold standard |
 | `llm_disagreements.csv` | Pairs where the LLM and the rule-based filter disagree, with the LLM's decision, confidence and rationale |
 
-Section 19 of the log and `MappingPlots.py` write nine plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
+Section 19 of the log and `MappingPlots.py` write ten plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
 
 | Plot | Content | Tables |
 |---|---|---|
@@ -84,6 +84,7 @@ Section 19 of the log and `MappingPlots.py` write nine plots (PDF and PNG) and t
 | `filter_cumulative_counts` | Line plot of pairs, HPO classes, pairs accepted by the expert and pairs rejected by the pipeline of the same cumulative sets (rejected: classified pairs left out of the set; for LLM-accepted, the reviewed pairs the LLM did not accept) | `filter_metrics_cumulative.csv` |
 | `pipeline_flow` | Sankey diagram of the pairs classified by the filter: domain mismatch, auto-accepted, source-collapse conflicts and fallback candidates, then the final alignment and the pairs rejected by the LLM; the solid part of each node are the correct pairs | `pipeline_flow_nodes.csv`, `pipeline_flow_links.csv` |
 | `method_overlap` | UpSet plot: correct pairs per combination of generation methods (pairs found by exactly these methods), with the precision of the combination, and correct pairs per method | `method_overlap.csv` |
+| `method_agreement` | Precision of the candidate pairs by the number of generation methods that found them, with correct and all pairs per group | `method_agreement.csv` |
 | `gold_distance` | Is-a distance of the auto-accepted, LLM-accepted and final pairs of expert-judged HPO classes to the nearest correct target, split into broader, narrower and lateral, with the cumulative share | `gold_distance.csv` |
 
 The plots number the filter steps as in the paper (1–10: the sub-steps 2b and 2c count as steps 3 and 4); the log and the `step` column use the step ids of the code (see the table above). Pairs accepted in a step and demoted later count as conflicts of that step, so the per-step numbers describe the final state, not the state right after the step.

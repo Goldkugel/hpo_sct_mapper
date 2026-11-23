@@ -698,6 +698,41 @@ def plot_method_overlap(table: pd.DataFrame, methods: list, method_labels: dict,
     return paths
 
 
+def method_agreement_table(overlap: pd.DataFrame) -> pd.DataFrame:
+    """
+    Candidate pairs grouped by the number of generation methods that found
+    them, with correct pairs and precision (from method_overlap_table).
+    """
+    table = (overlap.groupby("n_methods", as_index=False)[["pairs", "correct"]].sum()
+             .sort_values("n_methods").reset_index(drop=True))
+    table["precision"] = table["correct"] / table["pairs"].where(table["pairs"] > 0)
+    table["precision"] = table["precision"].fillna(0.0)
+    return table
+
+
+def plot_method_agreement(table: pd.DataFrame, out_dir: str) -> list:
+    """Plot (6b): precision by the number of methods that found a pair; returns the written paths."""
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    x = np.arange(len(table))
+    bars = ax.bar(x, table["precision"], 0.6, color=COLOR_METRIC["precision"])
+    for bar, (_, row) in zip(bars, table.iterrows()):
+        ax.annotate(f"{row['precision']:.2f}\n{int(row['correct']):,} of {int(row['pairs']):,}",
+                    (bar.get_x() + bar.get_width() / 2, bar.get_height()),
+                    xytext=(0, 2), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=7)
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(int(n)) for n in table["n_methods"]])
+    ax.set_xlabel("Number of generation methods that found the pair")
+    ax.set_ylabel("Precision")
+    ax.set_ylim(0, 1.15)
+    ax.set_title("Precision by number of generation methods", fontsize=11)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    paths = _save(fig, out_dir, "method_agreement")
+    paths += _write_csv(table, out_dir, "method_agreement")
+    return paths
+
+
 # --------------------------------------------------------------------------
 # (7) Is-a distance of the aligned pairs to the nearest correct target
 # --------------------------------------------------------------------------
