@@ -130,6 +130,7 @@ The columns from `n_sct` on are empty for pairs that were not reviewed. The log 
 │   ├── MappingGoldCheck.py    # LLM check of the gold standard
 │   ├── MappingPlots.py        # Plots of step 4 (generation methods, filter steps)
 │   └── MappingUtils.py        # Shared constants and helpers
+├── cleanUp.sh                 # Deletes all files written by the pipeline (complete rerun)
 ├── start.sh                   # Runs steps 1 and 2
 ├── startLLM.sh                # Slurm job for step 3
 ├── startGoldCheck.sh          # Slurm job for the gold standard check
@@ -189,6 +190,14 @@ sbatch ./startGoldCheck.sh
 The LLM review and the gold standard check store their answers after every chunk in `data/tmp/` (`prompt_<model>_<index>.json` and `gold_<model>_<index>.json`, with index 0 for pass 1 and 1 for pass 2, see `data/tmp/README.md`) and resume from them if the job is interrupted. Every answer is stored with its prompts and settings, so answers of other prompts, data or model settings are never reused.
 
 All scripts log to `data/logs/output.log`. New runs append to it. The file is tracked by git, so commit it with the results of a run to keep the log of the latest run in the repository (see `data/logs/README.md`).
+
+### Complete rerun
+
+```bash
+./cleanUp.sh
+```
+
+`cleanUp.sh` deletes every file the pipeline writes, so the next run reuses nothing of an earlier one. It deletes the ontology CSVs of the adapters, all outputs and plots, the LLM answer stores, the logs with `run_metadata.json`, and the Slurm logs. It keeps `data/input/`, the README files, the code and the configuration. It lists the files and asks before deleting; `./cleanUp.sh -n` only lists them, and `./cleanUp.sh -y` deletes without asking. Some of the deleted files are tracked by git (e.g. `output.log` and the outputs), so they show up as deleted until the new run writes them again.
 
 ## License
 
