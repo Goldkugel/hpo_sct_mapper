@@ -18,11 +18,12 @@ import pandas            as pd
 #                            cumulative, plus LLM-accepted and final
 #   (4) filter_counts      : pairs per filter step by outcome, and HPO
 #                            classes per step
-#   (3b) filter_cumulative_metrics : precision, recall and F1 of the
-#                            cumulative set after each filter step, then
-#                            LLM-accepted and final
-#   (4b) filter_cumulative_counts  : pairs, HPO classes, correct pairs and
-#                            rejected pairs of that cumulative set
+#   (3b) filter_cumulative_metrics : line plot of precision, recall and F1
+#                            of the cumulative set after each filter step,
+#                            then LLM-accepted and final
+#   (4b) filter_cumulative_counts  : line plot of pairs, HPO classes, pairs
+#                            accepted by the expert and pairs rejected by the
+#                            pipeline of that cumulative set
 # Each plot is written as PDF (for the paper) and PNG, each table as CSV.
 #
 # Only pandas, numpy and matplotlib are used, so the module can be tested
@@ -329,40 +330,125 @@ def plot_filter(per_step: pd.DataFrame, cumulative: pd.DataFrame, gold_total: in
     return paths
 
 
+# Candidate positions of a vertical value label next to a point of a line
+# plot: (dx, dy) in points, horizontal and vertical alignment. Earlier
+# candidates are preferred when several are equally free.
+LABEL_CANDIDATES = [c for d in (5, 13, 21) for c in (
+    ((0, d), "center", "bottom"),     # above
+    ((0, -d), "center", "top"),       # below
+    ((d, 3), "left", "bottom"),       # right, upwards
+    ((d, -3), "left", "top"),         # right, downwards
+    ((-d, 3), "right", "bottom"),     # left, upwards
+    ((-d, -3), "right", "top"),       # left, downwards
+)]
+
+
+def _place_value_labels(fig, ax, x: np.ndarray, series: dict, colors: dict, fmt: str,
+                        separators: list, marker_size: float) -> None:
+    """
+    Writes every value of the line plot vertically next to its point, at the
+    candidate position with the fewest collisions. Penalties, highest first:
+    outside the axes, on another label or the legend, on a marker, on a
+    dashed separator, per sampled line point inside the label.
+    series: {column: values}; separators: x positions of the dashed lines.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    to_px = ax.transData.transform
+    axes_box = ax.get_window_extent(renderer)
+    legend = ax.get_legend()
+    legend_box = legend.get_window_extent(renderer) if legend else None
+    marker_r = marker_size / 2 * fig.dpi / 72 + 1
+
+    points = {col: to_px(np.column_stack([x, values])) for col, values in series.items()}
+    samples = []
+    for pts in points.values():
+        for (x0, y0), (x1, y1) in zip(pts[:-1], pts[1:]):
+            t = np.linspace(0, 1, 40)[:, None]
+            samples.append(np.hstack([x0 + t * (x1 - x0), y0 + t * (y1 - y0)]))
+    samples = np.vstack(samples) if samples else np.empty((0, 2))
+    markers = np.vstack(list(points.values()))
+    separator_px = [to_px((b, 0))[0] for b in separators]
+
+    def label(text, xy, offset, ha, va, color, **kwargs):
+        return ax.annotate(text, xy, xytext=offset, textcoords="offset points", rotation=90,
+                           ha=ha, va=va, fontsize=6.5, color=color, zorder=5, **kwargs)
+
+    placed = []
+    for i in range(len(x)):
+        for col, values in series.items():
+            text, xy = fmt.format(values[i]), (x[i], values[i])
+            best = None
+            for rank, (offset, ha, va) in enumerate(LABEL_CANDIDATES):
+                t = label(text, xy, offset, ha, va, colors[col])
+                bb = t.get_window_extent(renderer).expanded(1.05, 1.05)
+                t.remove()
+                near = lambda a, r=0: ((np.abs(a[:, 0] - np.clip(a[:, 0], bb.x0, bb.x1)) <= r) &
+                                       (np.abs(a[:, 1] - np.clip(a[:, 1], bb.y0, bb.y1)) <= r))
+                score = (
+                    100 * (bb.x0 < axes_box.x0 or bb.x1 > axes_box.x1 or
+                           bb.y0 < axes_box.y0 or bb.y1 > axes_box.y1)
+                    + 30 * sum(bb.overlaps(o) for o in placed)
+                    + 30 * (legend_box is not None and bb.overlaps(legend_box))
+                    + 10 * int(near(markers, marker_r).sum())
+                    + 5 * sum(bb.x0 <= b <= bb.x1 for b in separator_px)
+                    + int(near(samples).sum())
+                    + 0.3 * rank
+                )
+                if best is None or score < best[0]:
+                    best = (score, offset, ha, va, bb)
+            _, offset, ha, va, bb = best
+            label(text, xy, offset, ha, va, colors[col],
+                  bbox=dict(boxstyle="square,pad=0.05", facecolor="white", edgecolor="none"))
+            placed.append(bb)
+
+
 def _plot_filter_cumulative(cumulative: pd.DataFrame, out_dir: str) -> list:
     """
-    Plots (3b) and (4b): metrics and counts of the cumulative set after each
-    filter step, then LLM-accepted and final. Dashed lines separate the
-    groups of the cumulative table's 'set' column (auto-accepted; pairs
-    passed to the LLM; LLM-accepted; final). Returns the written paths.
+    Plots (3b) and (4b): line plots of the metrics and counts of the
+    cumulative set after each filter step, then LLM-accepted and final.
+    Dashed lines separate the groups of the cumulative table's 'set' column
+    (auto-accepted; pairs passed to the LLM; LLM-accepted; final). Every
+    value is written next to its point. Returns the written paths.
     """
-    # Positions between two rows whose set differs.
+    x = np.arange(len(cumulative))
     sets = cumulative["set"].tolist()
-    borders = [i - 0.5 for i in range(1, len(sets)) if sets[i] != sets[i - 1]]
-    width = max(6.5, 0.9 * len(cumulative) + 2)
+    separators = [i - 0.5 for i in range(1, len(sets)) if sets[i] != sets[i - 1]]
+    width = max(6.5, 0.75 * len(cumulative) + 2)
+    marker_size = 5
 
-    def finish(fig, ax, title: str, ylabel: str, name: str) -> list:
-        for x in borders:
-            ax.axvline(x, color="#666666", linestyle="--", linewidth=0.8)
+    def line_plot(columns, colors, labels, fmt, title, ylabel, name, ylim=None) -> list:
+        fig, ax = plt.subplots(figsize=(width, 4.8))
+        series = {col: cumulative[col].to_numpy(dtype=float) for col in columns}
+        for col, values in series.items():
+            ax.plot(x, values, marker="o", markersize=marker_size, linewidth=1.8,
+                    color=colors[col], label=labels[col], zorder=3)
+        ax.set_ylim(*(ylim or (0, max(cumulative[columns].to_numpy().max(), 1) * 1.2)))
+        if not ylim:
+            ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+        for b in separators:
+            ax.axvline(b, color="#666666", linestyle="--", linewidth=0.8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(cumulative["label"], rotation=30, ha="right", fontsize=8)
+        ax.set_xlim(-0.5, len(cumulative) - 0.3)
+        ax.grid(axis="y", color="#DDDDDD", linewidth=0.6)
+        ax.set_axisbelow(True)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.legend(frameon=False, fontsize=8, ncol=len(columns), loc="upper left")
         ax.set_title(title, fontsize=11)
         ax.set_ylabel(ylabel)
         fig.tight_layout()
+        # After the layout, so the label positions are measured on the final axes.
+        _place_value_labels(fig, ax, x, series, colors, fmt, separators, marker_size)
         return _save(fig, out_dir, name)
 
     paths = []
-    fig, ax = plt.subplots(figsize=(width, 5))
-    _grouped_bars(ax, cumulative, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
-    ax.set_ylim(0, 1.12)
-    paths += finish(fig, ax, "Metrics after each filter step", "Value",
-                    "filter_cumulative_metrics")
-
-    columns = ["pairs", "hpo_classes", "correct", "rejected"]
-    fig, ax = plt.subplots(figsize=(width, 5))
-    _grouped_bars(ax, cumulative, columns, COLOR_COUNT, COUNT_LABELS, fmt="{:,.0f}")
-    ax.set_ylim(0, max(cumulative[columns].to_numpy().max(), 1) * 1.25)
-    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
-    paths += finish(fig, ax, "Counts after each filter step", "Count",
-                    "filter_cumulative_counts")
+    paths += line_plot(list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS, "{:.2f}",
+                       "Metrics after each filter step", "Value",
+                       "filter_cumulative_metrics", ylim=(0, 1.08))
+    paths += line_plot(["pairs", "hpo_classes", "correct", "rejected"], COLOR_COUNT,
+                       COUNT_LABELS, "{:,.0f}", "Counts after each filter step", "Count",
+                       "filter_cumulative_counts")
     return paths
 
 
