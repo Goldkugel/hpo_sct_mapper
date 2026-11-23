@@ -11,8 +11,8 @@ import pandas            as pd
 #
 # Tables and plots of the evaluation (called by MappingErrorAnalysis):
 #   (1) generation_metrics : precision, recall and F1 per generation method
-#   (2) generation_counts  : candidate pairs, HPO classes and new pairs per
-#                            generation method
+#   (2) generation_counts  : candidate pairs and HPO classes per generation
+#                            method (new pairs only in the CSV)
 #   (3) filter_metrics     : precision, recall and F1 per filter step and
 #                            cumulative, plus LLM-accepted and final
 #   (4) filter_counts      : pairs per filter step by outcome, and HPO
@@ -234,28 +234,24 @@ def _metric_figure(left: pd.DataFrame, right: pd.DataFrame, titles: tuple, subti
 def plot_generation(alone: pd.DataFrame, cumulative: pd.DataFrame, gold_total: int,
                     out_dir: str) -> list:
     """Plots (1) and (2) and their tables; returns the written paths."""
-    subtitle = (f"Candidate generation; reference: {gold_total:,} pairs of the expert's "
-                f"judgement (precision is a lower bound)")
     paths = []
 
     # (1) Each method alone (the cumulative values are only written as CSV).
-    fig, ax = plt.subplots(figsize=(6.5, 5))
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
     _grouped_bars(ax, alone, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
     ax.set_ylim(0, 1.12)
-    ax.set_title("Each method alone", fontsize=11)
+    ax.set_title("Metrics per generation method", fontsize=11)
     ax.set_ylabel("Value")
-    fig.suptitle(subtitle, fontsize=9)
     fig.tight_layout()
     paths += _save(fig, out_dir, "generation_metrics")
 
     # (2)
-    fig, ax = plt.subplots(figsize=(6.5, 5))
-    _grouped_bars(ax, alone, ["pairs", "hpo_classes", "new_pairs"], COLOR_COUNT,
+    fig, ax = plt.subplots(figsize=(6.5, 4.5))
+    _grouped_bars(ax, alone, ["pairs", "hpo_classes"], COLOR_COUNT,
                   COUNT_LABELS, log_y=True, fmt="{:,.0f}")
     ax.set_ylim(1, max(alone[["pairs", "hpo_classes"]].to_numpy().max(), 1) * 30)
-    ax.set_title("Each method alone", fontsize=11)
+    ax.set_title("Candidates per generation method", fontsize=11)
     ax.set_ylabel("Count (log scale)")
-    fig.suptitle(subtitle + "\nNew pairs: not found by the methods run before it", fontsize=9)
     fig.tight_layout()
     paths += _save(fig, out_dir, "generation_counts")
 

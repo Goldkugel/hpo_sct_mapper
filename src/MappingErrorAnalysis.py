@@ -1024,7 +1024,7 @@ if __name__ == "__main__":
     written += plot_gold_distance(distance_table, gold_total, plots_dir)
 
     l.log(f"Plots and tables written to {plots_dir}: "
-          f"{', '.join(sorted({os.path.splitext(os.path.basename(p))[0] for p in written}))}.")
+          f"{', '.join(sorted(os.path.basename(p) for p in written))}.")
 
     l.printHeader("20. Overall summary")
 

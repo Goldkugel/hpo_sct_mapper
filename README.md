@@ -77,7 +77,7 @@ Section 19 of the log and `MappingPlots.py` write nine plots (PDF and PNG) and t
 | Plot | Content | Tables |
 |---|---|---|
 | `generation_metrics` | Precision, recall and F1 per generation method, each method alone (the cumulative values in run order are only written as a table) | `generation_metrics_alone.csv`, `generation_metrics_cumulative.csv` |
-| `generation_counts` | Candidate pairs and HPO classes per generation method (log scale), each method alone, plus the pairs a method adds to the methods run before it | `generation_metrics_alone.csv` |
+| `generation_counts` | Candidate pairs and HPO classes per generation method (log scale), each method alone; the pairs a method adds to the methods run before it are only in the table (`new_pairs`) | `generation_metrics_alone.csv` |
 | `filter_metrics` | Precision, recall and F1 of the pairs each filter step accepted (steps 2–8) or marked for review (steps 9–10), and cumulative: auto-accepted up to step 8, all pairs passed to the LLM from step 9 on, then LLM-accepted and the final set | `filter_metrics_per_step.csv`, `filter_metrics_cumulative.csv` |
 | `filter_counts` | Pairs classified by each filter step by outcome (accepted, source-collapse conflict, fallback candidate, domain mismatch), and the HPO classes involved in each step | `filter_metrics_per_step.csv` |
 | `filter_cumulative_metrics` | Precision, recall and F1 of the cumulative set after each filter step (auto-accepted up to step 8, from step 9 on also the pairs passed to the LLM), then LLM-accepted and the final set; dashed lines mark where the set changes | `filter_metrics_cumulative.csv` |
