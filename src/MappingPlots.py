@@ -10,14 +10,18 @@ import pandas            as pd
 # MappingPlots.py
 #
 # Tables and plots of the evaluation (called by MappingErrorAnalysis):
-#   (1) generation_metrics : precision, recall and F1 per generation method,
-#                            alone and cumulative (run order)
+#   (1) generation_metrics : precision, recall and F1 per generation method
 #   (2) generation_counts  : candidate pairs, HPO classes and new pairs per
-#                            generation method, alone and cumulative
+#                            generation method
 #   (3) filter_metrics     : precision, recall and F1 per filter step and
 #                            cumulative, plus LLM-accepted and final
 #   (4) filter_counts      : pairs per filter step by outcome, and HPO
 #                            classes per step
+#   (3b) filter_cumulative_metrics : precision, recall and F1 of the
+#                            cumulative set after each filter step, then
+#                            LLM-accepted and final
+#   (4b) filter_cumulative_counts  : pairs, HPO classes and correct pairs of
+#                            that cumulative set
 # Each plot is written as PDF (for the paper) and PNG, each table as CSV.
 #
 # Only pandas, numpy and matplotlib are used, so the module can be tested
@@ -42,7 +46,9 @@ OUTCOME_LABELS = {
     "removed":  "domain mismatch (code 0)",
 }
 METRIC_LABELS = {"precision": "Precision", "recall": "Recall", "f1": "F1"}
-COUNT_LABELS  = {"pairs": "Pairs", "hpo_classes": "HPO classes", "new_pairs": "New pairs"}
+COLOR_COUNT["correct"] = "#009E73"
+COUNT_LABELS  = {"pairs": "Pairs", "hpo_classes": "HPO classes", "new_pairs": "New pairs",
+                 "correct": "Correct pairs (in gold)"}
 
 # Validity codes (as in MappingUtils; repeated so the module stays
 # independent of the pipeline packages).
@@ -232,21 +238,23 @@ def plot_generation(alone: pd.DataFrame, cumulative: pd.DataFrame, gold_total: i
                 f"judgement (precision is a lower bound)")
     paths = []
 
-    fig = _metric_figure(alone, cumulative,
-                         ("Each method alone", "Cumulative (run order)"), subtitle)
+    # (1) Each method alone (the cumulative values are only written as CSV).
+    fig, ax = plt.subplots(figsize=(6.5, 5))
+    _grouped_bars(ax, alone, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
+    ax.set_ylim(0, 1.12)
+    ax.set_title("Each method alone", fontsize=11)
+    ax.set_ylabel("Value")
+    fig.suptitle(subtitle, fontsize=9)
+    fig.tight_layout()
     paths += _save(fig, out_dir, "generation_metrics")
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
-    _grouped_bars(axes[0], alone, ["pairs", "hpo_classes", "new_pairs"], COLOR_COUNT,
+    # (2)
+    fig, ax = plt.subplots(figsize=(6.5, 5))
+    _grouped_bars(ax, alone, ["pairs", "hpo_classes", "new_pairs"], COLOR_COUNT,
                   COUNT_LABELS, log_y=True, fmt="{:,.0f}")
-    _grouped_bars(axes[1], cumulative, ["pairs", "hpo_classes"], COLOR_COUNT,
-                  COUNT_LABELS, log_y=True, fmt="{:,.0f}")
-    top = max(alone[["pairs", "hpo_classes"]].to_numpy().max(),
-              cumulative["pairs"].max(), 1)
-    for ax, title in zip(axes, ("Each method alone", "Cumulative (run order)")):
-        ax.set_ylim(1, top * 30)
-        ax.set_title(title, fontsize=11)
-    axes[0].set_ylabel("Count (log scale)")
+    ax.set_ylim(1, max(alone[["pairs", "hpo_classes"]].to_numpy().max(), 1) * 30)
+    ax.set_title("Each method alone", fontsize=11)
+    ax.set_ylabel("Count (log scale)")
     fig.suptitle(subtitle + "\nNew pairs: not found by the methods run before it", fontsize=9)
     fig.tight_layout()
     paths += _save(fig, out_dir, "generation_counts")
@@ -305,8 +313,49 @@ def plot_filter(per_step: pd.DataFrame, cumulative: pd.DataFrame, gold_total: in
     fig.tight_layout()
     paths += _save(fig, out_dir, "filter_counts")
 
+    paths += _plot_filter_cumulative(cumulative, subtitle, out_dir)
+
     paths += _write_csv(per_step, out_dir, "filter_metrics_per_step")
     paths += _write_csv(cumulative, out_dir, "filter_metrics_cumulative")
+    return paths
+
+
+def _plot_filter_cumulative(cumulative: pd.DataFrame, subtitle: str, out_dir: str) -> list:
+    """
+    Plots (3b) and (4b): metrics and counts of the cumulative set after each
+    filter step, then LLM-accepted and final. Dashed lines separate the
+    groups of the cumulative table's 'set' column (auto-accepted; pairs
+    passed to the LLM; LLM-accepted; final). Returns the written paths.
+    """
+    note = ("\nCumulative set after each step: auto-accepted pairs up to step 8; from step 9 on "
+            "also the pairs marked for the LLM review (codes 1–9);\nthen the pairs the LLM "
+            "accepted and the final alignment (auto-accepted ∪ LLM-accepted)")
+    # Positions between two rows whose set differs.
+    sets = cumulative["set"].tolist()
+    borders = [i - 0.5 for i in range(1, len(sets)) if sets[i] != sets[i - 1]]
+    width = max(6.5, 0.8 * len(cumulative) + 2)
+
+    def finish(fig, ax, ylabel: str, name: str) -> list:
+        for x in borders:
+            ax.axvline(x, color="#666666", linestyle="--", linewidth=0.8)
+        ax.set_title("Cumulative set after each filter step", fontsize=11)
+        ax.set_ylabel(ylabel)
+        fig.suptitle(subtitle + note, fontsize=8.5)
+        fig.tight_layout()
+        return _save(fig, out_dir, name)
+
+    paths = []
+    fig, ax = plt.subplots(figsize=(width, 5.5))
+    _grouped_bars(ax, cumulative, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
+    ax.set_ylim(0, 1.12)
+    paths += finish(fig, ax, "Value", "filter_cumulative_metrics")
+
+    columns = ["pairs", "hpo_classes", "correct"]
+    fig, ax = plt.subplots(figsize=(width, 5.5))
+    _grouped_bars(ax, cumulative, columns, COLOR_COUNT, COUNT_LABELS, fmt="{:,.0f}")
+    ax.set_ylim(0, max(cumulative[columns].to_numpy().max(), 1) * 1.25)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    paths += finish(fig, ax, "Count", "filter_cumulative_counts")
     return paths
 
 

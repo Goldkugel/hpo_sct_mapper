@@ -72,14 +72,16 @@ Compares every stage with the gold standard and logs precision, recall and F1 pe
 | `accepted_without_gold.csv` | Final pairs of HPO concepts that have no mapping in the gold standard |
 | `llm_disagreements.csv` | Pairs where the LLM and the rule-based filter disagree, with the LLM's decision, confidence and rationale |
 
-Section 19 of the log and `MappingPlots.py` write seven plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
+Section 19 of the log and `MappingPlots.py` write nine plots (PDF and PNG) and the plotted values (CSV) to `data/output/evaluation/plots/`:
 
 | Plot | Content | Tables |
 |---|---|---|
-| `generation_metrics` | Precision, recall and F1 per generation method, each method alone and cumulative in run order | `generation_metrics_alone.csv`, `generation_metrics_cumulative.csv` |
-| `generation_counts` | Candidate pairs and HPO classes per generation method (log scale), alone and cumulative, plus the pairs a method adds to the methods run before it | as above |
+| `generation_metrics` | Precision, recall and F1 per generation method, each method alone (the cumulative values in run order are only written as a table) | `generation_metrics_alone.csv`, `generation_metrics_cumulative.csv` |
+| `generation_counts` | Candidate pairs and HPO classes per generation method (log scale), each method alone, plus the pairs a method adds to the methods run before it | `generation_metrics_alone.csv` |
 | `filter_metrics` | Precision, recall and F1 of the pairs each filter step accepted (steps 2–8) or marked for review (steps 9–10), and cumulative: auto-accepted up to step 8, all pairs passed to the LLM from step 9 on, then LLM-accepted and the final set | `filter_metrics_per_step.csv`, `filter_metrics_cumulative.csv` |
 | `filter_counts` | Pairs classified by each filter step by outcome (accepted, source-collapse conflict, fallback candidate, domain mismatch), and the HPO classes involved in each step | `filter_metrics_per_step.csv` |
+| `filter_cumulative_metrics` | Precision, recall and F1 of the cumulative set after each filter step (auto-accepted up to step 8, from step 9 on also the pairs passed to the LLM), then LLM-accepted and the final set; dashed lines mark where the set changes | `filter_metrics_cumulative.csv` |
+| `filter_cumulative_counts` | Pairs, HPO classes and correct pairs of the same cumulative sets | `filter_metrics_cumulative.csv` |
 | `pipeline_flow` | Sankey diagram of the pairs classified by the filter: domain mismatch, auto-accepted, source-collapse conflicts and fallback candidates, then the final alignment and the pairs rejected by the LLM; the solid part of each node are the correct pairs | `pipeline_flow_nodes.csv`, `pipeline_flow_links.csv` |
 | `method_overlap` | UpSet plot: correct pairs per combination of generation methods (pairs found by exactly these methods), with the precision of the combination, and correct pairs per method | `method_overlap.csv` |
 | `gold_distance` | Is-a distance of the auto-accepted, LLM-accepted and final pairs of expert-judged HPO classes to the nearest correct target, split into broader, narrower and lateral, with the cumulative share | `gold_distance.csv` |
