@@ -48,6 +48,9 @@ OUTCOME_LABELS = {
     "removed":  "domain mismatch (code 0)",
 }
 METRIC_LABELS = {"precision": "Precision", "recall": "Recall", "f1": "F1"}
+# Precision, recall and F1 are plotted in percent (F1, the harmonic mean of
+# two percentages, is a percentage as well).
+METRIC_AXIS_LABEL = "Score (%)"
 COLOR_COUNT["correct"]  = "#009E73"
 COLOR_COUNT["rejected"] = "#D55E00"
 COUNT_LABELS  = {"pairs": "Pairs", "hpo_classes": "HPO classes", "new_pairs": "New pairs",
@@ -131,8 +134,9 @@ def filter_tables(
     so far; then LLM-accepted and final (auto-accepted + LLM-accepted).
     'rejected' are the classified pairs not in the set: after a step, the
     pairs of the steps so far (domain filter included) left out of the set;
-    for LLM-accepted, the reviewed pairs (codes 1–9) the LLM did not accept;
-    for final, all classified pairs not in the final alignment.
+    after the LLM review (LLM-accepted and final), all classified pairs not
+    in the final alignment: the domain mismatches and the reviewed pairs
+    (codes 1–9) the LLM did not accept.
     Returns (per_step, cumulative) DataFrames.
     """
     classified = pair_table[pair_table[step_col].notna()].copy()
@@ -182,11 +186,10 @@ def filter_tables(
                                rejected=len(pairs_of(so_far) - kept)))
 
     auto     = pairs_of(classified[classified["outcome"] == "accepted"])
-    reviewed = pairs_of(classified[classified["outcome"].isin(["conflict", "review"])]) - auto
     final    = auto | llm_pairs
     cumul_rows.append(dict(step="llm", label="LLM-accepted", set="LLM-accepted",
                            **pair_metrics(llm_pairs, gold_pairs),
-                           rejected=len(reviewed - llm_pairs)))
+                           rejected=len(pairs_of(classified) - final)))
     cumul_rows.append(dict(step="final", label="Final alignment", set="auto-accepted ∪ LLM-accepted",
                            **pair_metrics(final, gold_pairs),
                            rejected=len(pairs_of(classified) - final)))
@@ -223,6 +226,21 @@ def _grouped_bars(ax, table: pd.DataFrame, columns: list, colors: dict, labels: 
     ax.legend(frameon=False, fontsize=8, ncol=n_bars, loc="upper left")
 
 
+def _grid(ax) -> None:
+    """Light horizontal and vertical grid lines behind the data."""
+    ax.grid(True, which="major", color="#DDDDDD", linewidth=0.6)
+    ax.set_axisbelow(True)
+
+
+def _percent(table: pd.DataFrame) -> pd.DataFrame:
+    """Copy of table with precision, recall and F1 in percent."""
+    table = table.copy()
+    for col in COLOR_METRIC:
+        if col in table:
+            table[col] = table[col] * 100
+    return table
+
+
 def _save(fig, out_dir: str, name: str) -> list:
     """Write fig as PDF and PNG; returns the paths."""
     os.makedirs(out_dir, exist_ok=True)
@@ -236,11 +254,14 @@ def _save(fig, out_dir: str, name: str) -> list:
 def _metric_figure(left: pd.DataFrame, right: pd.DataFrame, titles: tuple, subtitle: str):
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
     for ax, table, title in zip(axes, (left, right), titles):
-        _grouped_bars(ax, table, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
-        ax.set_ylim(0, 1.12)
+        _grouped_bars(ax, _percent(table), list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS,
+                      fmt="{:.1f}")
+        ax.set_ylim(0, 112)
         ax.set_title(title, fontsize=11)
-    axes[0].set_ylabel("Value")
-    fig.suptitle(subtitle, fontsize=9)
+        ax.set_ylabel(METRIC_AXIS_LABEL)
+        ax.tick_params(axis="y", labelleft=True)
+        _grid(ax)
+    fig.suptitle(subtitle, fontsize=11)
     fig.tight_layout()
     return fig
 
@@ -252,10 +273,12 @@ def plot_generation(alone: pd.DataFrame, cumulative: pd.DataFrame, gold_total: i
 
     # (1) Each method alone (the cumulative values are only written as CSV).
     fig, ax = plt.subplots(figsize=(6.5, 4.5))
-    _grouped_bars(ax, alone, list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS)
-    ax.set_ylim(0, 1.12)
+    _grouped_bars(ax, _percent(alone), list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS,
+                  fmt="{:.1f}")
+    ax.set_ylim(0, 112)
     ax.set_title("Metrics per generation method", fontsize=11)
-    ax.set_ylabel("Value")
+    ax.set_ylabel(METRIC_AXIS_LABEL)
+    _grid(ax)
     fig.tight_layout()
     paths += _save(fig, out_dir, "generation_metrics")
 
@@ -266,6 +289,7 @@ def plot_generation(alone: pd.DataFrame, cumulative: pd.DataFrame, gold_total: i
     ax.set_ylim(1, max(alone[["pairs", "hpo_classes"]].to_numpy().max(), 1) * 30)
     ax.set_title("Candidates per generation method", fontsize=11)
     ax.set_ylabel("Count (log scale)")
+    _grid(ax)
     fig.tight_layout()
     paths += _save(fig, out_dir, "generation_counts")
 
@@ -277,8 +301,6 @@ def plot_generation(alone: pd.DataFrame, cumulative: pd.DataFrame, gold_total: i
 def plot_filter(per_step: pd.DataFrame, cumulative: pd.DataFrame, gold_total: int,
                 out_dir: str) -> list:
     """Plots (3) and (4) and their tables; returns the written paths."""
-    subtitle = (f"Alignment set building; reference: {gold_total:,} pairs of the expert's "
-                f"judgement (precision is a lower bound)")
     paths = []
 
     # (3) Domain filter left out of the left panel: its output are removed pairs.
@@ -286,8 +308,7 @@ def plot_filter(per_step: pd.DataFrame, cumulative: pd.DataFrame, gold_total: in
     fig = _metric_figure(
         output_steps, cumulative,
         ("Each step", "Cumulative, then LLM review"),
-        subtitle + "\nLeft: pairs accepted (steps 2–8) or marked for review (steps 9–10). "
-                   "Right: auto-accepted up to step 8, from step 9 on all pairs passed to the LLM.",
+        "Metrics of the filter steps",
     )
     paths += _save(fig, out_dir, "filter_metrics")
 
@@ -318,8 +339,9 @@ def plot_filter(per_step: pd.DataFrame, cumulative: pd.DataFrame, gold_total: in
         ax.set_xticklabels(per_step["label"], rotation=30, ha="right", fontsize=8)
         ax.spines[["top", "right"]].set_visible(False)
         ax.set_ylim(0, ax.get_ylim()[1] * 1.1)
-    fig.suptitle(subtitle + "\nDemoted pairs count as conflicts of the step that accepted them",
-                 fontsize=9)
+        ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+        _grid(ax)
+    fig.suptitle("Pairs and HPO classes per filter step", fontsize=11)
     fig.tight_layout()
     paths += _save(fig, out_dir, "filter_counts")
 
@@ -419,7 +441,8 @@ def _plot_filter_cumulative(cumulative: pd.DataFrame, out_dir: str) -> list:
 
     def line_plot(columns, colors, labels, fmt, title, ylabel, name, ylim=None) -> list:
         fig, ax = plt.subplots(figsize=(width, 4.8))
-        series = {col: cumulative[col].to_numpy(dtype=float) for col in columns}
+        table = _percent(cumulative) if columns == list(COLOR_METRIC) else cumulative
+        series = {col: table[col].to_numpy(dtype=float) for col in columns}
         for col, values in series.items():
             ax.plot(x, values, marker="o", markersize=marker_size, linewidth=1.8,
                     color=colors[col], label=labels[col], zorder=3)
@@ -431,8 +454,7 @@ def _plot_filter_cumulative(cumulative: pd.DataFrame, out_dir: str) -> list:
         ax.set_xticks(x)
         ax.set_xticklabels(cumulative["label"], rotation=30, ha="right", fontsize=8)
         ax.set_xlim(-0.5, len(cumulative) - 0.3)
-        ax.grid(axis="y", color="#DDDDDD", linewidth=0.6)
-        ax.set_axisbelow(True)
+        _grid(ax)
         ax.spines[["top", "right"]].set_visible(False)
         ax.legend(frameon=False, fontsize=8, ncol=len(columns), loc="upper left")
         ax.set_title(title, fontsize=11)
@@ -443,9 +465,9 @@ def _plot_filter_cumulative(cumulative: pd.DataFrame, out_dir: str) -> list:
         return _save(fig, out_dir, name)
 
     paths = []
-    paths += line_plot(list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS, "{:.2f}",
-                       "Metrics after each filter step", "Value",
-                       "filter_cumulative_metrics", ylim=(0, 1.08))
+    paths += line_plot(list(COLOR_METRIC), COLOR_METRIC, METRIC_LABELS, "{:.1f}",
+                       "Metrics after each filter step", METRIC_AXIS_LABEL,
+                       "filter_cumulative_metrics", ylim=(0, 108))
     paths += line_plot(["pairs", "hpo_classes", "correct", "rejected"], COLOR_COUNT,
                        COUNT_LABELS, "{:,.0f}", "Counts after each filter step", "Count",
                        "filter_cumulative_counts")
@@ -584,7 +606,7 @@ def plot_pipeline_flow(nodes: pd.DataFrame, flows: pd.DataFrame, gold_total: int
         ax.add_patch(plt.Rectangle((x, y0), node_w, h_correct, facecolor=color, edgecolor="none"))
         precision = n["correct"] / n["pairs"] if n["pairs"] else 0.0
         text = (f"{n['label']}\n{n['pairs']:,} pairs, {n['hpo_classes']:,} HPO classes\n"
-                f"{n['correct']:,} correct (precision {precision:.2f})")
+                f"{n['correct']:,} correct (precision {precision:.1%})")
         if n["column"] == 0:
             ax.text(x - 0.01, (y0 + y1) / 2, text, ha="right", va="center", fontsize=8)
         else:
@@ -593,15 +615,7 @@ def plot_pipeline_flow(nodes: pd.DataFrame, flows: pd.DataFrame, gold_total: int
     ax.set_xlim(-0.32, 1.25)
     ax.set_ylim(-0.08, 1.08)
     ax.axis("off")
-    a = nodes.attrs
-    fig.suptitle(
-        f"Flow of the candidate pairs; reference: {gold_total:,} pairs of the expert's judgement\n"
-        f"All candidates: {a.get('universe', 0):,} pairs ({a.get('universe_correct', 0):,} correct); "
-        f"not reached by any filter step: {a.get('not_reached', 0):,} "
-        f"({a.get('not_reached_correct', 0):,} correct). Solid part of a node: correct pairs. "
-        f"Auto-accepted pairs stay whatever the LLM decides.",
-        fontsize=9,
-    )
+    fig.suptitle("Flow of the candidate pairs through the filter", fontsize=11)
     paths = _save(fig, out_dir, "pipeline_flow")
     paths += _write_csv(nodes, out_dir, "pipeline_flow_nodes")
     paths += _write_csv(flows, out_dir, "pipeline_flow_links")
@@ -649,7 +663,7 @@ def plot_method_overlap(table: pd.DataFrame, methods: list, method_labels: dict,
 
     bars = ax_bar.bar(x, shown["correct"], 0.6, color=COLOR_METRIC["precision"])
     for bar, (_, row) in zip(bars, shown.iterrows()):
-        ax_bar.annotate(f"{row['correct']:,}\nP {row['precision']:.2f}\nof {row['pairs']:,}",
+        ax_bar.annotate(f"{row['correct']:,}\nP {row['precision']:.1%}\nof {row['pairs']:,}",
                         (bar.get_x() + bar.get_width() / 2, bar.get_height()),
                         xytext=(0, 2), textcoords="offset points",
                         ha="center", va="bottom", fontsize=6.5)
@@ -657,6 +671,8 @@ def plot_method_overlap(table: pd.DataFrame, methods: list, method_labels: dict,
     ax_bar.set_ylim(0, shown["correct"].max() * 1.3 if len(shown) else 1)
     ax_bar.spines[["top", "right"]].set_visible(False)
     ax_bar.tick_params(axis="x", bottom=False, labelbottom=False)
+    ax_bar.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    _grid(ax_bar)
 
     y = np.arange(len(methods))[::-1]
     for xi, (_, row) in zip(x, shown.iterrows()):
@@ -682,17 +698,14 @@ def plot_method_overlap(table: pd.DataFrame, methods: list, method_labels: dict,
     ax_set.set_xlabel("Correct pairs per method", fontsize=8)
     ax_set.set_xlim(max(per_method + [1]) * 1.35, 0)
     ax_set.spines[["top", "left", "right"]].set_visible(False)
+    ax_set.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v:,.0f}"))
+    ax_set.grid(True, axis="x", color="#DDDDDD", linewidth=0.6)
+    ax_set.set_axisbelow(True)
     for yi, value in zip(y, per_method):
         ax_set.annotate(f"{value:,}", (value, yi), xytext=(-2, 0), textcoords="offset points",
                         ha="right", va="center", fontsize=7)
 
-    fig.suptitle(
-        f"Correct pairs per combination of generation methods (found by exactly these "
-        f"methods; top {len(shown)} of {len(table)} by correct pairs)\n"
-        f"Reference: {gold_total:,} pairs of the expert's judgement; P: precision of the "
-        f"combination's candidates",
-        fontsize=9,
-    )
+    fig.suptitle("Correct pairs per combination of generation methods", fontsize=11)
     paths = _save(fig, out_dir, "method_overlap")
     paths += _write_csv(table, out_dir, "method_overlap")
     return paths
@@ -714,19 +727,20 @@ def plot_method_agreement(table: pd.DataFrame, out_dir: str) -> list:
     """Plot (6b): precision by the number of methods that found a pair; returns the written paths."""
     fig, ax = plt.subplots(figsize=(6.5, 4.5))
     x = np.arange(len(table))
-    bars = ax.bar(x, table["precision"], 0.6, color=COLOR_METRIC["precision"])
+    bars = ax.bar(x, table["precision"] * 100, 0.6, color=COLOR_METRIC["precision"])
     for bar, (_, row) in zip(bars, table.iterrows()):
-        ax.annotate(f"{row['precision']:.2f}\n{int(row['correct']):,} of {int(row['pairs']):,}",
+        ax.annotate(f"{row['precision'] * 100:.1f}\n{int(row['correct']):,} of {int(row['pairs']):,}",
                     (bar.get_x() + bar.get_width() / 2, bar.get_height()),
                     xytext=(0, 2), textcoords="offset points",
                     ha="center", va="bottom", fontsize=7)
     ax.set_xticks(x)
     ax.set_xticklabels([str(int(n)) for n in table["n_methods"]])
     ax.set_xlabel("Number of generation methods that found the pair")
-    ax.set_ylabel("Precision")
-    ax.set_ylim(0, 1.15)
+    ax.set_ylabel("Precision (%)")
+    ax.set_ylim(0, 115)
     ax.set_title("Precision by number of generation methods", fontsize=11)
     ax.spines[["top", "right"]].set_visible(False)
+    _grid(ax)
     fig.tight_layout()
     paths = _save(fig, out_dir, "method_agreement")
     paths += _write_csv(table, out_dir, "method_agreement")
@@ -795,15 +809,11 @@ def plot_gold_distance(table: pd.DataFrame, gold_total: int, out_dir: str) -> li
         ax.set_title(f"{label}\n({measured:,} pairs of expert-judged HPO classes)", fontsize=10)
         ax.spines[["top", "right"]].set_visible(False)
         ax.set_ylim(0, 105)
+        ax.tick_params(axis="y", labelleft=True)
+        _grid(ax)
     axes[0][0].set_ylabel("Share of pairs (%)")
-    axes[0][0].legend(frameon=False, fontsize=8, loc="upper right")
-    fig.suptitle(
-        f"Distance in the SNOMED CT hierarchy to the nearest correct target "
-        f"(reference: {gold_total:,} pairs of the expert's judgement)\n"
-        f"Labels: cumulative share up to the distance; 1 = parent or child, 2 = sibling, "
-        f"grandparent or grandchild; pairs whose correct target is not in SNOMED CT are left out",
-        fontsize=9,
-    )
+    axes[0][-1].legend(frameon=False, fontsize=8, loc="upper right")
+    fig.suptitle("Is-a distance to the nearest correct target", fontsize=11)
     fig.tight_layout()
     paths = _save(fig, out_dir, "gold_distance")
     paths += _write_csv(table, out_dir, "gold_distance")
