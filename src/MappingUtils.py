@@ -137,7 +137,7 @@ METHOD_LABELS = {
     umls_hpo_sct_mappings:  "Shared CUI",
     exact_lexical_mappings: "Exact lexical match",
     jaccard_mappings:       "Jaccard > 0.90",
-    embedding_mappings:     "Cosine ≥ 0.75 (SapBERT)",
+    embedding_mappings:     "Cosine > 0.75 (SapBERT)",
 }
 
 # Review reason passed to the LLM prompt. Code 0 is not reviewed; code 10 is,
