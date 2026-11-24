@@ -1,5 +1,5 @@
 combination;n_methods;pairs;correct;precision;hpo_sct;hpo_umls_sct;umls_hpo_sct;jaccard;embedding;exact_lexical
-embedding;1;206972;3404;0.0164;False;False;False;False;True;False
+embedding;1;206969;3404;0.0164;False;False;False;False;True;False
 hpo_sct + hpo_umls_sct + umls_hpo_sct + jaccard + embedding + exact_lexical;6;2429;2045;0.8419;True;True;True;True;True;True
 umls_hpo_sct + jaccard + embedding + exact_lexical;4;1444;1119;0.7749;False;False;True;True;True;True
 hpo_umls_sct + umls_hpo_sct + jaccard + embedding + exact_lexical;5;539;440;0.8163;False;True;True;True;True;True
@@ -8,7 +8,7 @@ umls_hpo_sct + jaccard + embedding;3;359;281;0.7827;False;False;True;True;True;F
 hpo_sct + hpo_umls_sct + umls_hpo_sct + embedding;4;721;265;0.3675;True;True;True;False;True;False
 hpo_umls_sct + umls_hpo_sct + jaccard + embedding;4;292;252;0.863;False;True;True;True;True;False
 umls_hpo_sct + embedding;2;427;195;0.4567;False;False;True;False;True;False
-jaccard + embedding + exact_lexical;3;516;187;0.3624;False;False;False;True;True;True
+jaccard + embedding + exact_lexical;3;515;187;0.3631;False;False;False;True;True;True
 jaccard + embedding;2;420;111;0.2643;False;False;False;True;True;False
 hpo_umls_sct + umls_hpo_sct + embedding;3;130;67;0.5154;False;True;True;False;True;False
 hpo_sct + umls_hpo_sct + jaccard + embedding + exact_lexical;5;53;41;0.7736;True;False;True;True;True;True

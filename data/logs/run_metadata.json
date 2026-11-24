@@ -1,10 +1,10 @@
 [
   {
-    "run_id": "8b5825b35dbf4256bc107dfc0552ffe1",
-    "started": "2026-11-20T18:12:09+00:00",
-    "updated": "2026-11-20T23:31:39+00:00",
+    "run_id": "3d15d345e72243e9ac468c93f6016f5e",
+    "started": "2026-11-23T14:24:21+00:00",
+    "updated": "2026-11-23T19:43:06+00:00",
     "host": "gpu",
-    "slurm_job_id": "12350",
+    "slurm_job_id": "12484",
     "python": "3.12.16",
     "packages": {
       "model": "3.2.1",
@@ -72,28 +72,28 @@
     },
     "generations": [
       {
-        "started": "2026-11-20T18:13:51+00:00",
+        "started": "2026-11-23T14:26:03+00:00",
         "seed": 2898231092,
-        "finished": "2026-11-20T23:31:39+00:00",
-        "seconds": 19067.5,
+        "finished": "2026-11-23T19:43:06+00:00",
+        "seconds": 19023.2,
         "histories": 15702,
         "answers": 15702,
         "stored": 0,
         "shared": 0,
         "skipped": [],
         "truncated": [],
-        "prompt_tokens": 21707306,
-        "generated_tokens": 1334363,
+        "prompt_tokens": 21707299,
+        "generated_tokens": 1334276,
         "reasoning_tokens": 0
       }
     ]
   },
   {
-    "run_id": "73b914019390469db5b5b17fb75b4e10",
-    "started": "2026-11-20T23:31:43+00:00",
-    "updated": "2026-11-21T00:18:48+00:00",
+    "run_id": "dd8184956adf471b9b75059bd565aa1c",
+    "started": "2026-11-23T19:43:10+00:00",
+    "updated": "2026-11-23T20:30:10+00:00",
     "host": "gpu",
-    "slurm_job_id": "12350",
+    "slurm_job_id": "12484",
     "python": "3.12.16",
     "packages": {
       "model": "3.2.1",
@@ -161,18 +161,196 @@
     },
     "generations": [
       {
-        "started": "2026-11-20T23:34:24+00:00",
+        "started": "2026-11-23T19:45:50+00:00",
         "seed": 2898231092,
-        "finished": "2026-11-21T00:18:48+00:00",
-        "seconds": 2664.0,
+        "finished": "2026-11-23T20:30:10+00:00",
+        "seconds": 2659.8,
         "histories": 794,
         "answers": 794,
         "stored": 0,
         "shared": 0,
         "skipped": [],
         "truncated": [],
-        "prompt_tokens": 2267360,
-        "generated_tokens": 173884,
+        "prompt_tokens": 2267037,
+        "generated_tokens": 173793,
+        "reasoning_tokens": 0
+      }
+    ]
+  },
+  {
+    "run_id": "cef29e88fd9d42caa0619601b7b0e539",
+    "started": "2026-11-23T21:33:35+00:00",
+    "updated": "2026-11-24T00:34:18+00:00",
+    "host": "gpu",
+    "slurm_job_id": "12485",
+    "python": "3.12.16",
+    "packages": {
+      "model": "3.2.1",
+      "logger": "1.7.0",
+      "vllm": "0.33.0",
+      "torch": "2.14.0",
+      "transformers": "5.20.2"
+    },
+    "model": {
+      "id": "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4",
+      "index": 0,
+      "revision": "da6e9d45661b91e02782f4ae2c6bb39c4a5b4821"
+    },
+    "gpus": {
+      "count": 2,
+      "names": [
+        "NVIDIA A40",
+        "NVIDIA A40"
+      ],
+      "cuda": "13.0"
+    },
+    "prompt_files": {
+      "single_mapping.md": "975ef2c415e427a9d2cfc7272f02747351cb435562d9b6aabd320ede898c9729",
+      "multiple_mapping.md": "73926d6aec83c21e45b75eeb73e8a614296cb5e7681d077ef5a5de5fe9c85e8f"
+    },
+    "files": {
+      "checkpoint": "./data/tmp/gold_Qwen2.5-72B-Instruct-GPTQ-Int4_0.json",
+      "prompt_log": "./data/logs/prompts_Qwen2.5-72B-Instruct-GPTQ-Int4_0.log"
+    },
+    "config": {
+      "model_id": [
+        "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
+      ],
+      "revision": {},
+      "seed": 2898231092,
+      "temperature": 0.01,
+      "top_p": 0.95,
+      "max_model_len": 32768,
+      "max_num_batched_tokens": 65536,
+      "enforce_eager": true,
+      "gpu_memory_utilization": 0.9,
+      "dtype": "auto",
+      "quantization": null,
+      "enable_prefix_caching": true,
+      "enable_thinking": null,
+      "reasoning_start_tag": "<think>",
+      "reasoning_end_tag": "</think>",
+      "max_tokens": 4096,
+      "prompt_log_folder": "./data/logs/",
+      "prompt_log_file": "prompts.log",
+      "device": "cuda",
+      "metadata_folder": "./data/logs/",
+      "metadata_file": "run_metadata.json",
+      "prompt_folder": "./prompts/",
+      "prompt_files": [
+        "single_mapping.md",
+        "multiple_mapping.md"
+      ],
+      "prompt_tmp_file": "gold.json",
+      "prompt_tmp_folder": "./data/tmp/",
+      "chunk_size": 500,
+      "expert_parallel_models": [
+        "Qwen3-30B"
+      ]
+    },
+    "generations": [
+      {
+        "started": "2026-11-23T21:35:17+00:00",
+        "seed": 2898231092,
+        "finished": "2026-11-24T00:34:18+00:00",
+        "seconds": 10740.9,
+        "histories": 9060,
+        "answers": 9060,
+        "stored": 0,
+        "shared": 0,
+        "skipped": [],
+        "truncated": [],
+        "prompt_tokens": 12583982,
+        "generated_tokens": 664524,
+        "reasoning_tokens": 0
+      }
+    ]
+  },
+  {
+    "run_id": "17be8a20b447434cbb8dcef77cd4b5c5",
+    "started": "2026-11-24T00:34:22+00:00",
+    "updated": "2026-11-24T00:45:28+00:00",
+    "host": "gpu",
+    "slurm_job_id": "12485",
+    "python": "3.12.16",
+    "packages": {
+      "model": "3.2.1",
+      "logger": "1.7.0",
+      "vllm": "0.33.0",
+      "torch": "2.14.0",
+      "transformers": "5.20.2"
+    },
+    "model": {
+      "id": "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4",
+      "index": 0,
+      "revision": "da6e9d45661b91e02782f4ae2c6bb39c4a5b4821"
+    },
+    "gpus": {
+      "count": 2,
+      "names": [
+        "NVIDIA A40",
+        "NVIDIA A40"
+      ],
+      "cuda": "13.0"
+    },
+    "prompt_files": {
+      "single_mapping.md": "975ef2c415e427a9d2cfc7272f02747351cb435562d9b6aabd320ede898c9729",
+      "multiple_mapping.md": "73926d6aec83c21e45b75eeb73e8a614296cb5e7681d077ef5a5de5fe9c85e8f"
+    },
+    "files": {
+      "checkpoint": "./data/tmp/gold_Qwen2.5-72B-Instruct-GPTQ-Int4_1.json",
+      "prompt_log": "./data/logs/prompts_Qwen2.5-72B-Instruct-GPTQ-Int4_1.log"
+    },
+    "config": {
+      "model_id": [
+        "Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4"
+      ],
+      "revision": {},
+      "seed": 2898231092,
+      "temperature": 0.01,
+      "top_p": 0.95,
+      "max_model_len": 32768,
+      "max_num_batched_tokens": 65536,
+      "enforce_eager": true,
+      "gpu_memory_utilization": 0.9,
+      "dtype": "auto",
+      "quantization": null,
+      "enable_prefix_caching": true,
+      "enable_thinking": null,
+      "reasoning_start_tag": "<think>",
+      "reasoning_end_tag": "</think>",
+      "max_tokens": 4096,
+      "prompt_log_folder": "./data/logs/",
+      "prompt_log_file": "prompts.log",
+      "device": "cuda",
+      "metadata_folder": "./data/logs/",
+      "metadata_file": "run_metadata.json",
+      "prompt_folder": "./prompts/",
+      "prompt_files": [
+        "single_mapping.md",
+        "multiple_mapping.md"
+      ],
+      "prompt_tmp_file": "gold.json",
+      "prompt_tmp_folder": "./data/tmp/",
+      "chunk_size": 500,
+      "expert_parallel_models": [
+        "Qwen3-30B"
+      ]
+    },
+    "generations": [
+      {
+        "started": "2026-11-24T00:37:02+00:00",
+        "seed": 2898231092,
+        "finished": "2026-11-24T00:45:28+00:00",
+        "seconds": 505.6,
+        "histories": 152,
+        "answers": 152,
+        "stored": 0,
+        "shared": 0,
+        "skipped": [],
+        "truncated": [],
+        "prompt_tokens": 427522,
+        "generated_tokens": 32145,
         "reasoning_tokens": 0
       }
     ]

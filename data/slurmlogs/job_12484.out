@@ -1,0 +1,460 @@
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) ------------------------------------------------------------
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) -             LLM review of candidate mappings             -
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) ------------------------------------------------------------
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) ------------------------------------------------------------
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) -                       Loading data                       -
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) ------------------------------------------------------------
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Loading HPO from source files...
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) skip_if_present is set: the existing HPO CSV './data/output/transformed/hpo/hpo.csv' is used; it may be from an earlier run (delete it to reload the sources).
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Loading HPO from source files completed.
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Loading UMLS from source files...
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) skip_if_present is set: the existing UMLS CSV './data/output/transformed/umls/umls.csv' is used; it may be from an earlier run (delete it to reload the sources).
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Loading UMLS from source files completed.
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Loading SNOMED CT from source files...
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) skip_if_present is set: the existing SNOMED CT CSV './data/output/transformed/sct/sct.csv' is used; it may be from an earlier run (delete it to reload the sources).
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Loading SNOMED CT from source files completed.
+[2026-11-23 14:22:53] [INFO   ] (0 Minutes) Reading HPO data...
+[2026-11-23 14:22:54] [INFO   ] (0 Minutes) HPO data: 216353 rows, 32270 concepts.
+[2026-11-23 14:22:54] [INFO   ] (0 Minutes) Reading HPO data completed.
+[2026-11-23 14:22:54] [INFO   ] (0 Minutes) Removing non-exact HPO synonyms...
+[2026-11-23 14:22:55] [INFO   ] (0 Minutes) Non-exact HPO synonyms: 17832 rows removed.
+[2026-11-23 14:22:55] [INFO   ] (0 Minutes) Removing non-exact HPO synonyms completed.
+[2026-11-23 14:22:55] [INFO   ] (0 Minutes) Reading UMLS data...
+[2026-11-23 14:23:39] [INFO   ] (0 Minutes) UMLS data: 10412663 rows, 3348082 concepts.
+[2026-11-23 14:23:39] [INFO   ] (0 Minutes) Reading UMLS data completed.
+[2026-11-23 14:23:39] [INFO   ] (0 Minutes) Reading SNOMED CT data...
+[2026-11-23 14:23:45] [INFO   ] (0 Minutes) SNOMED CT data: 2086663 rows, 383345 concepts.
+[2026-11-23 14:23:45] [INFO   ] (0 Minutes) Reading SNOMED CT data completed.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Removing non-HPO concepts from the HPO data...
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Non-HPO concepts: 90563 rows removed, 19836 HPO concepts left.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Removing non-HPO concepts from the HPO data completed.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Reading gold standard data...
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Gold standard: 19282 rows read.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Gold standard: 9870 rows removed (match group not one-to-one or one-to-many).
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Gold standard: 1 rows removed (composite or unparsable SNOMED CT expression).
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Gold standard: 9396 unique pairs for 9243 HPO concepts.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Reading gold standard data completed.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Loading filtered mappings...
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Filtered mappings: 243194 rows, 215512 pairs.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Loading filtered mappings completed.
+[2026-11-23 14:23:46] [INFO   ] (0 Minutes) Building ontology lookup tables...
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Building ontology lookup tables completed.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) ------------------------------------------------------------
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) -                Selecting pairs for review                -
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) ------------------------------------------------------------
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Pairs to review (validity=1–10): 17379.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Pairs to review: 11260 candidates with validity=1–9.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Pairs to review: 6119 auto-accepted with validity=10.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) HPO concepts with one candidate (pass 1, pair-level prompt): 15702 concepts, 15702 pairs.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) HPO concepts with several candidates (pass 2, group-level prompt): 794 concepts, 1677 pairs.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Evaluation (before LLM review, auto-accepted, validity=10):
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Recall:                      0.51
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Precision:                   0.79
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Correct pairs (in gold):     4825
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Pairs:                       6119
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) HPO concepts:                5532
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Gold HPO concepts found:     4825 of 9243 (52.20%, ≥1 gold target)
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) HPO concepts not in gold:     288 (cannot be verified)
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) ------------------------------------------------------------
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) -                Pass 1: Pair-level review                 -
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) ------------------------------------------------------------
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Pass 1: Reviewing 15702 pairs with the pair-level prompt...
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Loading model at index 0: 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4'...
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Scanning device 'cuda'...
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Cuda available: True.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) GPU Amount: 2.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Scanning device 'cuda' completed.
+[2026-11-23 14:24:21] [INFO   ] (1 Minute) Loading model into cuda...
+(MainProcess pid=190199) INFO 11-23 14:24:21 [startup.py:96] non-default args: {'seed': 2898231092, 'max_model_len': 32768, 'tensor_parallel_size': 2, 'enable_prefix_caching': True, 'gpu_memory_utilization': 0.9, 'max_num_batched_tokens': 65536, 'disable_log_stats': True, 'enforce_eager': True, 'model': 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4'}
+(MainProcess pid=190199) WARNING 11-23 14:24:21 [interface.py:1469] Unknown vLLM environment variable detected: VLLM_USE_FLASHINFER
+(MainProcess pid=190199) INFO 11-23 14:24:22 [model.py:744] Resolved architecture: Qwen2ForCausalLM
+(MainProcess pid=190199) INFO 11-23 14:24:22 [model.py:2170] Using max model len 32768
+(MainProcess pid=190199) INFO 11-23 14:24:25 [scheduler.py:310] Chunked prefill is enabled with max_num_batched_tokens=65536.
+(MainProcess pid=190199) WARNING 11-23 14:24:27 [vllm.py:1778] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=190199) WARNING 11-23 14:24:27 [vllm.py:1802] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=190199) INFO 11-23 14:24:27 [kernel.py:480] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=190199) INFO 11-23 14:24:27 [vllm.py:2005] Cudagraph is disabled under eager mode
+(MainProcess pid=190199) INFO 11-23 14:24:27 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(EngineCore pid=190358) INFO 11-23 14:24:32 [core.py:139] Initializing a V1 LLM engine (v0.33.0) with config: model='Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4', speculative_config=None, tokenizer='Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4', skip_tokenizer_init=False, tokenizer_mode=auto, revision=main, tokenizer_revision=main, trust_remote_code=False, dtype=torch.float16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=2, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=auto_gptq, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=2898231092, served_model_name=Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [65536], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, monokernel=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=190358) INFO 11-23 14:24:32 [multiproc_executor.py:167] DP group leader: node_rank=0, node_rank_within_dp=0, master_addr=127.0.0.1, mq_connect_ip=141.39.131.12 (local), world_size=2, local_world_size=2
+(Worker pid=190365) INFO 11-23 14:24:33 [parallel_state.py:1929] world_size=2 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_69474e4d892644ceae94a124b061812e backend=nccl
+(Worker pid=190366) INFO 11-23 14:24:33 [parallel_state.py:1929] world_size=2 rank=1 local_rank=1 distributed_init_method=file:///tmp/vllm_dist_69474e4d892644ceae94a124b061812e backend=nccl
+(Worker pid=190365) INFO 11-23 14:24:36 [pynccl.py:148] vLLM is using nccl==2.30.7
+(Worker pid=190366) WARNING 11-23 14:24:36 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.6 not supported, communicator is not available.
+(Worker pid=190365) WARNING 11-23 14:24:36 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.6 not supported, communicator is not available.
+(Worker pid=190366) WARNING 11-23 14:24:36 [flashinfer_all_reduce.py:424] FlashInfer All Reduce is disabled because it is not supported for world_size=2.
+(Worker pid=190365) WARNING 11-23 14:24:36 [flashinfer_all_reduce.py:424] FlashInfer All Reduce is disabled because it is not supported for world_size=2.
+(Worker pid=190365) INFO 11-23 14:24:37 [cuda_communicator.py:353] Using ['CUSTOM', 'PYNCCL'] all-reduce backends (in dispatch order) for group 'tp:0' out of potential backends: ['FLASHINFER_PCIE_IPC', 'FLASHINFER', 'NCCL_SYMM_MEM', 'QUICK_REDUCE', 'AITER_CUSTOM', 'CUSTOM', 'SYMM_MEM', 'PYNCCL'].
+(Worker pid=190365) INFO 11-23 14:24:37 [parallel_state.py:2385] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(Worker pid=190365) INFO 11-23 14:24:37 [gpu_worker.py:513] Using V2 Model Runner
+(Worker_TP0 pid=190365) INFO 11-23 14:24:39 [model_runner.py:399] Loading model from scratch...
+(Worker_TP0 pid=190365) INFO 11-23 14:24:39 [__init__.py:945] Using MarlinLinearKernel for mixed-precision linear
+(Worker_TP0 pid=190365) INFO 11-23 14:24:39 [auto_gptq.py:352] Using MarlinLinearKernel for AutoGPTQLinearMethod
+(Worker_TP1 pid=190366) INFO 11-23 14:24:39 [auto_gptq.py:352] Using MarlinLinearKernel for AutoGPTQLinearMethod
+(Worker_TP0 pid=190365) INFO 11-23 14:24:39 [cuda.py:508] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(Worker_TP0 pid=190365) INFO 11-23 14:24:39 [flash_attn.py:1122] Using FlashAttention version 2
+(Worker_TP0 pid=190365) INFO 11-23 14:24:40 [base_loader.py:82] Initializing model took 1.418270 seconds
+(Worker_TP0 pid=190365) INFO 11-23 14:24:41 [weight_utils.py:1144] Filesystem type for checkpoints: NFS4. Checkpoint size: 38.76 GiB. Available RAM: 980.30 GiB.
+(Worker_TP0 pid=190365) INFO 11-23 14:24:41 [weight_utils.py:1106] Prefetching checkpoint files into page cache started (in background, num_threads=8, block_size=16777216 bytes)
+(Worker_TP1 pid=190366) INFO 11-23 14:24:41 [weight_utils.py:1106] Prefetching checkpoint files into page cache started (in background, num_threads=8, block_size=16777216 bytes)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:44 [weight_utils.py:1078] Prefetching checkpoint files: 10% (1/6)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 20% (2/6)
+(Worker_TP1 pid=190366) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 10% (1/5)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 30% (3/6)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 40% (4/6)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 50% (5/6)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 60% (6/6)
+(Worker_TP1 pid=190366) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 20% (2/5)
+(Worker_TP0 pid=190365) INFO 11-23 14:24:46 [weight_utils.py:1101] Prefetching checkpoint files into page cache finished in 5.48s
+(Worker_TP1 pid=190366) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 30% (3/5)
+(Worker_TP1 pid=190366) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 40% (4/5)
+(Worker_TP1 pid=190366) INFO 11-23 14:24:46 [weight_utils.py:1078] Prefetching checkpoint files: 50% (5/5)
+(Worker_TP1 pid=190366) INFO 11-23 14:24:46 [weight_utils.py:1101] Prefetching checkpoint files into page cache finished in 5.39s
+(Worker_TP0 pid=190365) INFO 11-23 14:25:02 [default_loader.py:506] Loading weights took 21.33 seconds
+(Worker_TP0 pid=190365) INFO 11-23 14:25:06 [model_runner.py:428] Model loading took 19.26 GiB memory and 28.472098 seconds
+(Worker_TP1 pid=190366) INFO 11-23 14:25:06 [model_runner.py:428] Model loading took 19.26 GiB memory and 28.475413 seconds
+(Worker_TP0 pid=190365) INFO 11-23 14:25:06 [topk_topp_sampler.py:121] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0.
+(EngineCore pid=190358) INFO 11-23 14:25:06 [utils.py:381] Using LBNHC KV cache layout.
+(Worker_TP0 pid=190365) INFO 11-23 14:25:59 [gpu_worker.py:772] Available KV cache memory: 9.98 GiB
+(EngineCore pid=190358) INFO 11-23 14:25:59 [kv_cache_utils.py:1147] GPU KV cache size: 65,376 tokens, Maximum concurrency for 32,768 tokens per request: 2.00x
+(Worker_TP0 pid=190365) INFO 11-23 14:25:59 [gpu_worker.py:1066] Free memory on device (43.87/44.42 GiB) on startup. Desired GPU memory utilization is (0.9, 39.98 GiB). Actual usage is 19.62 GiB for consumed memory (weights + non-torch), 10.39 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=10556011008` (9.83 GiB) to fit into requested memory, or `--kv-cache-memory=14735766016` (13.72 GiB) to fully utilize gpu memory. Current kv cache memory in use is 9.98 GiB.
+(Worker_TP1 pid=190366) INFO 11-23 14:25:59 [gpu_worker.py:1066] Free memory on device (43.87/44.42 GiB) on startup. Desired GPU memory utilization is (0.9, 39.98 GiB). Actual usage is 19.62 GiB for consumed memory (weights + non-torch), 10.39 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=10556011008` (9.83 GiB) to fit into requested memory, or `--kv-cache-memory=14735766016` (13.72 GiB) to fully utilize gpu memory. Current kv cache memory in use is 9.98 GiB.
+(EngineCore pid=190358) INFO 11-23 14:26:00 [core.py:412] init engine (profile, create kv cache, warmup model) took 53.86 s
+(EngineCore pid=190358) INFO 11-23 14:26:01 [kernel.py:480] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=190199) INFO 11-23 14:26:02 [hf.py:736] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Loading model into cuda completed.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Loading model at index 0: 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4' completed.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Checkpoint: './data/tmp/prompt_Qwen2.5-72B-Instruct-GPTQ-Int4_0.json'.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Prompt log: './data/logs/prompts_Qwen2.5-72B-Instruct-GPTQ-Int4_0.log'.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) No answer store found; starting a new review.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Loading prompt from file 'single_mapping.md'...
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Loaded prompt with base length 5912.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Added the prompt to 15702 histories.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Loading prompt from file 'single_mapping.md' completed.
+[2026-11-23 14:26:02] [INFO   ] (3 Minutes) Formatting pair-level prompts...
+[2026-11-23 14:26:03] [INFO   ] (3 Minutes) Formatting pair-level prompts completed.
+[2026-11-23 14:26:03] [INFO   ] (3 Minutes) Answer store 'prompt_Qwen2.5-72B-Instruct-GPTQ-Int4_0.json': 0 stored answers.
+[2026-11-23 14:26:03] [INFO   ] (3 Minutes) Generating answers for 15702 histories...
+[2026-11-23 14:26:04] [INFO   ] (3 Minutes) 15702 histories to generate in 32 chunk(s) of up to 500.
+[2026-11-23 14:26:05] [INFO   ] (3 Minutes) Running vLLM generation for chunk 1/32 [Indices 0 to 499]...
+[2026-11-23 14:36:15] [INFO   ] (13 Minutes) Running vLLM generation for chunk 1/32 [Indices 0 to 499] completed.
+[2026-11-23 14:36:15] [INFO   ] (13 Minutes) Chunk 1/32: 500 answers, 34015 tokens in 610.9 s (56 tokens/s).
+[2026-11-23 14:36:15] [INFO   ] (13 Minutes) Progress: 500/15702 histories, elapsed 0:10:12, remaining ~5:10:04.
+[2026-11-23 14:36:17] [INFO   ] (13 Minutes) Running vLLM generation for chunk 2/32 [Indices 500 to 999]...
+[2026-11-23 14:46:16] [INFO   ] (23 Minutes) Running vLLM generation for chunk 2/32 [Indices 500 to 999] completed.
+[2026-11-23 14:46:17] [INFO   ] (23 Minutes) Chunk 2/32: 500 answers, 35077 tokens in 601.9 s (58 tokens/s).
+[2026-11-23 14:46:17] [INFO   ] (23 Minutes) Progress: 1000/15702 histories, elapsed 0:20:14, remaining ~4:57:25.
+[2026-11-23 14:46:18] [INFO   ] (23 Minutes) Running vLLM generation for chunk 3/32 [Indices 1000 to 1499]...
+[2026-11-23 14:56:01] [INFO   ] (33 Minutes) Running vLLM generation for chunk 3/32 [Indices 1000 to 1499] completed.
+[2026-11-23 14:56:01] [INFO   ] (33 Minutes) Chunk 3/32: 500 answers, 34884 tokens in 584.6 s (60 tokens/s).
+[2026-11-23 14:56:01] [INFO   ] (33 Minutes) Progress: 1500/15702 histories, elapsed 0:29:58, remaining ~4:43:46.
+[2026-11-23 14:56:03] [INFO   ] (33 Minutes) Running vLLM generation for chunk 4/32 [Indices 1500 to 1999]...
+[2026-11-23 15:05:39] [INFO   ] (42 Minutes) Running vLLM generation for chunk 4/32 [Indices 1500 to 1999] completed.
+[2026-11-23 15:05:40] [INFO   ] (42 Minutes) Chunk 4/32: 500 answers, 34880 tokens in 578.6 s (60 tokens/s).
+[2026-11-23 15:05:40] [INFO   ] (42 Minutes) Progress: 2000/15702 histories, elapsed 0:39:37, remaining ~4:31:24.
+[2026-11-23 15:05:41] [INFO   ] (42 Minutes) Running vLLM generation for chunk 5/32 [Indices 2000 to 2499]...
+[2026-11-23 15:15:21] [INFO   ] (52 Minutes) Running vLLM generation for chunk 5/32 [Indices 2000 to 2499] completed.
+[2026-11-23 15:15:22] [INFO   ] (52 Minutes) Chunk 5/32: 500 answers, 34012 tokens in 581.7 s (58 tokens/s).
+[2026-11-23 15:15:22] [INFO   ] (52 Minutes) Progress: 2500/15702 histories, elapsed 0:49:19, remaining ~4:20:24.
+[2026-11-23 15:15:23] [INFO   ] (52 Minutes) Running vLLM generation for chunk 6/32 [Indices 2500 to 2999]...
+[2026-11-23 15:25:04] [INFO   ] (62 Minutes) Running vLLM generation for chunk 6/32 [Indices 2500 to 2999] completed.
+[2026-11-23 15:25:04] [INFO   ] (62 Minutes) Chunk 6/32: 500 answers, 33719 tokens in 582.7 s (58 tokens/s).
+[2026-11-23 15:25:04] [INFO   ] (62 Minutes) Progress: 3000/15702 histories, elapsed 0:59:01, remaining ~4:09:54.
+[2026-11-23 15:25:06] [INFO   ] (62 Minutes) Running vLLM generation for chunk 7/32 [Indices 3000 to 3499]...
+[2026-11-23 15:34:46] [INFO   ] (71 Minutes) Running vLLM generation for chunk 7/32 [Indices 3000 to 3499] completed.
+[2026-11-23 15:34:47] [INFO   ] (71 Minutes) Chunk 7/32: 500 answers, 34425 tokens in 582.4 s (59 tokens/s).
+[2026-11-23 15:34:47] [INFO   ] (71 Minutes) Progress: 3500/15702 histories, elapsed 1:08:44, remaining ~3:59:37.
+[2026-11-23 15:34:48] [INFO   ] (71 Minutes) Running vLLM generation for chunk 8/32 [Indices 3500 to 3999]...
+[2026-11-23 15:44:25] [INFO   ] (81 Minutes) Running vLLM generation for chunk 8/32 [Indices 3500 to 3999] completed.
+[2026-11-23 15:44:26] [INFO   ] (81 Minutes) Chunk 8/32: 500 answers, 34456 tokens in 579.3 s (59 tokens/s).
+[2026-11-23 15:44:26] [INFO   ] (81 Minutes) Progress: 4000/15702 histories, elapsed 1:18:23, remaining ~3:49:19.
+[2026-11-23 15:44:27] [INFO   ] (81 Minutes) Running vLLM generation for chunk 9/32 [Indices 4000 to 4499]...
+[2026-11-23 15:54:10] [INFO   ] (91 Minutes) Running vLLM generation for chunk 9/32 [Indices 4000 to 4499] completed.
+[2026-11-23 15:54:10] [INFO   ] (91 Minutes) Chunk 9/32: 500 answers, 35040 tokens in 584.3 s (60 tokens/s).
+[2026-11-23 15:54:10] [INFO   ] (91 Minutes) Progress: 4500/15702 histories, elapsed 1:28:07, remaining ~3:39:22.
+[2026-11-23 15:54:12] [INFO   ] (91 Minutes) Running vLLM generation for chunk 10/32 [Indices 4500 to 4999]...
+[2026-11-23 16:04:11] [INFO   ] (101 Minutes) Running vLLM generation for chunk 10/32 [Indices 4500 to 4999] completed.
+[2026-11-23 16:04:12] [INFO   ] (101 Minutes) Chunk 10/32: 500 answers, 38459 tokens in 602.0 s (64 tokens/s).
+[2026-11-23 16:04:12] [INFO   ] (101 Minutes) Progress: 5000/15702 histories, elapsed 1:38:09, remaining ~3:30:06.
+[2026-11-23 16:04:14] [INFO   ] (101 Minutes) Running vLLM generation for chunk 11/32 [Indices 5000 to 5499]...
+[2026-11-23 16:14:06] [INFO   ] (111 Minutes) Running vLLM generation for chunk 11/32 [Indices 5000 to 5499] completed.
+[2026-11-23 16:14:07] [INFO   ] (111 Minutes) Chunk 11/32: 500 answers, 37892 tokens in 594.4 s (64 tokens/s).
+[2026-11-23 16:14:07] [INFO   ] (111 Minutes) Progress: 5500/15702 histories, elapsed 1:48:04, remaining ~3:20:27.
+[2026-11-23 16:14:08] [INFO   ] (111 Minutes) Running vLLM generation for chunk 12/32 [Indices 5500 to 5999]...
+[2026-11-23 16:24:05] [INFO   ] (121 Minutes) Running vLLM generation for chunk 12/32 [Indices 5500 to 5999] completed.
+[2026-11-23 16:24:06] [INFO   ] (121 Minutes) Chunk 12/32: 500 answers, 38577 tokens in 599.3 s (64 tokens/s).
+[2026-11-23 16:24:06] [INFO   ] (121 Minutes) Progress: 6000/15702 histories, elapsed 1:58:03, remaining ~3:10:53.
+[2026-11-23 16:24:07] [INFO   ] (121 Minutes) Running vLLM generation for chunk 13/32 [Indices 6000 to 6499]...
+[2026-11-23 16:34:12] [INFO   ] (131 Minutes) Running vLLM generation for chunk 13/32 [Indices 6000 to 6499] completed.
+[2026-11-23 16:34:13] [INFO   ] (131 Minutes) Chunk 13/32: 500 answers, 41537 tokens in 606.7 s (68 tokens/s).
+[2026-11-23 16:34:13] [INFO   ] (131 Minutes) Progress: 6500/15702 histories, elapsed 2:08:10, remaining ~3:01:26.
+[2026-11-23 16:34:14] [INFO   ] (131 Minutes) Running vLLM generation for chunk 14/32 [Indices 6500 to 6999]...
+[2026-11-23 16:44:26] [INFO   ] (141 Minutes) Running vLLM generation for chunk 14/32 [Indices 6500 to 6999] completed.
+[2026-11-23 16:44:27] [INFO   ] (141 Minutes) Chunk 14/32: 500 answers, 43509 tokens in 614.8 s (71 tokens/s).
+[2026-11-23 16:44:27] [INFO   ] (141 Minutes) Progress: 7000/15702 histories, elapsed 2:18:25, remaining ~2:52:04.
+[2026-11-23 16:44:29] [INFO   ] (141 Minutes) Running vLLM generation for chunk 15/32 [Indices 7000 to 7499]...
+[2026-11-23 16:54:45] [INFO   ] (151 Minutes) Running vLLM generation for chunk 15/32 [Indices 7000 to 7499] completed.
+[2026-11-23 16:54:46] [INFO   ] (151 Minutes) Chunk 15/32: 500 answers, 44236 tokens in 618.8 s (71 tokens/s).
+[2026-11-23 16:54:46] [INFO   ] (151 Minutes) Progress: 7500/15702 histories, elapsed 2:28:43, remaining ~2:42:39.
+[2026-11-23 16:54:48] [INFO   ] (151 Minutes) Running vLLM generation for chunk 16/32 [Indices 7500 to 7999]...
+[2026-11-23 17:05:04] [INFO   ] (162 Minutes) Running vLLM generation for chunk 16/32 [Indices 7500 to 7999] completed.
+[2026-11-23 17:05:05] [INFO   ] (162 Minutes) Chunk 16/32: 500 answers, 44764 tokens in 618.6 s (72 tokens/s).
+[2026-11-23 17:05:05] [INFO   ] (162 Minutes) Progress: 8000/15702 histories, elapsed 2:39:02, remaining ~2:33:07.
+[2026-11-23 17:05:06] [INFO   ] (162 Minutes) Running vLLM generation for chunk 17/32 [Indices 8000 to 8499]...
+[2026-11-23 17:15:23] [INFO   ] (172 Minutes) Running vLLM generation for chunk 17/32 [Indices 8000 to 8499] completed.
+[2026-11-23 17:15:24] [INFO   ] (172 Minutes) Chunk 17/32: 500 answers, 45044 tokens in 619.3 s (73 tokens/s).
+[2026-11-23 17:15:24] [INFO   ] (172 Minutes) Progress: 8500/15702 histories, elapsed 2:49:21, remaining ~2:23:30.
+[2026-11-23 17:15:26] [INFO   ] (172 Minutes) Running vLLM generation for chunk 18/32 [Indices 8500 to 8999]...
+[2026-11-23 17:25:34] [INFO   ] (182 Minutes) Running vLLM generation for chunk 18/32 [Indices 8500 to 8999] completed.
+[2026-11-23 17:25:35] [INFO   ] (182 Minutes) Chunk 18/32: 500 answers, 45421 tokens in 611.3 s (74 tokens/s).
+[2026-11-23 17:25:35] [INFO   ] (182 Minutes) Progress: 9000/15702 histories, elapsed 2:59:33, remaining ~2:13:42.
+[2026-11-23 17:25:37] [INFO   ] (182 Minutes) Running vLLM generation for chunk 19/32 [Indices 9000 to 9499]...
+[2026-11-23 17:35:54] [INFO   ] (193 Minutes) Running vLLM generation for chunk 19/32 [Indices 9000 to 9499] completed.
+[2026-11-23 17:35:56] [INFO   ] (193 Minutes) Chunk 19/32: 500 answers, 47363 tokens in 620.2 s (76 tokens/s).
+[2026-11-23 17:35:56] [INFO   ] (193 Minutes) Progress: 9500/15702 histories, elapsed 3:09:53, remaining ~2:03:58.
+[2026-11-23 17:35:57] [INFO   ] (193 Minutes) Running vLLM generation for chunk 20/32 [Indices 9500 to 9999]...
+[2026-11-23 17:46:11] [INFO   ] (203 Minutes) Running vLLM generation for chunk 20/32 [Indices 9500 to 9999] completed.
+[2026-11-23 17:46:12] [INFO   ] (203 Minutes) Chunk 20/32: 500 answers, 47339 tokens in 616.6 s (77 tokens/s).
+[2026-11-23 17:46:12] [INFO   ] (203 Minutes) Progress: 10000/15702 histories, elapsed 3:20:09, remaining ~1:54:08.
+[2026-11-23 17:46:14] [INFO   ] (203 Minutes) Running vLLM generation for chunk 21/32 [Indices 10000 to 10499]...
+[2026-11-23 17:56:26] [INFO   ] (213 Minutes) Running vLLM generation for chunk 21/32 [Indices 10000 to 10499] completed.
+[2026-11-23 17:56:28] [INFO   ] (213 Minutes) Chunk 21/32: 500 answers, 47448 tokens in 615.9 s (77 tokens/s).
+[2026-11-23 17:56:28] [INFO   ] (213 Minutes) Progress: 10500/15702 histories, elapsed 3:30:25, remaining ~1:44:15.
+[2026-11-23 17:56:30] [INFO   ] (213 Minutes) Running vLLM generation for chunk 22/32 [Indices 10500 to 10999]...
+[2026-11-23 18:06:41] [INFO   ] (223 Minutes) Running vLLM generation for chunk 22/32 [Indices 10500 to 10999] completed.
+[2026-11-23 18:06:43] [INFO   ] (223 Minutes) Chunk 22/32: 500 answers, 47729 tokens in 614.9 s (78 tokens/s).
+[2026-11-23 18:06:43] [INFO   ] (223 Minutes) Progress: 11000/15702 histories, elapsed 3:40:40, remaining ~1:34:20.
+[2026-11-23 18:06:44] [INFO   ] (223 Minutes) Running vLLM generation for chunk 23/32 [Indices 11000 to 11499]...
+[2026-11-23 18:17:00] [INFO   ] (234 Minutes) Running vLLM generation for chunk 23/32 [Indices 11000 to 11499] completed.
+[2026-11-23 18:17:02] [INFO   ] (234 Minutes) Chunk 23/32: 500 answers, 48358 tokens in 619.1 s (78 tokens/s).
+[2026-11-23 18:17:02] [INFO   ] (234 Minutes) Progress: 11500/15702 histories, elapsed 3:50:59, remaining ~1:24:24.
+[2026-11-23 18:17:04] [INFO   ] (234 Minutes) Running vLLM generation for chunk 24/32 [Indices 11500 to 11999]...
+[2026-11-23 18:27:16] [INFO   ] (244 Minutes) Running vLLM generation for chunk 24/32 [Indices 11500 to 11999] completed.
+[2026-11-23 18:27:18] [INFO   ] (244 Minutes) Chunk 24/32: 500 answers, 47891 tokens in 615.5 s (78 tokens/s).
+[2026-11-23 18:27:18] [INFO   ] (244 Minutes) Progress: 12000/15702 histories, elapsed 4:01:15, remaining ~1:14:25.
+[2026-11-23 18:27:19] [INFO   ] (244 Minutes) Running vLLM generation for chunk 25/32 [Indices 12000 to 12499]...
+[2026-11-23 18:37:30] [INFO   ] (254 Minutes) Running vLLM generation for chunk 25/32 [Indices 12000 to 12499] completed.
+[2026-11-23 18:37:32] [INFO   ] (254 Minutes) Chunk 25/32: 500 answers, 48277 tokens in 614.6 s (79 tokens/s).
+[2026-11-23 18:37:32] [INFO   ] (254 Minutes) Progress: 12500/15702 histories, elapsed 4:11:29, remaining ~1:04:25.
+[2026-11-23 18:37:34] [INFO   ] (254 Minutes) Running vLLM generation for chunk 26/32 [Indices 12500 to 12999]...
+[2026-11-23 18:47:44] [INFO   ] (264 Minutes) Running vLLM generation for chunk 26/32 [Indices 12500 to 12999] completed.
+[2026-11-23 18:47:46] [INFO   ] (264 Minutes) Chunk 26/32: 500 answers, 48304 tokens in 613.8 s (79 tokens/s).
+[2026-11-23 18:47:46] [INFO   ] (264 Minutes) Progress: 13000/15702 histories, elapsed 4:21:43, remaining ~0:54:24.
+[2026-11-23 18:47:47] [INFO   ] (264 Minutes) Running vLLM generation for chunk 27/32 [Indices 13000 to 13499]...
+[2026-11-23 18:57:59] [INFO   ] (275 Minutes) Running vLLM generation for chunk 27/32 [Indices 13000 to 13499] completed.
+[2026-11-23 18:58:01] [INFO   ] (275 Minutes) Chunk 27/32: 500 answers, 48553 tokens in 615.2 s (79 tokens/s).
+[2026-11-23 18:58:01] [INFO   ] (275 Minutes) Progress: 13500/15702 histories, elapsed 4:31:58, remaining ~0:44:22.
+[2026-11-23 18:58:03] [INFO   ] (275 Minutes) Running vLLM generation for chunk 28/32 [Indices 13500 to 13999]...
+[2026-11-23 19:08:16] [INFO   ] (285 Minutes) Running vLLM generation for chunk 28/32 [Indices 13500 to 13999] completed.
+[2026-11-23 19:08:19] [INFO   ] (285 Minutes) Chunk 28/32: 500 answers, 48193 tokens in 617.3 s (78 tokens/s).
+[2026-11-23 19:08:19] [INFO   ] (285 Minutes) Progress: 14000/15702 histories, elapsed 4:42:16, remaining ~0:34:19.
+[2026-11-23 19:08:20] [INFO   ] (285 Minutes) Running vLLM generation for chunk 29/32 [Indices 14000 to 14499]...
+[2026-11-23 19:18:33] [INFO   ] (295 Minutes) Running vLLM generation for chunk 29/32 [Indices 14000 to 14499] completed.
+[2026-11-23 19:18:35] [INFO   ] (295 Minutes) Chunk 29/32: 500 answers, 48476 tokens in 616.4 s (79 tokens/s).
+[2026-11-23 19:18:35] [INFO   ] (295 Minutes) Progress: 14500/15702 histories, elapsed 4:52:32, remaining ~0:24:15.
+[2026-11-23 19:18:36] [INFO   ] (295 Minutes) Running vLLM generation for chunk 30/32 [Indices 14500 to 14999]...
+[2026-11-23 19:28:46] [INFO   ] (305 Minutes) Running vLLM generation for chunk 30/32 [Indices 14500 to 14999] completed.
+[2026-11-23 19:28:48] [INFO   ] (305 Minutes) Chunk 30/32: 500 answers, 48788 tokens in 613.1 s (80 tokens/s).
+[2026-11-23 19:28:48] [INFO   ] (305 Minutes) Progress: 15000/15702 histories, elapsed 5:02:45, remaining ~0:14:10.
+[2026-11-23 19:28:50] [INFO   ] (305 Minutes) Running vLLM generation for chunk 31/32 [Indices 15000 to 15499]...
+[2026-11-23 19:38:55] [INFO   ] (316 Minutes) Running vLLM generation for chunk 31/32 [Indices 15000 to 15499] completed.
+[2026-11-23 19:38:57] [INFO   ] (316 Minutes) Chunk 31/32: 500 answers, 48337 tokens in 608.8 s (79 tokens/s).
+[2026-11-23 19:38:57] [INFO   ] (316 Minutes) Progress: 15500/15702 histories, elapsed 5:12:54, remaining ~0:04:05.
+[2026-11-23 19:38:58] [INFO   ] (316 Minutes) Running vLLM generation for chunk 32/32 [Indices 15500 to 15701]...
+[2026-11-23 19:43:04] [INFO   ] (320 Minutes) Running vLLM generation for chunk 32/32 [Indices 15500 to 15701] completed.
+[2026-11-23 19:43:06] [INFO   ] (320 Minutes) Chunk 32/32: 202 answers, 19273 tokens in 249.2 s (77 tokens/s).
+[2026-11-23 19:43:06] [INFO   ] (320 Minutes) Progress: 15702/15702 histories, elapsed 5:17:03, remaining ~0:00:00.
+[2026-11-23 19:43:06] [INFO   ] (320 Minutes) 15702 answers generated, 0 stored and 0 shared with identical histories.
+[2026-11-23 19:43:06] [INFO   ] (320 Minutes) 21707299 prompt and 1334276 generated tokens in 5:17:03 (70 generated tokens/s).
+[2026-11-23 19:43:06] [INFO   ] (320 Minutes) Generating answers for 15702 histories completed.
+(MainProcess pid=190199) INFO 11-23 19:43:06 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=190358) INFO 11-23 19:43:06 [core.py:1525] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=190358) INFO 11-23 19:43:06 [core.py:1712] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=190358) INFO 11-23 19:43:06 [core.py:1743] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=190358) INFO 11-23 19:43:06 [core.py:1573] [shutdown] EngineCore: exiting busy loop
+(EngineCore pid=190358) INFO 11-23 19:43:06 [multiproc_executor.py:580] [shutdown] Executor: waiting for worker exit count=2
+(Worker_TP0 pid=190365) INFO 11-23 19:43:06 [multiproc_executor.py:944] Parent process exited, terminating worker queues
+(EngineCore pid=190358) INFO 11-23 19:43:09 [multiproc_executor.py:587] [shutdown] Executor: all workers exited gracefully
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Pass 1 (pairs): 8141 accepted, 7561 rejected, 0 with another decision.
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Pass 1: all answers usable.
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Pass 1: Reviewing 15702 pairs with the pair-level prompt completed.
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) ------------------------------------------------------------
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) -                Pass 2: Group-level review                -
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) ------------------------------------------------------------
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Pass 2: Reviewing 1677 pairs of 794 HPO concepts with the group-level prompt...
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Loading model at index 0: 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4'...
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Scanning device 'cuda'...
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Cuda available: True.
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) GPU Amount: 2.
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Scanning device 'cuda' completed.
+[2026-11-23 19:43:10] [INFO   ] (320 Minutes) Loading model into cuda...
+(MainProcess pid=190199) INFO 11-23 19:43:10 [startup.py:96] non-default args: {'seed': 2898231092, 'max_model_len': 32768, 'tensor_parallel_size': 2, 'enable_prefix_caching': True, 'gpu_memory_utilization': 0.9, 'max_num_batched_tokens': 65536, 'disable_log_stats': True, 'enforce_eager': True, 'model': 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4'}
+(MainProcess pid=190199) WARNING 11-23 19:43:10 [interface.py:1469] Unknown vLLM environment variable detected: VLLM_USE_FLASHINFER
+(MainProcess pid=190199) INFO 11-23 19:43:11 [model.py:744] Resolved architecture: Qwen2ForCausalLM
+(MainProcess pid=190199) INFO 11-23 19:43:11 [model.py:2170] Using max model len 32768
+(MainProcess pid=190199) INFO 11-23 19:43:12 [kernel.py:480] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=190199) WARNING 11-23 19:43:14 [system_utils.py:154] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=200691) INFO 11-23 19:43:48 [core.py:139] Initializing a V1 LLM engine (v0.33.0) with config: model='Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4', speculative_config=None, tokenizer='Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4', skip_tokenizer_init=False, tokenizer_mode=auto, revision=main, tokenizer_revision=main, trust_remote_code=False, dtype=torch.float16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=2, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=auto_gptq, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=2898231092, served_model_name=Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [65536], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, monokernel=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=200691) INFO 11-23 19:43:48 [multiproc_executor.py:167] DP group leader: node_rank=0, node_rank_within_dp=0, master_addr=127.0.0.1, mq_connect_ip=141.39.131.12 (local), world_size=2, local_world_size=2
+(Worker pid=200711) INFO 11-23 19:44:18 [parallel_state.py:1929] world_size=2 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_f89d2758a2b24ea7909c1ac42b10cb6b backend=nccl
+(Worker pid=200712) INFO 11-23 19:44:18 [parallel_state.py:1929] world_size=2 rank=1 local_rank=1 distributed_init_method=file:///tmp/vllm_dist_f89d2758a2b24ea7909c1ac42b10cb6b backend=nccl
+(Worker pid=200711) INFO 11-23 19:44:22 [pynccl.py:148] vLLM is using nccl==2.30.7
+(Worker pid=200712) WARNING 11-23 19:44:24 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.6 not supported, communicator is not available.
+(Worker pid=200711) WARNING 11-23 19:44:24 [symm_mem.py:67] SymmMemCommunicator: Device capability 8.6 not supported, communicator is not available.
+(Worker pid=200712) WARNING 11-23 19:44:24 [flashinfer_all_reduce.py:424] FlashInfer All Reduce is disabled because it is not supported for world_size=2.
+(Worker pid=200711) WARNING 11-23 19:44:24 [flashinfer_all_reduce.py:424] FlashInfer All Reduce is disabled because it is not supported for world_size=2.
+(Worker pid=200711) INFO 11-23 19:44:24 [cuda_communicator.py:353] Using ['CUSTOM', 'PYNCCL'] all-reduce backends (in dispatch order) for group 'tp:0' out of potential backends: ['FLASHINFER_PCIE_IPC', 'FLASHINFER', 'NCCL_SYMM_MEM', 'QUICK_REDUCE', 'AITER_CUSTOM', 'CUSTOM', 'SYMM_MEM', 'PYNCCL'].
+(Worker pid=200711) INFO 11-23 19:44:24 [parallel_state.py:2385] rank 0 in world size 2 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(Worker pid=200711) INFO 11-23 19:44:24 [gpu_worker.py:513] Using V2 Model Runner
+(Worker_TP0 pid=200711) INFO 11-23 19:44:28 [model_runner.py:399] Loading model from scratch...
+(Worker_TP0 pid=200711) INFO 11-23 19:44:28 [__init__.py:945] Using MarlinLinearKernel for mixed-precision linear
+(Worker_TP0 pid=200711) INFO 11-23 19:44:28 [auto_gptq.py:352] Using MarlinLinearKernel for AutoGPTQLinearMethod
+(Worker_TP1 pid=200712) INFO 11-23 19:44:28 [auto_gptq.py:352] Using MarlinLinearKernel for AutoGPTQLinearMethod
+(Worker_TP0 pid=200711) INFO 11-23 19:44:29 [cuda.py:508] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(Worker_TP0 pid=200711) INFO 11-23 19:44:29 [flash_attn.py:1122] Using FlashAttention version 2
+(Worker_TP0 pid=200711) INFO 11-23 19:44:32 [base_loader.py:82] Initializing model took 3.719320 seconds
+(Worker_TP0 pid=200711) INFO 11-23 19:44:32 [weight_utils.py:1144] Filesystem type for checkpoints: NFS4. Checkpoint size: 38.76 GiB. Available RAM: 978.11 GiB.
+(Worker_TP0 pid=200711) INFO 11-23 19:44:32 [weight_utils.py:1106] Prefetching checkpoint files into page cache started (in background, num_threads=8, block_size=16777216 bytes)
+(Worker_TP1 pid=200712) INFO 11-23 19:44:33 [weight_utils.py:1106] Prefetching checkpoint files into page cache started (in background, num_threads=8, block_size=16777216 bytes)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:36 [weight_utils.py:1078] Prefetching checkpoint files: 10% (1/6)
+(Worker_TP1 pid=200712) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 10% (1/5)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 20% (2/6)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 30% (3/6)
+(Worker_TP1 pid=200712) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 20% (2/5)
+(Worker_TP1 pid=200712) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 30% (3/5)
+(Worker_TP1 pid=200712) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 40% (4/5)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 40% (4/6)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 50% (5/6)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 60% (6/6)
+(Worker_TP0 pid=200711) INFO 11-23 19:44:38 [weight_utils.py:1101] Prefetching checkpoint files into page cache finished in 5.77s
+(Worker_TP1 pid=200712) INFO 11-23 19:44:38 [weight_utils.py:1078] Prefetching checkpoint files: 50% (5/5)
+(Worker_TP1 pid=200712) INFO 11-23 19:44:38 [weight_utils.py:1101] Prefetching checkpoint files into page cache finished in 5.70s
+(Worker_TP0 pid=200711) INFO 11-23 19:44:54 [default_loader.py:506] Loading weights took 21.34 seconds
+(Worker_TP0 pid=200711) INFO 11-23 19:44:56 [model_runner.py:428] Model loading took 19.26 GiB memory and 29.763089 seconds
+(Worker_TP1 pid=200712) INFO 11-23 19:44:56 [model_runner.py:428] Model loading took 19.26 GiB memory and 29.812975 seconds
+(Worker_TP0 pid=200711) INFO 11-23 19:44:56 [topk_topp_sampler.py:121] FlashInfer top-p/top-k sampling disabled via VLLM_USE_FLASHINFER_SAMPLER=0.
+(EngineCore pid=200691) INFO 11-23 19:44:56 [utils.py:381] Using LBNHC KV cache layout.
+(Worker_TP0 pid=200711) INFO 11-23 19:45:48 [gpu_worker.py:772] Available KV cache memory: 9.98 GiB
+(EngineCore pid=200691) INFO 11-23 19:45:48 [kv_cache_utils.py:1147] GPU KV cache size: 65,376 tokens, Maximum concurrency for 32,768 tokens per request: 2.00x
+(Worker_TP1 pid=200712) INFO 11-23 19:45:48 [gpu_worker.py:1066] Free memory on device (43.87/44.42 GiB) on startup. Desired GPU memory utilization is (0.9, 39.98 GiB). Actual usage is 19.62 GiB for consumed memory (weights + non-torch), 10.39 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=10556011008` (9.83 GiB) to fit into requested memory, or `--kv-cache-memory=14735766016` (13.72 GiB) to fully utilize gpu memory. Current kv cache memory in use is 9.98 GiB.
+(Worker_TP0 pid=200711) INFO 11-23 19:45:48 [gpu_worker.py:1066] Free memory on device (43.87/44.42 GiB) on startup. Desired GPU memory utilization is (0.9, 39.98 GiB). Actual usage is 19.62 GiB for consumed memory (weights + non-torch), 10.39 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=10556011008` (9.83 GiB) to fit into requested memory, or `--kv-cache-memory=14735766016` (13.72 GiB) to fully utilize gpu memory. Current kv cache memory in use is 9.98 GiB.
+(EngineCore pid=200691) INFO 11-23 19:45:49 [core.py:412] init engine (profile, create kv cache, warmup model) took 52.95 s
+(EngineCore pid=200691) WARNING 11-23 19:45:50 [vllm.py:1778] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=200691) WARNING 11-23 19:45:50 [vllm.py:1802] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=200691) INFO 11-23 19:45:50 [kernel.py:480] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=200691) INFO 11-23 19:45:50 [vllm.py:2005] Cudagraph is disabled under eager mode
+(EngineCore pid=200691) INFO 11-23 19:45:50 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Loading model into cuda completed.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Loading model at index 0: 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4' completed.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Checkpoint: './data/tmp/prompt_Qwen2.5-72B-Instruct-GPTQ-Int4_1.json'.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Prompt log: './data/logs/prompts_Qwen2.5-72B-Instruct-GPTQ-Int4_1.log'.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) No answer store found; starting a new review.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Loading prompt from file 'multiple_mapping.md'...
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Loaded prompt with base length 11027.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Added the prompt to 794 histories.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Loading prompt from file 'multiple_mapping.md' completed.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Formatting group-level prompts...
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Formatting group-level prompts completed.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Answer store 'prompt_Qwen2.5-72B-Instruct-GPTQ-Int4_1.json': 0 stored answers.
+[2026-11-23 19:45:50] [INFO   ] (322 Minutes) Generating answers for 794 histories...
+[2026-11-23 19:45:51] [INFO   ] (322 Minutes) 794 histories to generate in 2 chunk(s) of up to 500.
+[2026-11-23 19:45:54] [INFO   ] (323 Minutes) Running vLLM generation for chunk 1/2 [Indices 0 to 499]...
+[2026-11-23 20:14:02] [INFO   ] (351 Minutes) Running vLLM generation for chunk 1/2 [Indices 0 to 499] completed.
+[2026-11-23 20:14:03] [INFO   ] (351 Minutes) Chunk 1/2: 500 answers, 110149 tokens in 1692.2 s (65 tokens/s).
+[2026-11-23 20:14:03] [INFO   ] (351 Minutes) Progress: 500/794 histories, elapsed 0:28:12, remaining ~0:16:35.
+[2026-11-23 20:14:05] [INFO   ] (351 Minutes) Running vLLM generation for chunk 2/2 [Indices 500 to 793]...
+[2026-11-23 20:30:10] [INFO   ] (367 Minutes) Running vLLM generation for chunk 2/2 [Indices 500 to 793] completed.
+[2026-11-23 20:30:10] [INFO   ] (367 Minutes) Chunk 2/2: 294 answers, 63644 tokens in 967.5 s (66 tokens/s).
+[2026-11-23 20:30:10] [INFO   ] (367 Minutes) Progress: 794/794 histories, elapsed 0:44:20, remaining ~0:00:00.
+[2026-11-23 20:30:10] [INFO   ] (367 Minutes) 794 answers generated, 0 stored and 0 shared with identical histories.
+[2026-11-23 20:30:10] [INFO   ] (367 Minutes) 2267037 prompt and 173793 generated tokens in 0:44:20 (65 generated tokens/s).
+[2026-11-23 20:30:10] [INFO   ] (367 Minutes) Generating answers for 794 histories completed.
+(MainProcess pid=190199) INFO 11-23 20:30:10 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=200691) INFO 11-23 20:30:10 [core.py:1525] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=200691) INFO 11-23 20:30:10 [core.py:1712] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=200691) INFO 11-23 20:30:10 [core.py:1743] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=200691) INFO 11-23 20:30:10 [core.py:1573] [shutdown] EngineCore: exiting busy loop
+(Worker_TP0 pid=200711) INFO 11-23 20:30:10 [multiproc_executor.py:944] Parent process exited, terminating worker queues
+(EngineCore pid=200691) INFO 11-23 20:30:10 [multiproc_executor.py:580] [shutdown] Executor: waiting for worker exit count=2
+(EngineCore pid=200691) INFO 11-23 20:30:15 [multiproc_executor.py:587] [shutdown] Executor: all workers exited gracefully
+(MainProcess pid=190199) WARNING 11-23 20:30:15 [utils.py:648] [shutdown] Process manager: force killing remaining processes count=1
+(MainProcess pid=190199) WARNING 11-23 20:30:15 [utils.py:653] [shutdown] Process manager: force killing remaining process EngineCore pid 200691
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Pass 2 (pairs): 1012 accepted, 665 rejected, 0 with another decision.
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Pass 2: 0 candidates missing in the answers, counted as rejected.
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Pass 2: all group answers usable.
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Pass 2: Reviewing 1677 pairs of 794 HPO concepts with the group-level prompt completed.
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) ------------------------------------------------------------
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) -              Writing LLM-reviewed mappings               -
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) ------------------------------------------------------------
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Rows to write: 252347 (243194 from filtered.csv, 9153 new).
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) The new rows have attribute=llm and validity=10.
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Writing to a temporary file first...
+[2026-11-23 20:30:16] [INFO   ] (367 Minutes) Writing file 'llm_filtered.csv.190199-135894586804032.tmp'...
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Writing file 'llm_filtered.csv.190199-135894586804032.tmp' completed.
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Writing to a temporary file first completed.
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Replacing original data with temporary data...
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Replacing original data with temporary data completed.
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Rows to write to the review file: 17379 (one per reviewed pair).
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Writing to a temporary file first...
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Writing file 'llm_review.csv.190199-135894586804032.tmp'...
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Writing file 'llm_review.csv.190199-135894586804032.tmp' completed.
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Writing to a temporary file first completed.
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Replacing original data with temporary data...
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Replacing original data with temporary data completed.
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) ------------------------------------------------------------
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) -                         Summary                          -
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) ------------------------------------------------------------
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) LLM review (pairs):
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Reviewed:                           17379
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Accepted:                            9153 (52.7%)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Rejected:                            8226 (47.3%)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Other decision:                         0 (0.0%)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Candidates accepted (new):           3534 (validity=1–9 accepted by the LLM)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Auto-accepted confirmed:             5619 (validity=10 accepted by the LLM)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Auto-accepted rejected:               500 (validity=10 rejected by the LLM; kept, no llm row)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) LLM review by validity code (pairs):
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   Code   Reason                                   Reviewed  Accepted  Rejected  Other  Rejection Rate
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   1      HIERARCHY_REVERSAL_ANCHOR                      39         2        37      0           94.9%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   2      HIERARCHY_REVERSAL_EXACT_LEXICAL               96        16        80      0           83.3%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   3      HIERARCHY_REVERSAL_HPO_XREF                    16         2        14      0           87.5%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   4      HIERARCHY_REVERSAL_UMLS_BRIDGE                  4         2         2      0           50.0%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   5      HIERARCHY_REVERSAL_UMLS_CUI                     7         2         5      0           71.4%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   7      HIERARCHY_REVERSAL_JACCARD_ONLY                50         5        45      0           90.0%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   8      BEST_CANDIDATE_FALLBACK                         1         0         1      0          100.0%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   9      LAST_RESORT                                 11047      3505      7542      0           68.3%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes)   10     ACCEPTED                                     6119      5619       500      0            8.2%
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Evaluation (pass 1, LLM-accepted):
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Recall:                      0.67
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Precision:                   0.77
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Correct pairs (in gold):     6254
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Pairs:                       8141
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts:                8141
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Gold HPO concepts found:     6254 of 9243 (67.66%, ≥1 gold target)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts not in gold:    1239 (cannot be verified)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Evaluation (pass 2, LLM-accepted):
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Recall:                      0.06
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Precision:                   0.57
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Correct pairs (in gold):      576
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Pairs:                       1012
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts:                 771
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Gold HPO concepts found:      576 of 9243 (6.23%, ≥1 gold target)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts not in gold:      65 (cannot be verified)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Evaluation (after LLM review, LLM-accepted only):
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Recall:                      0.73
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Precision:                   0.75
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Correct pairs (in gold):     6830
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Pairs:                       9153
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts:                8912
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Gold HPO concepts found:     6830 of 9243 (73.89%, ≥1 gold target)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts not in gold:    1304 (cannot be verified)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Evaluation (after LLM review, auto-accepted + LLM-accepted, validity=10):
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Recall:                      0.74
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Precision:                   0.72
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Correct pairs (in gold):     6925
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Pairs:                       9653
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts:                9026
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) Gold HPO concepts found:     6925 of 9243 (74.92%, ≥1 gold target)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) HPO concepts not in gold:    1331 (cannot be verified)
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) ------------------------------------------------------------
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) -                  LLM review completed.                   -
+[2026-11-23 20:30:17] [INFO   ] (367 Minutes) ------------------------------------------------------------

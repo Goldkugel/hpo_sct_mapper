@@ -1,0 +1,12 @@
+step;label;set;pairs;hpo_classes;correct;precision;recall;f1;rejected
+2;Anchors;auto-accepted;2501;2354;2114;0.8453;0.225;0.3554;17483
+2b;Exact label match;auto-accepted;4803;4385;3843;0.8001;0.409;0.5413;17579
+2c;Remaining HPO xrefs;auto-accepted;5245;4782;4188;0.7985;0.4457;0.5721;17595
+3;HPO → UMLS → SCT;auto-accepted;5535;5059;4440;0.8022;0.4725;0.5947;17599
+4;Shared CUI;auto-accepted;5869;5372;4719;0.8041;0.5022;0.6183;17606
+5;Jaccard = 1 and cosine = 1;auto-accepted;5869;5372;4719;0.8041;0.5022;0.6183;17606
+6;Jaccard = 1 only;auto-accepted;6119;5532;4825;0.7885;0.5135;0.622;17656
+7;Best-candidate fallback;auto-accepted + review (codes 1–10);6332;5533;4875;0.7699;0.5188;0.6199;17444
+8;Last-resort fallback;auto-accepted + review (codes 1–10);17379;16496;7438;0.428;0.7916;0.5556;17444
+llm;LLM-accepted;LLM-accepted;9153;8912;6830;0.7462;0.7269;0.7364;7726
+final;Final alignment;auto-accepted ∪ LLM-accepted;9653;9026;6925;0.7174;0.737;0.7271;25170

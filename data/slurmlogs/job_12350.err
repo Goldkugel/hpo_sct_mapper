@@ -1,46 +1,0 @@
-W1120 18:10:02.127000 4171703 site-packages/torch/_opaque_base.py:6] torch._opaque_base is deprecated, use torch._custom_class_base instead
-W1120 18:10:02.128000 4171703 site-packages/torch/_library/opaque_object.py:288] register_opaque_type is deprecated, use register_custom_class instead
-W1120 18:10:02.128000 4171703 site-packages/torch/_library/opaque_object.py:211] typ='value' is deprecated, use typ='constant' instead
-Parse safetensors files:   0%|          | 0/11 [00:00<?, ?it/s]Parse safetensors files:   9%|▉         | 1/11 [00:00<00:05,  1.88it/s]Parse safetensors files:  27%|██▋       | 3/11 [00:00<00:01,  5.65it/s]Parse safetensors files:  64%|██████▎   | 7/11 [00:00<00:00,  8.59it/s]Parse safetensors files: 100%|██████████| 11/11 [00:01<00:00, 10.41it/s]
-Fetching 10 files:   0%|          | 0/10 [00:00<?, ?it/s]Fetching 10 files: 100%|██████████| 10/10 [00:00<00:00, 1188.56it/s]
-Loading safetensors checkpoint shards:   0% Completed | 0/11 [00:00<?, ?it/s]
-Loading safetensors checkpoint shards:   9% Completed | 1/11 [00:05<00:54,  5.43s/it]
-Loading safetensors checkpoint shards:  18% Completed | 2/11 [00:07<00:28,  3.19s/it]
-Loading safetensors checkpoint shards:  27% Completed | 3/11 [00:08<00:20,  2.50s/it]
-Loading safetensors checkpoint shards:  36% Completed | 4/11 [00:10<00:15,  2.20s/it]
-Loading safetensors checkpoint shards:  45% Completed | 5/11 [00:12<00:12,  2.01s/it]
-Loading safetensors checkpoint shards:  55% Completed | 6/11 [00:13<00:09,  1.90s/it]
-Loading safetensors checkpoint shards:  64% Completed | 7/11 [00:15<00:07,  1.85s/it]
-Loading safetensors checkpoint shards:  73% Completed | 8/11 [00:17<00:05,  1.79s/it]
-Loading safetensors checkpoint shards:  82% Completed | 9/11 [00:18<00:03,  1.75s/it]
-Loading safetensors checkpoint shards:  91% Completed | 10/11 [00:20<00:01,  1.68s/it]
-Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:20<00:00,  1.30s/it]
-Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:20<00:00,  1.90s/it]
-
-[rank0]:[W1120 18:43:52.733140204 CUDACachingAllocator.cpp:3934] memory allocation failed with OOM on device 0 while trying to allocate 3776970752 bytes (free: 3025272832, total: 47699722240).
-[rank1]:[W1120 18:43:52.755634448 CUDACachingAllocator.cpp:3934] memory allocation failed with OOM on device 1 while trying to allocate 3776970752 bytes (free: 3025272832, total: 47699722240).
-Parse safetensors files:   0%|          | 0/11 [00:00<?, ?it/s]Parse safetensors files:   9%|▉         | 1/11 [00:00<00:05,  1.76it/s]Parse safetensors files:  91%|█████████ | 10/11 [00:00<00:00, 17.91it/s]Parse safetensors files: 100%|██████████| 11/11 [00:00<00:00, 12.85it/s]
-W1120 23:31:53.471000 4183704 site-packages/torch/_opaque_base.py:6] torch._opaque_base is deprecated, use torch._custom_class_base instead
-W1120 23:31:53.471000 4183704 site-packages/torch/_library/opaque_object.py:288] register_opaque_type is deprecated, use register_custom_class instead
-W1120 23:31:53.472000 4183704 site-packages/torch/_library/opaque_object.py:211] typ='value' is deprecated, use typ='constant' instead
-W1120 23:32:32.248000 4183753 site-packages/torch/_opaque_base.py:6] torch._opaque_base is deprecated, use torch._custom_class_base instead
-W1120 23:32:32.249000 4183753 site-packages/torch/_library/opaque_object.py:288] register_opaque_type is deprecated, use register_custom_class instead
-W1120 23:32:32.250000 4183753 site-packages/torch/_library/opaque_object.py:211] typ='value' is deprecated, use typ='constant' instead
-W1120 23:32:32.361000 4183754 site-packages/torch/_opaque_base.py:6] torch._opaque_base is deprecated, use torch._custom_class_base instead
-W1120 23:32:32.361000 4183754 site-packages/torch/_library/opaque_object.py:288] register_opaque_type is deprecated, use register_custom_class instead
-W1120 23:32:32.362000 4183754 site-packages/torch/_library/opaque_object.py:211] typ='value' is deprecated, use typ='constant' instead
-Loading safetensors checkpoint shards:   0% Completed | 0/11 [00:00<?, ?it/s]
-Loading safetensors checkpoint shards:   9% Completed | 1/11 [00:05<00:55,  5.52s/it]
-Loading safetensors checkpoint shards:  18% Completed | 2/11 [00:07<00:29,  3.24s/it]
-Loading safetensors checkpoint shards:  27% Completed | 3/11 [00:08<00:20,  2.53s/it]
-Loading safetensors checkpoint shards:  36% Completed | 4/11 [00:10<00:15,  2.23s/it]
-Loading safetensors checkpoint shards:  45% Completed | 5/11 [00:12<00:12,  2.04s/it]
-Loading safetensors checkpoint shards:  55% Completed | 6/11 [00:14<00:09,  1.93s/it]
-Loading safetensors checkpoint shards:  64% Completed | 7/11 [00:15<00:07,  1.87s/it]
-Loading safetensors checkpoint shards:  73% Completed | 8/11 [00:17<00:05,  1.82s/it]
-Loading safetensors checkpoint shards:  82% Completed | 9/11 [00:19<00:03,  1.78s/it]
-Loading safetensors checkpoint shards:  91% Completed | 10/11 [00:20<00:01,  1.72s/it]
-Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:21<00:00,  1.32s/it]
-Loading safetensors checkpoint shards: 100% Completed | 11/11 [00:21<00:00,  1.93s/it]
-
-Fetching 10 files:   0%|          | 0/10 [00:00<?, ?it/s]Fetching 10 files: 100%|██████████| 10/10 [00:00<00:00, 1007.28it/s]
