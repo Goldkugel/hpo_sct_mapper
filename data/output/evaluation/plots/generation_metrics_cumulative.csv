@@ -3,5 +3,5 @@ hpo_sct;HPO cross-references;4225;3341;2807;0.6644;0.2987;0.4122
 hpo_umls_sct;HPO → UMLS → SNOMED CT;5222;4136;3574;0.6844;0.3804;0.489
 umls_hpo_sct;Shared CUI;7547;6014;5176;0.6858;0.5509;0.611
 jaccard;Jaccard > 0.90;8543;6404;5474;0.6408;0.5826;0.6103
-embedding;Cosine ≥ 0.75 (SapBERT);215512;17151;8878;0.0412;0.9449;0.0789
+embedding;Cosine > 0.75 (SapBERT);215512;17151;8878;0.0412;0.9449;0.0789
 exact_lexical;Exact lexical match;215512;17151;8878;0.0412;0.9449;0.0789
