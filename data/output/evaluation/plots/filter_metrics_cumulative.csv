@@ -8,5 +8,5 @@ step;label;set;pairs;hpo_classes;correct;precision;recall;f1;rejected
 6;Jaccard = 1 only;auto-accepted;6119;5532;4825;0.7885;0.5135;0.622;17656
 7;Best-candidate fallback;auto-accepted + review (codes 1–10);6332;5533;4875;0.7699;0.5188;0.6199;17444
 8;Last-resort fallback;auto-accepted + review (codes 1–10);17379;16496;7438;0.428;0.7916;0.5556;17444
-llm;LLM-accepted;LLM-accepted;9153;8912;6830;0.7462;0.7269;0.7364;7726
+llm;LLM-accepted;LLM-accepted;9153;8912;6830;0.7462;0.7269;0.7364;25170
 final;Final alignment;auto-accepted ∪ LLM-accepted;9653;9026;6925;0.7174;0.737;0.7271;25170
