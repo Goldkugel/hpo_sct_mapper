@@ -10,7 +10,7 @@ import pandas            as pd
 # ==========================================================================
 # MappingPlots.py
 #
-# Tables and plots of the evaluation (called by MappingErrorAnalysis):
+# Tables and plots of the evaluation (called by MappingEvaluation):
 #   (1) generation_metrics : precision, recall and F1 per generation method
 #   (2) generation_counts  : candidate pairs and HPO classes per generation
 #                            method (new pairs only in the CSV)

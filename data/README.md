@@ -24,7 +24,9 @@ data/
 │       ├── evaluation_final.csv
 │       ├── accepted_without_gold.csv
 │       ├── llm_disagreements.csv
-│       └── gold_check.csv     # LLM check of the gold standard (MappingGoldCheck.py)
+│       ├── gold_check.csv     # LLM check of the gold standard (MappingGoldCheck.py)
+│       ├── plots/             # Plots and plotted values of step 4 (MappingPlots.py)
+│       └── error_analysis/    # Step 5: cases of the error analysis (MappingErrorAnalysis.py)
 ├── logs/                  # Logs and run metadata (see logs/README.md)
 ├── slurmlogs/             # stdout and stderr of the Slurm jobs (job_<id>.out / .err)
 └── tmp/                   # Answer stores of the LLM review (see tmp/README.md)

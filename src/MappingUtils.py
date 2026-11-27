@@ -52,8 +52,10 @@ evaluation_path      = "./data/output/evaluation/evaluation_final.csv"
 no_gold_path         = "./data/output/evaluation/accepted_without_gold.csv"
 llm_disagreements_path = "./data/output/evaluation/llm_disagreements.csv"
 gold_check_path      = "./data/output/evaluation/gold_check.csv"
-# Plots and plotted values of MappingErrorAnalysis (MappingPlots).
+# Plots and plotted values of MappingEvaluation (MappingPlots).
 plots_dir            = "./data/output/evaluation/plots"
+# Tables of MappingErrorAnalysis.
+error_analysis_dir   = "./data/output/evaluation/error_analysis"
 
 output_paths = [
     mapping_path, filtered_path, llm_filtered_path, llm_review_path,

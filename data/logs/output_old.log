@@ -1,0 +1,1831 @@
+[2026-10-28 17:34:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 17:34:54] (0 Minutes) -        Gather all mappings from HPO to SNOMED CT         -
+[2026-10-28 17:34:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 17:34:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 17:34:54] (0 Minutes) -                     1. Loading data                      -
+[2026-10-28 17:34:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 17:34:54] (0 Minutes) Loading HPO from source files...
+[2026-10-28 17:34:54] (0 Minutes) Loading the Human Phenotype Ontology (HPO) from 'hp.owl'...
+[2026-10-28 17:35:01] (0 Minutes) Get labels of the Human Phenotype Ontology (HPO)...
+[2026-10-28 17:35:07] (0 Minutes) 32771 entities of the Human Phenotype Ontology (HPO) extracted.
+[2026-10-28 17:35:07] (0 Minutes) Get definitions of the Human Phenotype Ontology (HPO)...
+[2026-10-28 17:35:18] (0 Minutes) 28803 entities of the Human Phenotype Ontology (HPO) extracted.
+[2026-10-28 17:35:18] (0 Minutes) Get comments of the Human Phenotype Ontology (HPO)...
+[2026-10-28 17:35:20] (0 Minutes) 5883 entities of the Human Phenotype Ontology (HPO) extracted.
+[2026-10-28 17:35:20] (0 Minutes) Get children of concepts of the Human Phenotype Ontology (HPO)...
+[2026-10-28 17:35:34] (0 Minutes) 56797 entities of the Human Phenotype Ontology (HPO) extracted.
+[2026-10-28 17:35:34] (0 Minutes) Get references of the Human Phenotype Ontology (HPO)...
+[2026-10-28 17:36:07] (1 Minutes) 152213 entities of the Human Phenotype Ontology (HPO) extracted.
+[2026-10-28 17:36:07] (1 Minutes) Get synonyms and types of the Human Phenotype Ontology (HPO)...
+[2026-10-28 17:37:36] (2 Minutes) 104276 entities of the Human Phenotype Ontology (HPO) extracted.
+[2026-10-28 17:37:36] (2 Minutes) Merging data...
+[2026-10-28 17:37:36] (2 Minutes) Merging data completed.
+[2026-10-28 17:37:36] (2 Minutes) Found 380743 entities/rows in total.
+[2026-10-28 17:37:36] (2 Minutes) Removing rows without an ID...
+[2026-10-28 17:37:36] (2 Minutes) Removing rows without an ID completed.
+[2026-10-28 17:37:36] (2 Minutes) Reduced to 298491 entities/rows in total.
+[2026-10-28 17:37:36] (2 Minutes) Removing rows with a '#' in the ID...
+[2026-10-28 17:37:36] (2 Minutes) Removing rows with a '#' in the ID completed.
+[2026-10-28 17:37:36] (2 Minutes) Reduced to 298429 entities/rows in total.
+[2026-10-28 17:37:36] (2 Minutes) Loading the Human Phenotype Ontology (HPO) from 'hp.owl' completed.
+[2026-10-28 17:37:36] (2 Minutes) Writing in temporary file first...
+[2026-10-28 17:37:36] (2 Minutes) Writing file 'hpo.csv.tmp'...
+[2026-10-28 17:37:37] (2 Minutes) Writing file 'hpo.csv.tmp' completed.
+[2026-10-28 17:37:37] (2 Minutes) Replacing original data with temporary data...
+[2026-10-28 17:37:37] (2 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 17:37:37] (2 Minutes) Loading HPO from source files completed.
+[2026-10-28 17:37:37] (2 Minutes) Loading UMLS from source files...
+[2026-10-28 17:37:37] (2 Minutes) Loading UMLS from 6 files...
+[2026-10-28 17:37:37] (2 Minutes) Processing file 'MRCONSO.RRF'...
+[2026-10-28 17:39:04] (4 Minutes) Processing file 'MRCONSO.RRF' completed.
+[2026-10-28 17:39:04] (4 Minutes) 18060228 entities of UMLS extracted.
+[2026-10-28 17:39:09] (4 Minutes) Transforming 9110885 rows into EAV schema...
+[2026-10-28 17:39:22] (4 Minutes) Transforming 9110885 rows into EAV schema completed.
+[2026-10-28 17:39:22] (4 Minutes) Removing duplicated rows...
+[2026-10-28 17:39:33] (4 Minutes) Removing duplicated rows completed. 8411656 rows left.
+[2026-10-28 17:39:36] (4 Minutes) Processing file 'MRDEF.RRF'...
+[2026-10-28 17:39:38] (4 Minutes) Processing file 'MRDEF.RRF' completed.
+[2026-10-28 17:39:38] (4 Minutes) 487338 entities of UMLS extracted.
+[2026-10-28 17:39:39] (4 Minutes) Transforming 479490 rows into EAV schema...
+[2026-10-28 17:39:39] (4 Minutes) Transforming 479490 rows into EAV schema completed.
+[2026-10-28 17:39:39] (4 Minutes) Removing duplicated rows...
+[2026-10-28 17:39:39] (4 Minutes) Removing duplicated rows completed. 472916 rows left.
+[2026-10-28 17:39:39] (4 Minutes) 'MRRANK.RRF' doesn't match any known RRF file prefix.
+[2026-10-28 17:39:39] (4 Minutes) 'MRREL.RRF' doesn't match any known RRF file prefix.
+[2026-10-28 17:39:39] (4 Minutes) 'MRSAT.RRF' doesn't match any known RRF file prefix.
+[2026-10-28 17:39:39] (4 Minutes) 'MRSTY.RRF' doesn't match any known RRF file prefix.
+[2026-10-28 17:39:39] (4 Minutes) Loading completed.
+[2026-10-28 17:39:39] (4 Minutes) Merging data...
+[2026-10-28 17:39:40] (4 Minutes) Found 8884572 entities/rows in total.
+[2026-10-28 17:39:40] (4 Minutes) Removing rows without an ID...
+[2026-10-28 17:39:41] (4 Minutes) Removing rows without an ID completed.
+[2026-10-28 17:39:41] (4 Minutes) Reduced to 8884572 entities/rows in total.
+[2026-10-28 17:39:41] (4 Minutes) Removing rows without values...
+[2026-10-28 17:39:42] (4 Minutes) Removing rows without values completed.
+[2026-10-28 17:39:42] (4 Minutes) Reduced to 8884572 entities/rows in total.
+[2026-10-28 17:39:42] (4 Minutes) Removing duplicate rows...
+[2026-10-28 17:39:51] (4 Minutes) Removing duplicate rows completed.
+[2026-10-28 17:39:51] (4 Minutes) Reduced to 8884572 entities/rows in total.
+[2026-10-28 17:39:51] (4 Minutes) Loading UMLS from 6 files completed.
+[2026-10-28 17:39:51] (4 Minutes) Writing in temporary file first...
+[2026-10-28 17:39:51] (4 Minutes) Writing file 'umls.csv.tmp'...
+[2026-10-28 17:40:12] (5 Minutes) Writing file 'umls.csv.tmp' completed.
+[2026-10-28 17:40:12] (5 Minutes) Replacing original data with temporary data...
+[2026-10-28 17:40:12] (5 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 17:40:12] (5 Minutes) Loading UMLS from source files completed.
+[2026-10-28 17:40:12] (5 Minutes) Loading SNOMED CT from source files...
+[2026-10-28 17:40:12] (5 Minutes) Loading SNOMED CT from 9 files...
+[2026-10-28 17:40:12] (5 Minutes) Processing file 'sct2_Concept_Full_INT_20260701.txt'...
+[2026-10-28 17:40:12] (5 Minutes) Processing file 'sct2_Concept_Full_INT_20260701.txt' completed.
+[2026-10-28 17:40:12] (5 Minutes) 719886 entities of SNOMED CT extracted.
+[2026-10-28 17:40:13] (5 Minutes) Processing file 'der2_sRefset_SimpleMapFull_INT_20260701.txt'...
+[2026-10-28 17:40:13] (5 Minutes) Processing file 'der2_sRefset_SimpleMapFull_INT_20260701.txt' completed.
+[2026-10-28 17:40:13] (5 Minutes) 565247 entities of SNOMED CT extracted.
+[2026-10-28 17:40:14] (5 Minutes) Processing file 'sct2_Description_Full-en_INT_20260701.txt'...
+[2026-10-28 17:40:17] (5 Minutes) Processing file 'sct2_Description_Full-en_INT_20260701.txt' completed.
+[2026-10-28 17:40:17] (5 Minutes) 2936769 entities of SNOMED CT extracted.
+[2026-10-28 17:40:19] (5 Minutes) 'sct2_sRefset_OWLExpressionFull_INT_20260701.txt' doesn't match any known RF2 file prefix.
+[2026-10-28 17:40:19] (5 Minutes) Processing file 'sct2_Relationship_Full_INT_20260701.txt'...
+[2026-10-28 17:40:34] (5 Minutes) Processing file 'sct2_Relationship_Full_INT_20260701.txt' completed.
+[2026-10-28 17:40:34] (5 Minutes) 3576036 entities of SNOMED CT extracted.
+[2026-10-28 17:40:35] (5 Minutes) 'sct2_RelationshipConcreteValues_Full_INT_20260701.txt' doesn't match any known RF2 file prefix.
+[2026-10-28 17:40:35] (5 Minutes) 'sct2_Identifier_Full_INT_20260701.txt' doesn't match any known RF2 file prefix.
+[2026-10-28 17:40:35] (5 Minutes) 'sct2_StatedRelationship_Full_INT_20260701.txt' doesn't match any known RF2 file prefix.
+[2026-10-28 17:40:35] (5 Minutes) Processing file 'sct2_TextDefinition_Full-en_INT_20260701.txt'...
+[2026-10-28 17:40:35] (5 Minutes) Processing file 'sct2_TextDefinition_Full-en_INT_20260701.txt' completed.
+[2026-10-28 17:40:35] (5 Minutes) 25181 entities of SNOMED CT extracted.
+[2026-10-28 17:40:36] (5 Minutes) Loading completed.
+[2026-10-28 17:40:36] (5 Minutes) Merging data...
+[2026-10-28 17:40:36] (5 Minutes) Found 3505857 entities/rows in total.
+[2026-10-28 17:40:36] (5 Minutes) Removing rows without an ID...
+[2026-10-28 17:40:36] (5 Minutes) Removing rows without an ID completed.
+[2026-10-28 17:40:36] (5 Minutes) Reduced to 3505857 entities/rows in total.
+[2026-10-28 17:40:36] (5 Minutes) Removing rows without values...
+[2026-10-28 17:40:37] (5 Minutes) Removing rows without values completed.
+[2026-10-28 17:40:37] (5 Minutes) Reduced to 3505857 entities/rows in total.
+[2026-10-28 17:40:37] (5 Minutes) Removing duplicate rows...
+[2026-10-28 17:40:39] (5 Minutes) Removing duplicate rows completed.
+[2026-10-28 17:40:39] (5 Minutes) Adding prefix...
+[2026-10-28 17:40:40] (5 Minutes) Adding prefix completed.
+[2026-10-28 17:40:40] (5 Minutes) Reduced to 2661595 entities/rows in total.
+[2026-10-28 17:40:40] (5 Minutes) Loading SNOMED CT from 9 files completed.
+[2026-10-28 17:40:40] (5 Minutes) Writing in temporary file first...
+[2026-10-28 17:40:40] (5 Minutes) Writing file 'sct.csv.tmp'...
+[2026-10-28 17:40:47] (5 Minutes) Writing file 'sct.csv.tmp' completed.
+[2026-10-28 17:40:47] (5 Minutes) Replacing original data with temporary data...
+[2026-10-28 17:40:47] (5 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 17:40:47] (5 Minutes) Loading SNOMED CT from source files completed.
+[2026-10-28 17:40:47] (5 Minutes) Reading HPO data...
+[2026-10-28 17:40:48] (5 Minutes) Reading HPO data completed. 298429 rows, 32270 concepts.
+[2026-10-28 17:40:48] (5 Minutes) Removing non-exact HPO synonyms...
+[2026-10-28 17:40:50] (5 Minutes) Removing non-exact HPO synonyms completed. 34561 rows removed.
+[2026-10-28 17:40:50] (5 Minutes) Reading UMLS data...
+[2026-10-28 17:41:27] (6 Minutes) Reading UMLS data completed. 8884572 rows, 3348063 concepts.
+[2026-10-28 17:41:27] (6 Minutes) Reading SNOMED CT data...
+[2026-10-28 17:41:36] (6 Minutes) Reading SNOMED CT data completed. 2661595 rows, 483198 concepts.
+[2026-10-28 17:41:37] (6 Minutes) Removing non-HPO concepts from the HPO data...
+[2026-10-28 17:41:37] (6 Minutes) Removing non-HPO concepts from the HPO data completed. 124222 rows removed, 19836 HPO concepts left.
+[2026-10-28 17:41:37] (6 Minutes) Reading gold standard data...
+[2026-10-28 17:41:37] (6 Minutes) Reading gold standard data completed. 19282 rows read, 9870 removed (match group not one-to-one or one-to-many), 1 removed (composite or unparsable SNOMED CT expression). 9396 unique pairs for 9243 HPO concepts.
+[2026-10-28 17:41:39] (6 Minutes) Thresholds: Jaccard > 0.95, cosine > 0.8. CPUs: 96.
+[2026-10-28 17:41:39] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:39] (6 Minutes) -              2. Collecting cross-references              -
+[2026-10-28 17:41:39] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:39] (6 Minutes) Collecting HPO and SNOMED CT references in UMLS...
+[2026-10-28 17:41:44] (6 Minutes) Collecting HPO and SNOMED CT references in UMLS completed. 4914416 references, 21120 UMLS concepts with HPO references, 370856 with SNOMED CT references. Invalid HPO references: 67. Invalid SNOMED CT references: 7417.
+[2026-10-28 17:41:44] (6 Minutes) Collecting UMLS references in HPO...
+[2026-10-28 17:41:44] (6 Minutes) Collecting UMLS references in HPO completed. 11210 HPO concepts with UMLS references. Invalid UMLS references: 281.
+[2026-10-28 17:41:44] (6 Minutes) Collecting SNOMED CT references in HPO...
+[2026-10-28 17:41:44] (6 Minutes) Collecting SNOMED CT references in HPO completed. 3434 HPO concepts with SNOMED CT references. Invalid SNOMED CT references: 7.
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) -               3. hpo_sct: HPO -> SNOMED CT               -
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) Creating hpo_sct mappings...
+[2026-10-28 17:41:44] (6 Minutes) Creating hpo_sct mappings completed. 4587 pairs for 3434 HPO concepts.
+[2026-10-28 17:41:44] (6 Minutes) Evaluation (hpo_sct only):
+[2026-10-28 17:41:44] (6 Minutes) Recall:                      0.30
+[2026-10-28 17:41:44] (6 Minutes) Precision:                   0.61
+[2026-10-28 17:41:44] (6 Minutes) Correct pairs (in gold):     2818
+[2026-10-28 17:41:44] (6 Minutes) Pairs:                       4587
+[2026-10-28 17:41:44] (6 Minutes) HPO concepts:                3434
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) -        4. hpo_umls_sct: HPO -> UMLS -> SNOMED CT         -
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) Creating hpo_umls_sct mappings...
+[2026-10-28 17:41:44] (6 Minutes) Creating hpo_umls_sct mappings completed. 4901 pairs for 4061 HPO concepts.
+[2026-10-28 17:41:44] (6 Minutes) Evaluation (hpo_umls_sct only):
+[2026-10-28 17:41:44] (6 Minutes) Recall:                      0.37
+[2026-10-28 17:41:44] (6 Minutes) Precision:                   0.70
+[2026-10-28 17:41:44] (6 Minutes) Correct pairs (in gold):     3453
+[2026-10-28 17:41:44] (6 Minutes) Pairs:                       4901
+[2026-10-28 17:41:44] (6 Minutes) HPO concepts:                4061
+[2026-10-28 17:41:44] (6 Minutes) New pairs added by hpo_umls_sct: 988
+[2026-10-28 17:41:44] (6 Minutes) Evaluation (cumulative: hpo_sct + hpo_umls_sct):
+[2026-10-28 17:41:44] (6 Minutes) Recall:                      0.38
+[2026-10-28 17:41:44] (6 Minutes) Precision:                   0.64
+[2026-10-28 17:41:44] (6 Minutes) Correct pairs (in gold):     3583
+[2026-10-28 17:41:44] (6 Minutes) Pairs:                       5575
+[2026-10-28 17:41:44] (6 Minutes) HPO concepts:                4186
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) -        5. umls_hpo_sct: HPO <- UMLS -> SNOMED CT         -
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) Creating umls_hpo_sct mappings...
+[2026-10-28 17:41:44] (6 Minutes) Creating umls_hpo_sct mappings completed. 6996 pairs for 5847 HPO concepts.
+[2026-10-28 17:41:44] (6 Minutes) Evaluation (umls_hpo_sct only):
+[2026-10-28 17:41:44] (6 Minutes) Recall:                      0.53
+[2026-10-28 17:41:44] (6 Minutes) Precision:                   0.72
+[2026-10-28 17:41:44] (6 Minutes) Correct pairs (in gold):     5023
+[2026-10-28 17:41:44] (6 Minutes) Pairs:                       6996
+[2026-10-28 17:41:44] (6 Minutes) HPO concepts:                5847
+[2026-10-28 17:41:44] (6 Minutes) New pairs added by umls_hpo_sct: 2306
+[2026-10-28 17:41:44] (6 Minutes) Evaluation (cumulative: hpo_sct + hpo_umls_sct + umls_hpo_sct):
+[2026-10-28 17:41:44] (6 Minutes) Recall:                      0.55
+[2026-10-28 17:41:44] (6 Minutes) Precision:                   0.66
+[2026-10-28 17:41:44] (6 Minutes) Correct pairs (in gold):     5170
+[2026-10-28 17:41:44] (6 Minutes) Pairs:                       7881
+[2026-10-28 17:41:44] (6 Minutes) HPO concepts:                6037
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) -      6. Cross-check of HPO -> UMLS and UMLS -> HPO       -
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) Comparing HPO -> UMLS and UMLS -> HPO references...
+[2026-10-28 17:41:44] (6 Minutes) Comparing HPO -> UMLS and UMLS -> HPO references completed.
+[2026-10-28 17:41:44] (6 Minutes) References in both directions:     12153 edges
+[2026-10-28 17:41:44] (6 Minutes) HPO -> UMLS missing in UMLS:          379 edges, 361 HPO concepts
+[2026-10-28 17:41:44] (6 Minutes) UMLS -> HPO missing in HPO:          9054 edges, 8707 HPO concepts
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) -                    7. Preparing terms                    -
+[2026-10-28 17:41:44] (6 Minutes) ------------------------------------------------------------
+[2026-10-28 17:41:44] (6 Minutes) Collecting labels and synonyms...
+[2026-10-28 17:41:45] (6 Minutes) Collecting labels and synonyms completed. 54104 HPO terms, 1494776 SNOMED CT terms.
+[2026-10-28 17:41:45] (6 Minutes) Loading spacy model 'en_core_sci_sm'...
+[2026-10-28 17:41:46] (6 Minutes) Loading spacy model 'en_core_sci_sm' completed.
+[2026-10-28 17:41:46] (6 Minutes) Loading stemmer...
+[2026-10-28 17:41:46] (6 Minutes) Loading stemmer completed.
+[2026-10-28 17:41:46] (6 Minutes) Normalizing SNOMED CT terms...
+[2026-10-28 17:51:35] (16 Minutes) Normalizing SNOMED CT terms completed.
+[2026-10-28 17:51:35] (16 Minutes) Normalizing HPO terms...
+[2026-10-28 17:52:04] (17 Minutes) Normalizing HPO terms completed.
+[2026-10-28 17:52:04] (17 Minutes) ------------------------------------------------------------
+[2026-10-28 17:52:04] (17 Minutes) -              8. jaccard: Jaccard similarity              -
+[2026-10-28 17:52:04] (17 Minutes) ------------------------------------------------------------
+[2026-10-28 17:52:04] (17 Minutes) Creating jaccard mappings...
+[2026-10-28 17:52:25] (17 Minutes) Creating jaccard mappings completed. 8667 pairs for 5925 HPO concepts. Terms without tokens after normalisation (never matched): 3 HPO, 256 SNOMED CT.
+[2026-10-28 17:52:25] (17 Minutes) Evaluation (jaccard only):
+[2026-10-28 17:52:25] (17 Minutes) Recall:                      0.53
+[2026-10-28 17:52:25] (17 Minutes) Precision:                   0.57
+[2026-10-28 17:52:25] (17 Minutes) Correct pairs (in gold):     4966
+[2026-10-28 17:52:25] (17 Minutes) Pairs:                       8667
+[2026-10-28 17:52:25] (17 Minutes) HPO concepts:                5925
+[2026-10-28 17:52:25] (17 Minutes) New pairs added by jaccard: 2597
+[2026-10-28 17:52:25] (17 Minutes) Evaluation (cumulative: hpo_sct + hpo_umls_sct + umls_hpo_sct + jaccard):
+[2026-10-28 17:52:25] (17 Minutes) Recall:                      0.59
+[2026-10-28 17:52:25] (17 Minutes) Precision:                   0.53
+[2026-10-28 17:52:25] (17 Minutes) Correct pairs (in gold):     5502
+[2026-10-28 17:52:25] (17 Minutes) Pairs:                      10478
+[2026-10-28 17:52:25] (17 Minutes) HPO concepts:                6542
+[2026-10-28 17:52:25] (17 Minutes) ------------------------------------------------------------
+[2026-10-28 17:52:25] (17 Minutes) -             9. embedding: cosine similarity              -
+[2026-10-28 17:52:25] (17 Minutes) ------------------------------------------------------------
+[2026-10-28 17:52:25] (17 Minutes) Loading model(s)...
+[2026-10-28 17:52:25] (17 Minutes) Loading embedding model 'cambridgeltl/SapBERT-from-PubMedBERT-fulltext' on device 'cpu'...
+[2026-10-28 17:52:27] (17 Minutes) Loading embedding model 'cambridgeltl/SapBERT-from-PubMedBERT-fulltext' on device 'cpu' completed.
+[2026-10-28 17:52:27] (17 Minutes) Loading model(s) completed.
+[2026-10-28 17:52:27] (17 Minutes) Embedding HPO terms...
+[2026-10-28 17:53:43] (18 Minutes) Embedding HPO terms completed.
+[2026-10-28 17:53:43] (18 Minutes) Embedding SNOMED CT terms...
+[2026-10-28 18:38:02] (63 Minutes) Embedding SNOMED CT terms completed.
+[2026-10-28 18:38:02] (63 Minutes) Creating embedding mappings...
+[2026-10-28 18:40:59] (66 Minutes) Creating embedding mappings completed. 119335 pairs for 15230 HPO concepts.
+[2026-10-28 18:40:59] (66 Minutes) Evaluation (embedding only):
+[2026-10-28 18:40:59] (66 Minutes) Recall:                      0.92
+[2026-10-28 18:40:59] (66 Minutes) Precision:                   0.07
+[2026-10-28 18:40:59] (66 Minutes) Correct pairs (in gold):     8620
+[2026-10-28 18:40:59] (66 Minutes) Pairs:                     119335
+[2026-10-28 18:40:59] (66 Minutes) HPO concepts:               15230
+[2026-10-28 18:40:59] (66 Minutes) New pairs added by embedding: 109640
+[2026-10-28 18:40:59] (66 Minutes) Evaluation (cumulative: hpo_sct + hpo_umls_sct + umls_hpo_sct + jaccard + embedding):
+[2026-10-28 18:40:59] (66 Minutes) Recall:                      0.92
+[2026-10-28 18:40:59] (66 Minutes) Precision:                   0.07
+[2026-10-28 18:40:59] (66 Minutes) Correct pairs (in gold):     8651
+[2026-10-28 18:40:59] (66 Minutes) Pairs:                     120118
+[2026-10-28 18:40:59] (66 Minutes) HPO concepts:               15252
+[2026-10-28 18:40:59] (66 Minutes) ------------------------------------------------------------
+[2026-10-28 18:40:59] (66 Minutes) -          10. exact_lexical: exact lexical match          -
+[2026-10-28 18:40:59] (66 Minutes) ------------------------------------------------------------
+[2026-10-28 18:40:59] (66 Minutes) Creating exact_lexical mappings...
+[2026-10-28 18:41:03] (66 Minutes) Creating exact_lexical mappings completed. 6187 pairs for 4666 HPO concepts.
+[2026-10-28 18:41:03] (66 Minutes) Evaluation (exact_lexical only):
+[2026-10-28 18:41:03] (66 Minutes) Recall:                      0.42
+[2026-10-28 18:41:03] (66 Minutes) Precision:                   0.64
+[2026-10-28 18:41:03] (66 Minutes) Correct pairs (in gold):     3953
+[2026-10-28 18:41:03] (66 Minutes) Pairs:                       6187
+[2026-10-28 18:41:03] (66 Minutes) HPO concepts:                4666
+[2026-10-28 18:41:03] (66 Minutes) New pairs added by exact_lexical: 0
+[2026-10-28 18:41:03] (66 Minutes) Evaluation (cumulative: hpo_sct + hpo_umls_sct + umls_hpo_sct + jaccard + embedding + exact_lexical):
+[2026-10-28 18:41:03] (66 Minutes) Recall:                      0.92
+[2026-10-28 18:41:03] (66 Minutes) Precision:                   0.07
+[2026-10-28 18:41:03] (66 Minutes) Correct pairs (in gold):     8651
+[2026-10-28 18:41:03] (66 Minutes) Pairs:                     120118
+[2026-10-28 18:41:03] (66 Minutes) HPO concepts:               15252
+[2026-10-28 18:41:03] (66 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:03] (66 Minutes) -                   11. Writing mappings                   -
+[2026-10-28 18:41:03] (66 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:03] (66 Minutes) Rows per method: embedding 119335, jaccard 8667, umls_hpo_sct 6996, exact_lexical 6187, hpo_umls_sct 4901, hpo_sct 4587. Total: 150673 rows, 120118 pairs for 15252 HPO concepts.
+[2026-10-28 18:41:03] (66 Minutes) Writing in temporary file first...
+[2026-10-28 18:41:03] (66 Minutes) Writing file 'mapping.csv.tmp'...
+[2026-10-28 18:41:03] (66 Minutes) Writing file 'mapping.csv.tmp' completed.
+[2026-10-28 18:41:03] (66 Minutes) Replacing original data with temporary data...
+[2026-10-28 18:41:03] (66 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 18:41:03] (66 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:03] (66 Minutes) -   Gather all mappings from HPO to SNOMED CT completed.   -
+[2026-10-28 18:41:03] (66 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:15] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:15] (0 Minutes) -               Filtering generated mappings               -
+[2026-10-28 18:41:15] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:15] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:15] (0 Minutes) -                       Loading data                       -
+[2026-10-28 18:41:15] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:41:15] (0 Minutes) Loading HPO from source files...
+[2026-10-28 18:41:15] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-28 18:41:15] (0 Minutes) Loading HPO from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-28 18:41:15] (0 Minutes) Loading UMLS from source files...
+[2026-10-28 18:41:15] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-28 18:41:15] (0 Minutes) Loading UMLS from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-28 18:41:15] (0 Minutes) Loading SNOMED CT from source files...
+[2026-10-28 18:41:15] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-28 18:41:15] (0 Minutes) Loading SNOMED CT from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-28 18:41:15] (0 Minutes) Reading HPO data...
+[2026-10-28 18:41:16] (0 Minutes) Reading HPO data completed. 298429 rows, 32270 concepts.
+[2026-10-28 18:41:16] (0 Minutes) Removing non-exact HPO synonyms...
+[2026-10-28 18:41:18] (0 Minutes) Removing non-exact HPO synonyms completed. 34561 rows removed.
+[2026-10-28 18:41:18] (0 Minutes) Reading UMLS data...
+[2026-10-28 18:41:51] (0 Minutes) Reading UMLS data completed. 8884572 rows, 3348063 concepts.
+[2026-10-28 18:41:51] (0 Minutes) Reading SNOMED CT data...
+[2026-10-28 18:41:59] (0 Minutes) Reading SNOMED CT data completed. 2661595 rows, 483198 concepts.
+[2026-10-28 18:42:00] (0 Minutes) Removing non-HPO concepts from the HPO data...
+[2026-10-28 18:42:00] (0 Minutes) Removing non-HPO concepts from the HPO data completed. 124222 rows removed, 19836 HPO concepts left.
+[2026-10-28 18:42:00] (0 Minutes) Reading gold standard data...
+[2026-10-28 18:42:00] (0 Minutes) Reading gold standard data completed. 19282 rows read, 9870 removed (match group not one-to-one or one-to-many), 1 removed (composite or unparsable SNOMED CT expression). 9396 unique pairs for 9243 HPO concepts.
+[2026-10-28 18:42:00] (0 Minutes) Loading generated mappings...
+[2026-10-28 18:42:00] (0 Minutes) Loading generated mappings completed. 150673 rows, 120118 pairs, 15252 HPO concepts.
+[2026-10-28 18:42:00] (0 Minutes) Building hierarchy lookups...
+[2026-10-28 18:42:03] (0 Minutes) Building hierarchy lookups completed. SCT: 135030 parent concepts, 637352 edges. HPO: 6009 parent concepts, 24378 edges.
+[2026-10-28 18:42:12] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:12] (0 Minutes) -                  Step 1: Domain filter                   -
+[2026-10-28 18:42:12] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:12] (0 Minutes) Step 1: Marking pairs with an SCT target outside the acceptable domains...
+[2026-10-28 18:42:13] (0 Minutes) Step 1 completed (pairs): 11958 marked as domain mismatch (validity=0).
+[2026-10-28 18:42:13] (0 Minutes) Evaluation (step 1, domain mismatch, validity=0):
+[2026-10-28 18:42:13] (0 Minutes) Recall:                      0.00
+[2026-10-28 18:42:13] (0 Minutes) Precision:                   0.00
+[2026-10-28 18:42:13] (0 Minutes) Correct pairs (in gold):        0
+[2026-10-28 18:42:13] (0 Minutes) Pairs:                      11958
+[2026-10-28 18:42:13] (0 Minutes) HPO concepts:                4580
+[2026-10-28 18:42:13] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:13] (0 Minutes) -        Step 2: Anchors (HPO xref + exact lexical)        -
+[2026-10-28 18:42:13] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:13] (0 Minutes) Step 2: Accepting HPO xrefs to SNOMED CT that are confirmed by an exact lexical match (case-insensitive)...
+[2026-10-28 18:42:15] (0 Minutes) Step 2 completed (pairs): 2781 accepted, 68 rejected (hierarchy reversal, validity=1), 0 demoted (broader target displaced, validity=1), 1695 not accepted here (HPO xref without exact lexical match, left for step 2c), 43 skipped (domain mismatch).
+[2026-10-28 18:42:15] (0 Minutes) Evaluation (after step 2, accepted, validity=10):
+[2026-10-28 18:42:15] (0 Minutes) Recall:                      0.23
+[2026-10-28 18:42:15] (0 Minutes) Precision:                   0.77
+[2026-10-28 18:42:15] (0 Minutes) Correct pairs (in gold):     2147
+[2026-10-28 18:42:15] (0 Minutes) Pairs:                       2781
+[2026-10-28 18:42:15] (0 Minutes) HPO concepts:                2517
+[2026-10-28 18:42:15] (0 Minutes) Anchor domain distribution (pairs):
+[2026-10-28 18:42:15] (0 Minutes)   disorder: 1980
+[2026-10-28 18:42:15] (0 Minutes)   finding: 550
+[2026-10-28 18:42:15] (0 Minutes)   morphologic abnormality: 246
+[2026-10-28 18:42:15] (0 Minutes)   qualifier value: 2
+[2026-10-28 18:42:15] (0 Minutes)   body structure: 1
+[2026-10-28 18:42:15] (0 Minutes)   calcified structure: 1
+[2026-10-28 18:42:15] (0 Minutes)   morphology: 1
+[2026-10-28 18:42:15] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:15] (0 Minutes) -        Step 2b: Remaining exact lexical mappings         -
+[2026-10-28 18:42:15] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:15] (0 Minutes) Step 2b: Accepting exact lexical matches without an HPO xref...
+[2026-10-28 18:42:16] (1 Minutes) Step 2b completed (pairs): 2994 accepted, 147 rejected (hierarchy reversal, validity=2), 27 demoted (broader target displaced, validity=2), 154 skipped (domain mismatch).
+[2026-10-28 18:42:16] (1 Minutes) Evaluation (after step 2b, accepted, validity=10):
+[2026-10-28 18:42:16] (1 Minutes) Recall:                      0.41
+[2026-10-28 18:42:16] (1 Minutes) Precision:                   0.67
+[2026-10-28 18:42:16] (1 Minutes) Correct pairs (in gold):     3862
+[2026-10-28 18:42:16] (1 Minutes) Pairs:                       5748
+[2026-10-28 18:42:16] (1 Minutes) HPO concepts:                4556
+[2026-10-28 18:42:16] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:16] (1 Minutes) -               Step 2c: Remaining HPO xrefs               -
+[2026-10-28 18:42:16] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:16] (1 Minutes) Step 2c: Accepting HPO xrefs with Jaccard=1 or cosine=1...
+[2026-10-28 18:42:17] (1 Minutes) Step 2c completed (pairs): 474 accepted, 24 rejected (hierarchy reversal, validity=3), 8 demoted (broader target displaced, validity=3), 1165 not accepted here (neither Jaccard=1 nor cosine=1), 75 skipped (domain mismatch), 2849 skipped (already classified in an earlier step).
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (after step 2c, accepted, validity=10):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.45
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.68
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):     4206
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       6214
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                4951
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 2c, not accepted here):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.03
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.24
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):      284
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       1165
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                 932
+[2026-10-28 18:42:17] (1 Minutes) Confidence distribution (step 2c, not accepted here, Jaccard and embedding rows):
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence >= 1.00         :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.99, 1.00) :      18 (in gold standard:      10, 55.56%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.95, 0.99) :     264 (in gold standard:     132, 50.00%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.90, 0.95) :     260 (in gold standard:      67, 25.77%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.85, 0.90) :     173 (in gold standard:      34, 19.65%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.80, 0.85) :     181 (in gold standard:      25, 13.81%)
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 2c, hierarchy reversals, validity=3):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.00
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.31
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):       10
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                         32
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                  32
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) -        Step 3: HPO -> UMLS -> SNOMED CT mappings         -
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) Step 3: Accepting HPO -> UMLS -> SNOMED CT mappings with Jaccard=1 or cosine=1...
+[2026-10-28 18:42:17] (1 Minutes) Step 3 completed (pairs): 291 accepted, 3 rejected (hierarchy reversal, validity=4), 7 demoted (broader target displaced, validity=4), 1007 not accepted here (neither Jaccard=1 nor cosine=1), 70 skipped (domain mismatch), 3530 skipped (already classified in an earlier step).
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (after step 3, accepted, validity=10):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.47
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.69
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):     4456
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       6498
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                5217
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 3, not accepted here):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.03
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.33
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):      328
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       1007
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                 858
+[2026-10-28 18:42:17] (1 Minutes) Confidence distribution (step 3, not accepted here, Jaccard and embedding rows):
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence >= 1.00         :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.99, 1.00) :      32 (in gold standard:      27, 84.38%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.95, 0.99) :     258 (in gold standard:     156, 60.47%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.90, 0.95) :     229 (in gold standard:      69, 30.13%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.85, 0.90) :     137 (in gold standard:      34, 24.82%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.80, 0.85) :     144 (in gold standard:      25, 17.36%)
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 3, hierarchy reversals, validity=4):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.00
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.30
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):        3
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                         10
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                  10
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) -             Step 4: Shared UMLS CUI mappings             -
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) Step 4: Accepting shared UMLS CUI mappings with Jaccard=1 or cosine=1...
+[2026-10-28 18:42:17] (1 Minutes) Step 4 completed (pairs): 332 accepted, 12 rejected (hierarchy reversal, validity=5), 3 demoted (broader target displaced, validity=5), 1328 not accepted here (neither Jaccard=1 nor cosine=1), 153 skipped (domain mismatch), 5171 skipped (already classified in an earlier step).
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (after step 4, accepted, validity=10):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.50
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.69
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):     4728
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       6827
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                5514
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 4, not accepted here):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.05
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.38
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):      499
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       1328
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                1139
+[2026-10-28 18:42:17] (1 Minutes) Confidence distribution (step 4, not accepted here, Jaccard and embedding rows):
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence >= 1.00         :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.99, 1.00) :      46 (in gold standard:      39, 84.78%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.95, 0.99) :     352 (in gold standard:     229, 65.06%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.90, 0.95) :     302 (in gold standard:     113, 37.42%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.85, 0.90) :     178 (in gold standard:      57, 32.02%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.80, 0.85) :     180 (in gold standard:      37, 20.56%)
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 4, hierarchy reversals, validity=5):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.00
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.33
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):        5
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                         15
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                  15
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) -         Step 5: Jaccard=1 and cosine=1 mappings          -
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) Step 5: Accepting mappings with Jaccard=1 and cosine=1 and no reference-based backing...
+[2026-10-28 18:42:17] (1 Minutes) Step 5 completed (pairs): 0 accepted, 0 rejected (hierarchy reversal, validity=6), 0 demoted (broader target displaced, validity=6), 99260 not accepted here (not both Jaccard=1 and cosine=1), 11948 skipped (domain mismatch), 7314 skipped (reference-backed, handled in steps 2-4), 1187 skipped (already classified in an earlier step).
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (after step 5, accepted, validity=10):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.50
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.69
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):     4728
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                       6827
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:                5514
+[2026-10-28 18:42:17] (1 Minutes) Evaluation (step 5, not accepted here):
+[2026-10-28 18:42:17] (1 Minutes) Recall:                      0.35
+[2026-10-28 18:42:17] (1 Minutes) Precision:                   0.03
+[2026-10-28 18:42:17] (1 Minutes) Correct pairs (in gold):     3278
+[2026-10-28 18:42:17] (1 Minutes) Pairs:                      99260
+[2026-10-28 18:42:17] (1 Minutes) HPO concepts:               14072
+[2026-10-28 18:42:17] (1 Minutes) Confidence distribution (step 5, not accepted here, Jaccard and embedding rows):
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence >= 1.00         :     945 (in gold standard:     129, 13.65%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.99, 1.00) :     314 (in gold standard:      15, 4.78%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.95, 0.99) :    2878 (in gold standard:     861, 29.92%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.90, 0.95) :   10344 (in gold standard:    1032, 9.98%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.85, 0.90) :   26181 (in gold standard:     788, 3.01%)
+[2026-10-28 18:42:17] (1 Minutes) Mappings with confidence in [0.80, 0.85) :   58598 (in gold standard:     453, 0.77%)
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) -             Step 6: Jaccard=1 only mappings              -
+[2026-10-28 18:42:17] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:17] (1 Minutes) Step 6: Accepting mappings with Jaccard=1 (cosine below 1 or none) and no reference-based backing...
+[2026-10-28 18:42:18] (1 Minutes) Step 6 completed (pairs): 856 accepted, 88 rejected (hierarchy reversal, validity=7), 113 demoted (broader target displaced, validity=7), 0 not accepted here (Jaccard<1), 599 skipped (domain mismatch), 5937 skipped (reference-backed, handled in steps 2-4), 1187 skipped (already classified in an earlier step).
+[2026-10-28 18:42:18] (1 Minutes) Evaluation (after step 6, accepted, validity=10):
+[2026-10-28 18:42:18] (1 Minutes) Recall:                      0.51
+[2026-10-28 18:42:18] (1 Minutes) Precision:                   0.63
+[2026-10-28 18:42:18] (1 Minutes) Correct pairs (in gold):     4766
+[2026-10-28 18:42:18] (1 Minutes) Pairs:                       7570
+[2026-10-28 18:42:18] (1 Minutes) HPO concepts:                5772
+[2026-10-28 18:42:18] (1 Minutes) Evaluation (step 6, hierarchy reversals, validity=7):
+[2026-10-28 18:42:18] (1 Minutes) Recall:                      0.01
+[2026-10-28 18:42:18] (1 Minutes) Precision:                   0.45
+[2026-10-28 18:42:18] (1 Minutes) Correct pairs (in gold):       91
+[2026-10-28 18:42:18] (1 Minutes) Pairs:                        201
+[2026-10-28 18:42:18] (1 Minutes) HPO concepts:                 186
+[2026-10-28 18:42:18] (1 Minutes) Hierarchy consistency check after step 6: 0 HPO concepts with accepted SCT targets in an ancestor/descendant relationship (0 related target pairs; expected 0).
+[2026-10-28 18:42:18] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:18] (1 Minutes) -             Step 7: Best-candidate fallback              -
+[2026-10-28 18:42:18] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:18] (1 Minutes) Step 7: Marking agreeing best cosine and Jaccard candidates of unmapped HPO concepts for LLM review...
+[2026-10-28 18:42:18] (1 Minutes) HPO concepts without an accepted or classified mapping: 9480
+[2026-10-28 18:42:18] (1 Minutes) Step 7 completed (HPO concepts): 0 candidates marked for LLM review (validity=8), 9480 skipped (no cosine or no Jaccard candidate), 0 skipped (cosine and Jaccard disagree), 0 skipped (already accepted or domain mismatch), 0 skipped (hierarchy reversal).
+[2026-10-28 18:42:18] (1 Minutes) Evaluation (after step 7, accepted, validity=10):
+[2026-10-28 18:42:18] (1 Minutes) Recall:                      0.51
+[2026-10-28 18:42:18] (1 Minutes) Precision:                   0.63
+[2026-10-28 18:42:18] (1 Minutes) Correct pairs (in gold):     4766
+[2026-10-28 18:42:18] (1 Minutes) Pairs:                       7570
+[2026-10-28 18:42:18] (1 Minutes) HPO concepts:                5772
+[2026-10-28 18:42:18] (1 Minutes) Evaluation (after step 7, accepted + candidates for LLM review, validity=1–8 and 10):
+[2026-10-28 18:42:18] (1 Minutes) Recall:                      0.53
+[2026-10-28 18:42:18] (1 Minutes) Precision:                   0.62
+[2026-10-28 18:42:18] (1 Minutes) Correct pairs (in gold):     4966
+[2026-10-28 18:42:18] (1 Minutes) Pairs:                       8070
+[2026-10-28 18:42:18] (1 Minutes) HPO concepts:                5772
+[2026-10-28 18:42:18] (1 Minutes) Confidence distribution (after step 7, candidates for LLM review, validity=1–8):
+[2026-10-28 18:42:18] (1 Minutes) Mappings with confidence >= 1.00         :     500 (in gold standard:     200, 40.00%)
+[2026-10-28 18:42:18] (1 Minutes) Mappings with confidence in [0.99, 1.00) :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:18] (1 Minutes) Mappings with confidence in [0.95, 0.99) :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:18] (1 Minutes) Mappings with confidence in [0.90, 0.95) :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:18] (1 Minutes) Mappings with confidence in [0.85, 0.90) :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:18] (1 Minutes) Mappings with confidence in [0.80, 0.85) :       0 (in gold standard:       0, 0.00%)
+[2026-10-28 18:42:18] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:18] (1 Minutes) -               Step 8: Last-resort fallback               -
+[2026-10-28 18:42:18] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:18] (1 Minutes) Step 8: Marking the best cosine candidate of still unmapped HPO concepts for LLM review...
+[2026-10-28 18:42:18] (1 Minutes) HPO concepts still without an accepted or classified mapping: 9480
+[2026-10-28 18:42:19] (1 Minutes) Step 8 completed (HPO concepts): 8741 candidates marked for LLM review (validity=9), 0 skipped (already classified), 739 skipped (no domain-valid embedding candidate).
+[2026-10-28 18:42:19] (1 Minutes) Evaluation (step 8, last-resort candidates, validity=9):
+[2026-10-28 18:42:19] (1 Minutes) Recall:                      0.25
+[2026-10-28 18:42:19] (1 Minutes) Precision:                   0.27
+[2026-10-28 18:42:19] (1 Minutes) Correct pairs (in gold):     2358
+[2026-10-28 18:42:19] (1 Minutes) Pairs:                       8741
+[2026-10-28 18:42:19] (1 Minutes) HPO concepts:                8741
+[2026-10-28 18:42:19] (1 Minutes) Evaluation (after step 8, accepted, validity=10):
+[2026-10-28 18:42:19] (1 Minutes) Recall:                      0.51
+[2026-10-28 18:42:19] (1 Minutes) Precision:                   0.63
+[2026-10-28 18:42:19] (1 Minutes) Correct pairs (in gold):     4766
+[2026-10-28 18:42:19] (1 Minutes) Pairs:                       7570
+[2026-10-28 18:42:19] (1 Minutes) HPO concepts:                5772
+[2026-10-28 18:42:19] (1 Minutes) Evaluation (after step 8, accepted + candidates for LLM review, validity=1–10):
+[2026-10-28 18:42:19] (1 Minutes) Recall:                      0.78
+[2026-10-28 18:42:19] (1 Minutes) Precision:                   0.44
+[2026-10-28 18:42:19] (1 Minutes) Correct pairs (in gold):     7324
+[2026-10-28 18:42:19] (1 Minutes) Pairs:                      16811
+[2026-10-28 18:42:19] (1 Minutes) HPO concepts:               14513
+[2026-10-28 18:42:19] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:19] (1 Minutes) -                Writing filtered mappings                 -
+[2026-10-28 18:42:19] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:19] (1 Minutes) Validity codes (pairs / rows):
+[2026-10-28 18:42:19] (1 Minutes)   validity=0   domain mismatch                                     :   11958 /   12852
+[2026-10-28 18:42:19] (1 Minutes)   validity=1   step 2 failure — hierarchy reversal anchor          :      68 /     391
+[2026-10-28 18:42:19] (1 Minutes)   validity=2   step 2b failure — hierarchy reversal exact lexical  :     174 /     611
+[2026-10-28 18:42:19] (1 Minutes)   validity=3   step 2c failure — hierarchy reversal HPO xref       :      32 /     151
+[2026-10-28 18:42:19] (1 Minutes)   validity=4   step 3 failure — hierarchy reversal UMLS bridge     :      10 /      45
+[2026-10-28 18:42:19] (1 Minutes)   validity=5   step 4 failure — hierarchy reversal UMLS CUI        :      15 /      46
+[2026-10-28 18:42:19] (1 Minutes)   validity=6   step 5 failure — hierarchy reversal Jaccard+cosine  :       0 /       0
+[2026-10-28 18:42:19] (1 Minutes)   validity=7   step 6 failure — hierarchy reversal Jaccard only    :     201 /     575
+[2026-10-28 18:42:19] (1 Minutes)   validity=8   step 7 fallback — best candidate                    :       0 /       0
+[2026-10-28 18:42:19] (1 Minutes)   validity=9   step 8 last resort                                  :    8741 /    9555
+[2026-10-28 18:42:19] (1 Minutes)   validity=10  accepted                                            :    7570 /   32811
+[2026-10-28 18:42:19] (1 Minutes)   validity=NA  not reached by any step                             :   91349 /   93636
+[2026-10-28 18:42:19] (1 Minutes) Writing in temporary file first...
+[2026-10-28 18:42:19] (1 Minutes) Writing file 'filtered.csv.tmp'...
+[2026-10-28 18:42:19] (1 Minutes) Writing file 'filtered.csv.tmp' completed.
+[2026-10-28 18:42:19] (1 Minutes) Replacing original data with temporary data...
+[2026-10-28 18:42:19] (1 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 18:42:19] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:19] (1 Minutes) -                         Summary                          -
+[2026-10-28 18:42:19] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:20] (1 Minutes) Evaluation (final accepted set, validity=10):
+[2026-10-28 18:42:20] (1 Minutes) Recall:                      0.51
+[2026-10-28 18:42:20] (1 Minutes) Precision:                   0.63
+[2026-10-28 18:42:20] (1 Minutes) Correct pairs (in gold):     4766
+[2026-10-28 18:42:20] (1 Minutes) Pairs:                       7570
+[2026-10-28 18:42:20] (1 Minutes) HPO concepts:                5772
+[2026-10-28 18:42:20] (1 Minutes) Mapping constellations (validity=1–10, 16811 pairs):
+[2026-10-28 18:42:20] (1 Minutes)   1:1:   7318 pairs (43.5%)
+[2026-10-28 18:42:20] (1 Minutes)   1:n:   2928 pairs (17.4%)
+[2026-10-28 18:42:20] (1 Minutes)   n:1:   5653 pairs (33.6%)
+[2026-10-28 18:42:20] (1 Minutes)   m:n:    912 pairs (5.4%)
+[2026-10-28 18:42:20] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:20] (1 Minutes) -         Filtering generated mappings completed.          -
+[2026-10-28 18:42:20] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:54] (0 Minutes) -             LLM review of candidate mappings             -
+[2026-10-28 18:42:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:54] (0 Minutes) -                       Loading data                       -
+[2026-10-28 18:42:54] (0 Minutes) ------------------------------------------------------------
+[2026-10-28 18:42:54] (0 Minutes) Loading HPO from source files...
+[2026-10-28 18:42:54] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-28 18:42:54] (0 Minutes) Loading HPO from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-28 18:42:54] (0 Minutes) Loading UMLS from source files...
+[2026-10-28 18:42:54] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-28 18:42:54] (0 Minutes) Loading UMLS from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-28 18:42:54] (0 Minutes) Loading SNOMED CT from source files...
+[2026-10-28 18:42:54] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-28 18:42:54] (0 Minutes) Loading SNOMED CT from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-28 18:42:54] (0 Minutes) Reading HPO data...
+[2026-10-28 18:42:55] (0 Minutes) Reading HPO data completed. 298429 rows, 32270 concepts.
+[2026-10-28 18:42:55] (0 Minutes) Removing non-exact HPO synonyms...
+[2026-10-28 18:42:57] (0 Minutes) Removing non-exact HPO synonyms completed. 34561 rows removed.
+[2026-10-28 18:42:57] (0 Minutes) Reading UMLS data...
+[2026-10-28 18:43:32] (0 Minutes) Reading UMLS data completed. 8884572 rows, 3348063 concepts.
+[2026-10-28 18:43:32] (0 Minutes) Reading SNOMED CT data...
+[2026-10-28 18:43:44] (0 Minutes) Reading SNOMED CT data completed. 2661595 rows, 483198 concepts.
+[2026-10-28 18:43:45] (0 Minutes) Removing non-HPO concepts from the HPO data...
+[2026-10-28 18:43:45] (0 Minutes) Removing non-HPO concepts from the HPO data completed. 124222 rows removed, 19836 HPO concepts left.
+[2026-10-28 18:43:45] (0 Minutes) Reading gold standard data...
+[2026-10-28 18:43:45] (0 Minutes) Reading gold standard data completed. 19282 rows read, 9870 removed (match group not one-to-one or one-to-many), 1 removed (composite or unparsable SNOMED CT expression). 9396 unique pairs for 9243 HPO concepts.
+[2026-10-28 18:43:46] (0 Minutes) Loading filtered mappings...
+[2026-10-28 18:43:46] (0 Minutes) Loading filtered mappings completed. 150673 rows, 120118 pairs.
+[2026-10-28 18:43:46] (0 Minutes) Building ontology lookup tables...
+[2026-10-28 18:44:26] (1 Minutes) Building ontology lookup tables completed.
+[2026-10-28 18:44:26] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:44:26] (1 Minutes) -                Selecting pairs for review                -
+[2026-10-28 18:44:26] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:44:26] (1 Minutes) Pairs to review (validity=1–10): 16811 (9241 candidates with validity=1–9, 7570 auto-accepted with validity=10).
+[2026-10-28 18:44:26] (1 Minutes) HPO concepts with one candidate (pass 1, pair-level prompt): 12971 concepts, 12971 pairs.
+[2026-10-28 18:44:26] (1 Minutes) HPO concepts with several candidates (pass 2, group-level prompt): 1542 concepts, 3840 pairs.
+[2026-10-28 18:44:26] (1 Minutes) Evaluation (before LLM review, auto-accepted, validity=10):
+[2026-10-28 18:44:26] (1 Minutes) Recall:                      0.51
+[2026-10-28 18:44:26] (1 Minutes) Precision:                   0.63
+[2026-10-28 18:44:26] (1 Minutes) Correct pairs (in gold):     4766
+[2026-10-28 18:44:26] (1 Minutes) Pairs:                       7570
+[2026-10-28 18:44:26] (1 Minutes) HPO concepts:                5772
+[2026-10-28 18:44:26] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:44:26] (1 Minutes) -                Pass 1: Pair-level review                 -
+[2026-10-28 18:44:26] (1 Minutes) ------------------------------------------------------------
+[2026-10-28 18:44:26] (1 Minutes) Pass 1: Reviewing 12971 pairs with the pair-level prompt...
+[2026-10-28 18:44:26] (1 Minutes) Loading model at index 0: 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4'...
+[2026-10-28 18:44:26] (1 Minutes) Scanning device 'cuda'...
+[2026-10-28 18:44:26] (1 Minutes) Cuda available: True.
+[2026-10-28 18:44:26] (1 Minutes) GPU Amount: 2.
+[2026-10-28 18:44:26] (1 Minutes) Scanning device 'cuda' completed.
+[2026-10-28 18:44:26] (1 Minutes) Loading model...
+[2026-10-28 18:45:26] (2 Minutes) Loading model into cuda completed.
+[2026-10-28 18:45:26] (2 Minutes) Looking for a checkpoint of an interrupted run ('prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp')...
+[2026-10-28 18:45:26] (2 Minutes) File not found at './data/tmp/prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp'. Cannot populate messageHistories.
+[2026-10-28 18:45:26] (2 Minutes) No checkpoint found; starting a new review.
+[2026-10-28 18:45:26] (2 Minutes) Loading prompt from file 'single_mapping.md'...
+[2026-10-28 18:45:26] (2 Minutes) Loaded prompt with base length 5989.
+[2026-10-28 18:45:26] (2 Minutes) Added 12971 prompt(s) to the model.
+[2026-10-28 18:45:26] (2 Minutes) Formatting pair-level prompts...
+[2026-10-28 18:46:20] (3 Minutes) Formatting pair-level prompts completed.
+[2026-10-28 18:46:20] (3 Minutes) Starting generation for 12971 unprocessed histories in chunks of 500...
+[2026-10-28 18:46:20] (3 Minutes) Running vLLM generation batch [Indices 0 to 499]...
+[2026-10-28 18:56:13] (13 Minutes) Writing in temporary file first...
+[2026-10-28 18:56:13] (13 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 18:56:15] (13 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 18:56:15] (13 Minutes) Replacing original data with temporary data...
+[2026-10-28 18:56:15] (13 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 18:56:15] (13 Minutes) Batch checkpoint saved.
+[2026-10-28 18:56:15] (13 Minutes) Running vLLM generation batch [Indices 500 to 999]...
+[2026-10-28 19:05:53] (22 Minutes) Writing in temporary file first...
+[2026-10-28 19:05:53] (22 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 19:05:55] (23 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 19:05:55] (23 Minutes) Replacing original data with temporary data...
+[2026-10-28 19:05:55] (23 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 19:05:55] (23 Minutes) Batch checkpoint saved.
+[2026-10-28 19:05:55] (23 Minutes) Running vLLM generation batch [Indices 1000 to 1499]...
+[2026-10-28 19:15:18] (32 Minutes) Writing in temporary file first...
+[2026-10-28 19:15:18] (32 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 19:15:21] (32 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 19:15:21] (32 Minutes) Replacing original data with temporary data...
+[2026-10-28 19:15:21] (32 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 19:15:21] (32 Minutes) Batch checkpoint saved.
+[2026-10-28 19:15:21] (32 Minutes) Running vLLM generation batch [Indices 1500 to 1999]...
+[2026-10-28 19:24:48] (41 Minutes) Writing in temporary file first...
+[2026-10-28 19:24:48] (41 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 19:24:50] (41 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 19:24:50] (41 Minutes) Replacing original data with temporary data...
+[2026-10-28 19:24:50] (41 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 19:24:50] (41 Minutes) Batch checkpoint saved.
+[2026-10-28 19:24:50] (41 Minutes) Running vLLM generation batch [Indices 2000 to 2499]...
+[2026-10-28 19:34:09] (51 Minutes) Writing in temporary file first...
+[2026-10-28 19:34:09] (51 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 19:34:12] (51 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 19:34:12] (51 Minutes) Replacing original data with temporary data...
+[2026-10-28 19:34:12] (51 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 19:34:12] (51 Minutes) Batch checkpoint saved.
+[2026-10-28 19:34:12] (51 Minutes) Running vLLM generation batch [Indices 2500 to 2999]...
+[2026-10-28 19:43:35] (60 Minutes) Writing in temporary file first...
+[2026-10-28 19:43:35] (60 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 19:43:38] (60 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 19:43:38] (60 Minutes) Replacing original data with temporary data...
+[2026-10-28 19:43:38] (60 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 19:43:38] (60 Minutes) Batch checkpoint saved.
+[2026-10-28 19:43:38] (60 Minutes) Running vLLM generation batch [Indices 3000 to 3499]...
+[2026-10-28 19:52:57] (70 Minutes) Writing in temporary file first...
+[2026-10-28 19:52:57] (70 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 19:53:00] (70 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 19:53:00] (70 Minutes) Replacing original data with temporary data...
+[2026-10-28 19:53:00] (70 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 19:53:00] (70 Minutes) Batch checkpoint saved.
+[2026-10-28 19:53:00] (70 Minutes) Running vLLM generation batch [Indices 3500 to 3999]...
+[2026-10-28 20:02:37] (79 Minutes) Writing in temporary file first...
+[2026-10-28 20:02:37] (79 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 20:02:40] (79 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 20:02:40] (79 Minutes) Replacing original data with temporary data...
+[2026-10-28 20:02:40] (79 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 20:02:40] (79 Minutes) Batch checkpoint saved.
+[2026-10-28 20:02:40] (79 Minutes) Running vLLM generation batch [Indices 4000 to 4499]...
+[2026-10-28 20:12:29] (89 Minutes) Writing in temporary file first...
+[2026-10-28 20:12:29] (89 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 20:12:31] (89 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 20:12:31] (89 Minutes) Replacing original data with temporary data...
+[2026-10-28 20:12:31] (89 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 20:12:31] (89 Minutes) Batch checkpoint saved.
+[2026-10-28 20:12:31] (89 Minutes) Running vLLM generation batch [Indices 4500 to 4999]...
+[2026-10-28 20:22:10] (99 Minutes) Writing in temporary file first...
+[2026-10-28 20:22:10] (99 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 20:22:13] (99 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 20:22:13] (99 Minutes) Replacing original data with temporary data...
+[2026-10-28 20:22:13] (99 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 20:22:13] (99 Minutes) Batch checkpoint saved.
+[2026-10-28 20:22:13] (99 Minutes) Running vLLM generation batch [Indices 5000 to 5499]...
+[2026-10-28 20:32:02] (109 Minutes) Writing in temporary file first...
+[2026-10-28 20:32:02] (109 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 20:32:05] (109 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 20:32:05] (109 Minutes) Replacing original data with temporary data...
+[2026-10-28 20:32:05] (109 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 20:32:05] (109 Minutes) Batch checkpoint saved.
+[2026-10-28 20:32:05] (109 Minutes) Running vLLM generation batch [Indices 5500 to 5999]...
+[2026-10-28 20:41:59] (119 Minutes) Writing in temporary file first...
+[2026-10-28 20:41:59] (119 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 20:42:02] (119 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 20:42:02] (119 Minutes) Replacing original data with temporary data...
+[2026-10-28 20:42:02] (119 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 20:42:02] (119 Minutes) Batch checkpoint saved.
+[2026-10-28 20:42:02] (119 Minutes) Running vLLM generation batch [Indices 6000 to 6499]...
+[2026-10-28 20:52:00] (129 Minutes) Writing in temporary file first...
+[2026-10-28 20:52:00] (129 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 20:52:03] (129 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 20:52:03] (129 Minutes) Replacing original data with temporary data...
+[2026-10-28 20:52:03] (129 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 20:52:03] (129 Minutes) Batch checkpoint saved.
+[2026-10-28 20:52:03] (129 Minutes) Running vLLM generation batch [Indices 6500 to 6999]...
+[2026-10-28 21:02:06] (139 Minutes) Writing in temporary file first...
+[2026-10-28 21:02:06] (139 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 21:02:08] (139 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 21:02:08] (139 Minutes) Replacing original data with temporary data...
+[2026-10-28 21:02:08] (139 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 21:02:08] (139 Minutes) Batch checkpoint saved.
+[2026-10-28 21:02:08] (139 Minutes) Running vLLM generation batch [Indices 7000 to 7499]...
+[2026-10-28 21:12:11] (149 Minutes) Writing in temporary file first...
+[2026-10-28 21:12:11] (149 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 21:12:13] (149 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 21:12:13] (149 Minutes) Replacing original data with temporary data...
+[2026-10-28 21:12:13] (149 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 21:12:13] (149 Minutes) Batch checkpoint saved.
+[2026-10-28 21:12:13] (149 Minutes) Running vLLM generation batch [Indices 7500 to 7999]...
+[2026-10-28 21:22:17] (159 Minutes) Writing in temporary file first...
+[2026-10-28 21:22:17] (159 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 21:22:20] (159 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 21:22:20] (159 Minutes) Replacing original data with temporary data...
+[2026-10-28 21:22:20] (159 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 21:22:20] (159 Minutes) Batch checkpoint saved.
+[2026-10-28 21:22:20] (159 Minutes) Running vLLM generation batch [Indices 8000 to 8499]...
+[2026-10-28 21:32:18] (169 Minutes) Writing in temporary file first...
+[2026-10-28 21:32:18] (169 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 21:32:21] (169 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 21:32:21] (169 Minutes) Replacing original data with temporary data...
+[2026-10-28 21:32:21] (169 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 21:32:21] (169 Minutes) Batch checkpoint saved.
+[2026-10-28 21:32:21] (169 Minutes) Running vLLM generation batch [Indices 8500 to 8999]...
+[2026-10-28 21:42:23] (179 Minutes) Writing in temporary file first...
+[2026-10-28 21:42:23] (179 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 21:42:25] (179 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 21:42:26] (179 Minutes) Replacing original data with temporary data...
+[2026-10-28 21:42:26] (179 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 21:42:26] (179 Minutes) Batch checkpoint saved.
+[2026-10-28 21:42:26] (179 Minutes) Running vLLM generation batch [Indices 9000 to 9499]...
+[2026-10-28 21:52:23] (189 Minutes) Writing in temporary file first...
+[2026-10-28 21:52:23] (189 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 21:52:25] (189 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 21:52:25] (189 Minutes) Replacing original data with temporary data...
+[2026-10-28 21:52:25] (189 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 21:52:25] (189 Minutes) Batch checkpoint saved.
+[2026-10-28 21:52:25] (189 Minutes) Running vLLM generation batch [Indices 9500 to 9999]...
+[2026-10-28 22:02:22] (199 Minutes) Writing in temporary file first...
+[2026-10-28 22:02:22] (199 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 22:02:25] (199 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 22:02:25] (199 Minutes) Replacing original data with temporary data...
+[2026-10-28 22:02:25] (199 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 22:02:25] (199 Minutes) Batch checkpoint saved.
+[2026-10-28 22:02:25] (199 Minutes) Running vLLM generation batch [Indices 10000 to 10499]...
+[2026-10-28 22:12:25] (209 Minutes) Writing in temporary file first...
+[2026-10-28 22:12:25] (209 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 22:12:27] (209 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 22:12:27] (209 Minutes) Replacing original data with temporary data...
+[2026-10-28 22:12:27] (209 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 22:12:27] (209 Minutes) Batch checkpoint saved.
+[2026-10-28 22:12:27] (209 Minutes) Running vLLM generation batch [Indices 10500 to 10999]...
+[2026-10-28 22:22:23] (219 Minutes) Writing in temporary file first...
+[2026-10-28 22:22:23] (219 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 22:22:26] (219 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 22:22:26] (219 Minutes) Replacing original data with temporary data...
+[2026-10-28 22:22:26] (219 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 22:22:26] (219 Minutes) Batch checkpoint saved.
+[2026-10-28 22:22:26] (219 Minutes) Running vLLM generation batch [Indices 11000 to 11499]...
+[2026-10-28 22:32:25] (229 Minutes) Writing in temporary file first...
+[2026-10-28 22:32:25] (229 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 22:32:28] (229 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 22:32:28] (229 Minutes) Replacing original data with temporary data...
+[2026-10-28 22:32:28] (229 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 22:32:28] (229 Minutes) Batch checkpoint saved.
+[2026-10-28 22:32:28] (229 Minutes) Running vLLM generation batch [Indices 11500 to 11999]...
+[2026-10-28 22:42:27] (239 Minutes) Writing in temporary file first...
+[2026-10-28 22:42:27] (239 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 22:42:29] (239 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 22:42:29] (239 Minutes) Replacing original data with temporary data...
+[2026-10-28 22:42:30] (239 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 22:42:30] (239 Minutes) Batch checkpoint saved.
+[2026-10-28 22:42:30] (239 Minutes) Running vLLM generation batch [Indices 12000 to 12499]...
+[2026-10-28 22:52:26] (249 Minutes) Writing in temporary file first...
+[2026-10-28 22:52:26] (249 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 22:52:29] (249 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 22:52:29] (249 Minutes) Replacing original data with temporary data...
+[2026-10-28 22:52:29] (249 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 22:52:29] (249 Minutes) Batch checkpoint saved.
+[2026-10-28 22:52:29] (249 Minutes) Running vLLM generation batch [Indices 12500 to 12970]...
+[2026-10-28 23:01:49] (258 Minutes) Writing in temporary file first...
+[2026-10-28 23:01:49] (258 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 23:01:52] (258 Minutes) Writing file 'prompt_0_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 23:01:52] (258 Minutes) Replacing original data with temporary data...
+[2026-10-28 23:01:52] (258 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 23:01:52] (258 Minutes) Batch checkpoint saved.
+[2026-10-28 23:01:52] (258 Minutes) Generation completed successfully for all prompts.
+[2026-10-28 23:02:49] (259 Minutes) Pass 1 completed (pairs): 7356 accepted, 5615 rejected (including 0 unparsable answers counted as rejected), 0 with another decision.
+[2026-10-28 23:02:49] (259 Minutes) ------------------------------------------------------------
+[2026-10-28 23:02:49] (259 Minutes) -                Pass 2: Group-level review                -
+[2026-10-28 23:02:49] (259 Minutes) ------------------------------------------------------------
+[2026-10-28 23:02:49] (259 Minutes) Pass 2: Reviewing 3840 pairs of 1542 HPO concepts with the group-level prompt...
+[2026-10-28 23:02:49] (259 Minutes) Loading model at index 0: 'Qwen/Qwen2.5-72B-Instruct-GPTQ-Int4'...
+[2026-10-28 23:02:49] (259 Minutes) Scanning device 'cuda'...
+[2026-10-28 23:02:49] (259 Minutes) Cuda available: True.
+[2026-10-28 23:02:49] (259 Minutes) GPU Amount: 2.
+[2026-10-28 23:02:49] (259 Minutes) Scanning device 'cuda' completed.
+[2026-10-28 23:02:49] (259 Minutes) Loading model...
+[2026-10-28 23:03:42] (260 Minutes) Loading model into cuda completed.
+[2026-10-28 23:03:43] (260 Minutes) Looking for a checkpoint of an interrupted run ('prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp')...
+[2026-10-28 23:03:43] (260 Minutes) File not found at './data/tmp/prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp'. Cannot populate messageHistories.
+[2026-10-28 23:03:43] (260 Minutes) No checkpoint found; starting a new review.
+[2026-10-28 23:03:43] (260 Minutes) Loading prompt from file 'multiple_mapping.md'...
+[2026-10-28 23:03:43] (260 Minutes) Loaded prompt with base length 10883.
+[2026-10-28 23:03:43] (260 Minutes) Added 1542 prompt(s) to the model.
+[2026-10-28 23:03:43] (260 Minutes) Formatting group-level prompts...
+[2026-10-28 23:03:50] (260 Minutes) Formatting group-level prompts completed.
+[2026-10-28 23:03:50] (260 Minutes) Starting generation for 1542 unprocessed histories in chunks of 500...
+[2026-10-28 23:03:50] (260 Minutes) Running vLLM generation batch [Indices 0 to 499]...
+[2026-10-28 23:28:48] (285 Minutes) Writing in temporary file first...
+[2026-10-28 23:28:48] (285 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 23:28:48] (285 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 23:28:48] (285 Minutes) Replacing original data with temporary data...
+[2026-10-28 23:28:48] (285 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 23:28:48] (285 Minutes) Batch checkpoint saved.
+[2026-10-28 23:28:48] (285 Minutes) Running vLLM generation batch [Indices 500 to 999]...
+[2026-10-28 23:54:31] (311 Minutes) Writing in temporary file first...
+[2026-10-28 23:54:31] (311 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-28 23:54:32] (311 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-28 23:54:32] (311 Minutes) Replacing original data with temporary data...
+[2026-10-28 23:54:32] (311 Minutes) Replacing original data with temporary data completed.
+[2026-10-28 23:54:32] (311 Minutes) Batch checkpoint saved.
+[2026-10-28 23:54:32] (311 Minutes) Running vLLM generation batch [Indices 1000 to 1499]...
+[2026-10-29 00:18:12] (335 Minutes) Writing in temporary file first...
+[2026-10-29 00:18:12] (335 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-29 00:18:13] (335 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-29 00:18:13] (335 Minutes) Replacing original data with temporary data...
+[2026-10-29 00:18:13] (335 Minutes) Replacing original data with temporary data completed.
+[2026-10-29 00:18:13] (335 Minutes) Batch checkpoint saved.
+[2026-10-29 00:18:13] (335 Minutes) Running vLLM generation batch [Indices 1500 to 1541]...
+[2026-10-29 00:20:27] (337 Minutes) Writing in temporary file first...
+[2026-10-29 00:20:27] (337 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp'...
+[2026-10-29 00:20:28] (337 Minutes) Writing file 'prompt_1_Qwen2.5-72B-Instruct-GPTQ-Int4.tmp.tmp' completed.
+[2026-10-29 00:20:28] (337 Minutes) Replacing original data with temporary data...
+[2026-10-29 00:20:28] (337 Minutes) Replacing original data with temporary data completed.
+[2026-10-29 00:20:28] (337 Minutes) Batch checkpoint saved.
+[2026-10-29 00:20:28] (337 Minutes) Generation completed successfully for all prompts.
+[2026-10-29 00:20:39] (337 Minutes) Pass 2 completed (pairs): 2245 accepted, 1595 rejected (including 1 candidates missing in the answer and the pairs of 0 unparsable group answers, all counted as rejected), 0 with another decision.
+[2026-10-29 00:20:39] (337 Minutes) ------------------------------------------------------------
+[2026-10-29 00:20:39] (337 Minutes) -              Writing LLM-reviewed mappings               -
+[2026-10-29 00:20:39] (337 Minutes) ------------------------------------------------------------
+[2026-10-29 00:20:39] (337 Minutes) Rows to write: 160274 (150673 from filtered.csv, 9601 new rows with attribute=llm and validity=10).
+[2026-10-29 00:20:39] (337 Minutes) Writing in temporary file first...
+[2026-10-29 00:20:39] (337 Minutes) Writing file 'llm_filtered.csv.tmp'...
+[2026-10-29 00:20:40] (337 Minutes) Writing file 'llm_filtered.csv.tmp' completed.
+[2026-10-29 00:20:40] (337 Minutes) Replacing original data with temporary data...
+[2026-10-29 00:20:40] (337 Minutes) Replacing original data with temporary data completed.
+[2026-10-29 00:20:40] (337 Minutes) Rows to write to the review file: 16811 (one per reviewed pair).
+[2026-10-29 00:20:40] (337 Minutes) Writing in temporary file first...
+[2026-10-29 00:20:40] (337 Minutes) Writing file 'llm_review.csv.tmp'...
+[2026-10-29 00:20:40] (337 Minutes) Writing file 'llm_review.csv.tmp' completed.
+[2026-10-29 00:20:40] (337 Minutes) Replacing original data with temporary data...
+[2026-10-29 00:20:40] (337 Minutes) Replacing original data with temporary data completed.
+[2026-10-29 00:20:40] (337 Minutes) ------------------------------------------------------------
+[2026-10-29 00:20:40] (337 Minutes) -                         Summary                          -
+[2026-10-29 00:20:40] (337 Minutes) ------------------------------------------------------------
+[2026-10-29 00:20:40] (337 Minutes) LLM review (pairs):
+[2026-10-29 00:20:40] (337 Minutes)   Reviewed:                           16811
+[2026-10-29 00:20:40] (337 Minutes)   Accepted:                            9601 (57.1%)
+[2026-10-29 00:20:40] (337 Minutes)   Rejected:                            7210 (42.9%)
+[2026-10-29 00:20:40] (337 Minutes)   Other decision:                         0 (0.0%)
+[2026-10-29 00:20:40] (337 Minutes)   Candidates accepted (new):           3379 (validity=1–9 accepted by the LLM)
+[2026-10-29 00:20:40] (337 Minutes)   Auto-accepted confirmed:             6222 (validity=10 accepted by the LLM)
+[2026-10-29 00:20:40] (337 Minutes)   Auto-accepted rejected:              1348 (validity=10 rejected by the LLM; stay accepted, no llm row)
+[2026-10-29 00:20:40] (337 Minutes) LLM review by validity code (pairs):
+[2026-10-29 00:20:40] (337 Minutes)   Code   Reason                                   Reviewed  Accepted  Rejected  Other  Rejection Rate
+[2026-10-29 00:20:40] (337 Minutes)   1      HIERARCHY_REVERSAL_ANCHOR                      68        13        55      0           80.9%
+[2026-10-29 00:20:40] (337 Minutes)   2      HIERARCHY_REVERSAL_EXACT_LEXICAL              174        39       135      0           77.6%
+[2026-10-29 00:20:40] (337 Minutes)   3      HIERARCHY_REVERSAL_HPO_XREF                    32         6        26      0           81.2%
+[2026-10-29 00:20:40] (337 Minutes)   4      HIERARCHY_REVERSAL_UMLS_BRIDGE                 10         2         8      0           80.0%
+[2026-10-29 00:20:40] (337 Minutes)   5      HIERARCHY_REVERSAL_UMLS_CUI                    15         2        13      0           86.7%
+[2026-10-29 00:20:40] (337 Minutes)   7      HIERARCHY_REVERSAL_JACCARD_ONLY               201        45       156      0           77.6%
+[2026-10-29 00:20:40] (337 Minutes)   9      LAST_RESORT                                  8741      3272      5469      0           62.6%
+[2026-10-29 00:20:40] (337 Minutes)   10     ACCEPTED                                     7570      6222      1348      0           17.8%
+[2026-10-29 00:20:40] (337 Minutes) Evaluation (pass 1, LLM-accepted):
+[2026-10-29 00:20:40] (337 Minutes) Recall:                      0.59
+[2026-10-29 00:20:40] (337 Minutes) Precision:                   0.75
+[2026-10-29 00:20:40] (337 Minutes) Correct pairs (in gold):     5537
+[2026-10-29 00:20:40] (337 Minutes) Pairs:                       7356
+[2026-10-29 00:20:40] (337 Minutes) HPO concepts:                7356
+[2026-10-29 00:20:40] (337 Minutes) Evaluation (pass 2, LLM-accepted):
+[2026-10-29 00:20:40] (337 Minutes) Recall:                      0.12
+[2026-10-29 00:20:40] (337 Minutes) Precision:                   0.50
+[2026-10-29 00:20:40] (337 Minutes) Correct pairs (in gold):     1113
+[2026-10-29 00:20:40] (337 Minutes) Pairs:                       2245
+[2026-10-29 00:20:40] (337 Minutes) HPO concepts:                1539
+[2026-10-29 00:20:40] (337 Minutes) Evaluation (after LLM review, LLM-accepted only):
+[2026-10-29 00:20:40] (337 Minutes) Recall:                      0.71
+[2026-10-29 00:20:40] (337 Minutes) Precision:                   0.69
+[2026-10-29 00:20:40] (337 Minutes) Correct pairs (in gold):     6650
+[2026-10-29 00:20:40] (337 Minutes) Pairs:                       9601
+[2026-10-29 00:20:40] (337 Minutes) HPO concepts:                8895
+[2026-10-29 00:20:40] (337 Minutes) Evaluation (after LLM review, auto-accepted + LLM-accepted, validity=10):
+[2026-10-29 00:20:40] (337 Minutes) Recall:                      0.72
+[2026-10-29 00:20:40] (337 Minutes) Precision:                   0.62
+[2026-10-29 00:20:40] (337 Minutes) Correct pairs (in gold):     6796
+[2026-10-29 00:20:40] (337 Minutes) Pairs:                      10949
+[2026-10-29 00:20:40] (337 Minutes) HPO concepts:                9044
+[2026-10-29 00:20:40] (337 Minutes) ------------------------------------------------------------
+[2026-10-29 00:20:40] (337 Minutes) -                  LLM review completed.                   -
+[2026-10-29 00:20:40] (337 Minutes) ------------------------------------------------------------
+[2026-10-29 07:56:45] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:56:45] (0 Minutes) -      Evaluation of HPO → SNOMED CT mapping pipeline      -
+[2026-10-29 07:56:45] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:56:45] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:56:45] (0 Minutes) -                     1. Loading data                      -
+[2026-10-29 07:56:45] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:56:45] (0 Minutes) Loading HPO from source files...
+[2026-10-29 07:56:45] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-29 07:56:45] (0 Minutes) Loading HPO from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-29 07:56:45] (0 Minutes) Loading UMLS from source files...
+[2026-10-29 07:56:45] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-29 07:56:45] (0 Minutes) Loading UMLS from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-29 07:56:45] (0 Minutes) Loading SNOMED CT from source files...
+[2026-10-29 07:56:45] (0 Minutes) Skipping loading since output file is already present.
+[2026-10-29 07:56:45] (0 Minutes) Loading SNOMED CT from source files skipped (load() returned no rows, e.g. skip_if_present); using the existing output CSV, which may be from an earlier run.
+[2026-10-29 07:56:45] (0 Minutes) Reading HPO data...
+[2026-10-29 07:56:46] (0 Minutes) Reading HPO data completed. 298429 rows, 32270 concepts.
+[2026-10-29 07:56:46] (0 Minutes) Removing non-exact HPO synonyms...
+[2026-10-29 07:56:48] (0 Minutes) Removing non-exact HPO synonyms completed. 34561 rows removed.
+[2026-10-29 07:56:48] (0 Minutes) Reading UMLS data...
+[2026-10-29 07:57:23] (0 Minutes) Reading UMLS data completed. 8884572 rows, 3348063 concepts.
+[2026-10-29 07:57:23] (0 Minutes) Reading SNOMED CT data...
+[2026-10-29 07:57:31] (0 Minutes) Reading SNOMED CT data completed. 2661595 rows, 483198 concepts.
+[2026-10-29 07:57:32] (0 Minutes) Removing non-HPO concepts from the HPO data...
+[2026-10-29 07:57:32] (0 Minutes) Removing non-HPO concepts from the HPO data completed. 124222 rows removed, 19836 HPO concepts left.
+[2026-10-29 07:57:32] (0 Minutes) Reading gold standard data...
+[2026-10-29 07:57:32] (0 Minutes) Reading gold standard data completed. 19282 rows read, 9870 removed (match group not one-to-one or one-to-many), 1 removed (composite or unparsable SNOMED CT expression). 9396 unique pairs for 9243 HPO concepts.
+[2026-10-29 07:57:33] (0 Minutes) Loading LLM-reviewed mappings (llm_filtered.csv)...
+[2026-10-29 07:57:33] (0 Minutes) Loading LLM-reviewed mappings completed. 160274 rows.
+[2026-10-29 07:57:33] (0 Minutes) Gold standard: 9396 unique pairs for 9243 HPO concepts.
+[2026-10-29 07:57:33] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:33] (0 Minutes) -                2. Building lookup tables                 -
+[2026-10-29 07:57:33] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:33] (0 Minutes) Building label, hierarchy and pair lookup tables...
+[2026-10-29 07:57:44] (0 Minutes) Building label, hierarchy and pair lookup tables completed. 120118 generated pairs; accepted: 7570 auto, 9601 by the LLM, 10949 final.
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) -               3. Stage-by-stage comparison               -
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes)   Stage 1 — all generated pairs:                   pairs  120118 | in gold   8651 | P 0.072 | R 0.921 | F1 0.134 | TP share 0.0720
+[2026-10-29 07:57:44] (0 Minutes)   Stage 2 — after filtering (validity=1–10):       pairs   16811 | in gold   7324 | P 0.436 | R 0.779 | F1 0.559 | TP share 0.0610
+[2026-10-29 07:57:44] (0 Minutes)   Stage 3a — auto-accepted (before LLM review):    pairs    7570 | in gold   4766 | P 0.630 | R 0.507 | F1 0.562 | TP share 0.0397
+[2026-10-29 07:57:44] (0 Minutes)   Stage 3b — LLM-accepted only:                    pairs    9601 | in gold   6650 | P 0.693 | R 0.708 | F1 0.700 | TP share 0.0554
+[2026-10-29 07:57:44] (0 Minutes)   Stage 3c — final (auto-accepted + LLM-accepted): pairs   10949 | in gold   6796 | P 0.621 | R 0.723 | F1 0.668 | TP share 0.0566
+[2026-10-29 07:57:44] (0 Minutes) Auto-accepted pairs not accepted by the LLM (rejected or no valid answer; they stay in the final set): 1348.
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) -               4. Validity-level breakdown                -
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) Pairs by original validity code (before LLM review):
+[2026-10-29 07:57:44] (0 Minutes)   validity=0 (domain mismatch):                    pairs   11958 | in gold      0 | P 0.000 | R 0.000 | F1 0.000
+[2026-10-29 07:57:44] (0 Minutes)   validity=1 (step 2 failure — hierarchy reversal anchor): pairs      68 | in gold     33 | P 0.485 | R 0.004 | F1 0.007
+[2026-10-29 07:57:44] (0 Minutes)   validity=2 (step 2b failure — hierarchy reversal exact lexical): pairs     174 | in gold     58 | P 0.333 | R 0.006 | F1 0.012
+[2026-10-29 07:57:44] (0 Minutes)   validity=3 (step 2c failure — hierarchy reversal HPO xref): pairs      32 | in gold     10 | P 0.312 | R 0.001 | F1 0.002
+[2026-10-29 07:57:44] (0 Minutes)   validity=4 (step 3 failure — hierarchy reversal UMLS bridge): pairs      10 | in gold      3 | P 0.300 | R 0.000 | F1 0.001
+[2026-10-29 07:57:44] (0 Minutes)   validity=5 (step 4 failure — hierarchy reversal UMLS CUI): pairs      15 | in gold      5 | P 0.333 | R 0.001 | F1 0.001
+[2026-10-29 07:57:44] (0 Minutes)   validity=6 (step 5 failure — hierarchy reversal Jaccard+cosine): pairs       0 | in gold      0 | P 0.000 | R 0.000 | F1 0.000
+[2026-10-29 07:57:44] (0 Minutes)   validity=7 (step 6 failure — hierarchy reversal Jaccard only): pairs     201 | in gold     91 | P 0.453 | R 0.010 | F1 0.019
+[2026-10-29 07:57:44] (0 Minutes)   validity=8 (step 7 fallback — best candidate):   pairs       0 | in gold      0 | P 0.000 | R 0.000 | F1 0.000
+[2026-10-29 07:57:44] (0 Minutes)   validity=9 (step 8 last resort):                 pairs    8741 | in gold   2358 | P 0.270 | R 0.251 | F1 0.260
+[2026-10-29 07:57:44] (0 Minutes)   validity=10 (accepted):                          pairs    7570 | in gold   4766 | P 0.630 | R 0.507 | F1 0.562
+[2026-10-29 07:57:44] (0 Minutes)   validity=NA (not reached by any step):           pairs   91349 | in gold   1327 | P 0.015 | R 0.141 | F1 0.026
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) -                5. Method-level breakdown                 -
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) Method 'hpo_sct':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs    4587 | in gold   2818 | P 0.614 | R 0.300 | F1 0.403
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs    3409 | in gold   2624 | P 0.770 | R 0.279 | F1 0.410
+[2026-10-29 07:57:44] (0 Minutes) Method 'hpo_umls_sct':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs    4901 | in gold   3453 | P 0.705 | R 0.367 | F1 0.483
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs    3898 | in gold   3234 | P 0.830 | R 0.344 | F1 0.487
+[2026-10-29 07:57:44] (0 Minutes) Method 'umls_hpo_sct':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs    6996 | in gold   5023 | P 0.718 | R 0.535 | F1 0.613
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs    5639 | in gold   4691 | P 0.832 | R 0.499 | F1 0.624
+[2026-10-29 07:57:44] (0 Minutes) Method 'jaccard':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs    7675 | in gold   4821 | P 0.628 | R 0.513 | F1 0.565
+[2026-10-29 07:57:44] (0 Minutes) Method 'embedding':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs  119335 | in gold   8620 | P 0.072 | R 0.917 | F1 0.134
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs   10786 | in gold   6793 | P 0.630 | R 0.723 | F1 0.673
+[2026-10-29 07:57:44] (0 Minutes) Method 'exact_lexical':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs    6187 | in gold   3953 | P 0.639 | R 0.421 | F1 0.507
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs    5775 | in gold   3870 | P 0.670 | R 0.412 | F1 0.510
+[2026-10-29 07:57:44] (0 Minutes) Method 'llm':
+[2026-10-29 07:57:44] (0 Minutes)   all pairs:                                       pairs    9601 | in gold   6650 | P 0.693 | R 0.708 | F1 0.700
+[2026-10-29 07:57:44] (0 Minutes)   in the final set:                                pairs    9601 | in gold   6650 | P 0.693 | R 0.708 | F1 0.700
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) -               6. Method-agreement analysis               -
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) Final pairs found by exactly k generation methods:
+[2026-10-29 07:57:44] (0 Minutes)   k = 1:                                           pairs    3103 | in gold   1683 | P 0.542 | R 0.179 | F1 0.269
+[2026-10-29 07:57:44] (0 Minutes)   k = 2:                                           pairs     822 | in gold    233 | P 0.283 | R 0.025 | F1 0.046
+[2026-10-29 07:57:44] (0 Minutes)   k = 3:                                           pairs    1502 | in gold    510 | P 0.340 | R 0.054 | F1 0.094
+[2026-10-29 07:57:44] (0 Minutes)   k = 4:                                           pairs    2073 | in gold   1523 | P 0.735 | R 0.162 | F1 0.266
+[2026-10-29 07:57:44] (0 Minutes)   k = 5:                                           pairs    1057 | in gold    820 | P 0.776 | R 0.087 | F1 0.157
+[2026-10-29 07:57:44] (0 Minutes)   k = 6:                                           pairs    2392 | in gold   2027 | P 0.847 | R 0.216 | F1 0.344
+[2026-10-29 07:57:44] (0 Minutes) Final pairs found by at least k generation methods:
+[2026-10-29 07:57:44] (0 Minutes)   k ≥ 1:                                           pairs   10949 | in gold   6796 | P 0.621 | R 0.723 | F1 0.668
+[2026-10-29 07:57:44] (0 Minutes)   k ≥ 2:                                           pairs    7846 | in gold   5113 | P 0.652 | R 0.544 | F1 0.593
+[2026-10-29 07:57:44] (0 Minutes)   k ≥ 3:                                           pairs    7024 | in gold   4880 | P 0.695 | R 0.519 | F1 0.594
+[2026-10-29 07:57:44] (0 Minutes)   k ≥ 4:                                           pairs    5522 | in gold   4370 | P 0.791 | R 0.465 | F1 0.586
+[2026-10-29 07:57:44] (0 Minutes)   k ≥ 5:                                           pairs    3449 | in gold   2847 | P 0.825 | R 0.303 | F1 0.443
+[2026-10-29 07:57:44] (0 Minutes)   k ≥ 6:                                           pairs    2392 | in gold   2027 | P 0.847 | R 0.216 | F1 0.344
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) -             7. Confidence threshold analysis             -
+[2026-10-29 07:57:44] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:44] (0 Minutes) Method 'jaccard':
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 1.00:                               pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 0.99:                               pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 0.95:                               pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 0.90:                               pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 0.85:                               pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 0.80:                               pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:44] (0 Minutes) Method 'embedding':
+[2026-10-29 07:57:44] (0 Minutes)   confidence ≥ 1.00:                               pairs    6105 | in gold   3899 | P 0.639 | R 0.415 | F1 0.503
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.99:                               pairs    7063 | in gold   4373 | P 0.619 | R 0.465 | F1 0.531
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.95:                               pairs   11794 | in gold   6078 | P 0.515 | R 0.647 | F1 0.574
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.90:                               pairs   23469 | in gold   7273 | P 0.310 | R 0.774 | F1 0.443
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.85:                               pairs   52466 | in gold   8128 | P 0.155 | R 0.865 | F1 0.263
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.80:                               pairs  119335 | in gold   8620 | P 0.072 | R 0.917 | F1 0.134
+[2026-10-29 07:57:45] (0 Minutes) Method 'Jaccard or embedding (max per pair)':
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.00:                               pairs    8672 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.99:                               pairs    9043 | in gold   5021 | P 0.555 | R 0.534 | F1 0.545
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.95:                               pairs   12748 | in gold   6123 | P 0.480 | R 0.652 | F1 0.553
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.90:                               pairs   24226 | in gold   7282 | P 0.301 | R 0.775 | F1 0.433
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.85:                               pairs   53046 | in gold   8132 | P 0.153 | R 0.865 | F1 0.260
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 0.80:                               pairs  119709 | in gold   8623 | P 0.072 | R 0.918 | F1 0.134
+[2026-10-29 07:57:45] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:45] (0 Minutes) - 8. Precision–recall curve (fine-grained threshold sweep) -
+[2026-10-29 07:57:45] (0 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:45] (0 Minutes) Method 'jaccard':
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (0 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (1 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (1 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (1 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (1 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (1 Minutes)   confidence ≥ 1.0000:                             pairs    8667 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:45] (1 Minutes)   Best F1 0.550 at confidence ≥ 1.0000.
+[2026-10-29 07:57:45] (1 Minutes) Method 'embedding':
+[2026-10-29 07:57:45] (1 Minutes)   confidence ≥ 0.8000:                             pairs  119335 | in gold   8620 | P 0.072 | R 0.917 | F1 0.134
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8041:                             pairs  111330 | in gold   8582 | P 0.077 | R 0.913 | F1 0.142
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8082:                             pairs  104135 | in gold   8546 | P 0.082 | R 0.910 | F1 0.151
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8122:                             pairs   97439 | in gold   8515 | P 0.087 | R 0.906 | F1 0.159
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8163:                             pairs   91069 | in gold   8474 | P 0.093 | R 0.902 | F1 0.169
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8204:                             pairs   85235 | in gold   8445 | P 0.099 | R 0.899 | F1 0.178
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8245:                             pairs   79666 | in gold   8412 | P 0.106 | R 0.895 | F1 0.189
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8286:                             pairs   74520 | in gold   8364 | P 0.112 | R 0.890 | F1 0.199
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8327:                             pairs   69745 | in gold   8328 | P 0.119 | R 0.886 | F1 0.210
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8367:                             pairs   65191 | in gold   8276 | P 0.127 | R 0.881 | F1 0.222
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8408:                             pairs   60981 | in gold   8237 | P 0.135 | R 0.877 | F1 0.234
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8449:                             pairs   56987 | in gold   8191 | P 0.144 | R 0.872 | F1 0.247
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8490:                             pairs   53393 | in gold   8139 | P 0.152 | R 0.866 | F1 0.259
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8531:                             pairs   50001 | in gold   8091 | P 0.162 | R 0.861 | F1 0.272
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8571:                             pairs   46766 | in gold   8037 | P 0.172 | R 0.855 | F1 0.286
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8612:                             pairs   43743 | in gold   7975 | P 0.182 | R 0.849 | F1 0.300
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8653:                             pairs   40842 | in gold   7897 | P 0.193 | R 0.840 | F1 0.314
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8694:                             pairs   38256 | in gold   7824 | P 0.205 | R 0.833 | F1 0.328
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8735:                             pairs   35824 | in gold   7751 | P 0.216 | R 0.825 | F1 0.343
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8776:                             pairs   33470 | in gold   7674 | P 0.229 | R 0.817 | F1 0.358
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8816:                             pairs   31376 | in gold   7615 | P 0.243 | R 0.810 | F1 0.374
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8857:                             pairs   29365 | in gold   7552 | P 0.257 | R 0.804 | F1 0.390
+[2026-10-29 07:57:46] (1 Minutes)   confidence ≥ 0.8898:                             pairs   27513 | in gold   7478 | P 0.272 | R 0.796 | F1 0.405
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8939:                             pairs   25768 | in gold   7384 | P 0.287 | R 0.786 | F1 0.420
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8980:                             pairs   24175 | in gold   7315 | P 0.303 | R 0.779 | F1 0.436
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9020:                             pairs   22794 | in gold   7227 | P 0.317 | R 0.769 | F1 0.449
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9061:                             pairs   21449 | in gold   7138 | P 0.333 | R 0.760 | F1 0.463
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9102:                             pairs   20120 | in gold   7055 | P 0.351 | R 0.751 | F1 0.478
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9143:                             pairs   18949 | in gold   6987 | P 0.369 | R 0.744 | F1 0.493
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9184:                             pairs   17860 | in gold   6894 | P 0.386 | R 0.734 | F1 0.506
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9224:                             pairs   16836 | in gold   6809 | P 0.404 | R 0.725 | F1 0.519
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9265:                             pairs   15879 | in gold   6711 | P 0.423 | R 0.714 | F1 0.531
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9306:                             pairs   15055 | in gold   6617 | P 0.440 | R 0.704 | F1 0.541
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9347:                             pairs   14227 | in gold   6515 | P 0.458 | R 0.693 | F1 0.552
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9388:                             pairs   13513 | in gold   6413 | P 0.475 | R 0.683 | F1 0.560
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9429:                             pairs   12835 | in gold   6294 | P 0.490 | R 0.670 | F1 0.566
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9469:                             pairs   12230 | in gold   6165 | P 0.504 | R 0.656 | F1 0.570
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9510:                             pairs   11646 | in gold   6047 | P 0.519 | R 0.644 | F1 0.575
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9551:                             pairs   11135 | in gold   5931 | P 0.533 | R 0.631 | F1 0.578
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9592:                             pairs   10627 | in gold   5799 | P 0.546 | R 0.617 | F1 0.579
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9633:                             pairs   10214 | in gold   5687 | P 0.557 | R 0.605 | F1 0.580
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9673:                             pairs    9722 | in gold   5519 | P 0.568 | R 0.587 | F1 0.577
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9714:                             pairs    9263 | in gold   5367 | P 0.579 | R 0.571 | F1 0.575
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9755:                             pairs    8805 | in gold   5192 | P 0.590 | R 0.553 | F1 0.571
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9796:                             pairs    8296 | in gold   4961 | P 0.598 | R 0.528 | F1 0.561
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9837:                             pairs    7813 | in gold   4751 | P 0.608 | R 0.506 | F1 0.552
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9878:                             pairs    7339 | in gold   4507 | P 0.614 | R 0.480 | F1 0.539
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9918:                             pairs    6832 | in gold   4273 | P 0.625 | R 0.455 | F1 0.527
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.9959:                             pairs    6370 | in gold   4087 | P 0.642 | R 0.435 | F1 0.518
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 1.0000:                             pairs    6105 | in gold   3899 | P 0.639 | R 0.415 | F1 0.503
+[2026-10-29 07:57:47] (1 Minutes)   Best F1 0.580 at confidence ≥ 0.9633.
+[2026-10-29 07:57:47] (1 Minutes) Method 'Jaccard or embedding (max per pair)':
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8000:                             pairs  119709 | in gold   8623 | P 0.072 | R 0.918 | F1 0.134
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8041:                             pairs  111726 | in gold   8585 | P 0.077 | R 0.914 | F1 0.142
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8082:                             pairs  104546 | in gold   8549 | P 0.082 | R 0.910 | F1 0.150
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8122:                             pairs   97869 | in gold   8518 | P 0.087 | R 0.907 | F1 0.159
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8163:                             pairs   91516 | in gold   8477 | P 0.093 | R 0.902 | F1 0.168
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8204:                             pairs   85697 | in gold   8448 | P 0.099 | R 0.899 | F1 0.178
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8245:                             pairs   80142 | in gold   8416 | P 0.105 | R 0.896 | F1 0.188
+[2026-10-29 07:57:47] (1 Minutes)   confidence ≥ 0.8286:                             pairs   75010 | in gold   8368 | P 0.112 | R 0.891 | F1 0.198
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8327:                             pairs   70257 | in gold   8332 | P 0.119 | R 0.887 | F1 0.209
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8367:                             pairs   65713 | in gold   8280 | P 0.126 | R 0.881 | F1 0.220
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8408:                             pairs   61518 | in gold   8241 | P 0.134 | R 0.877 | F1 0.232
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8449:                             pairs   57546 | in gold   8195 | P 0.142 | R 0.872 | F1 0.245
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8490:                             pairs   53970 | in gold   8143 | P 0.151 | R 0.867 | F1 0.257
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8531:                             pairs   50591 | in gold   8096 | P 0.160 | R 0.862 | F1 0.270
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8571:                             pairs   47376 | in gold   8042 | P 0.170 | R 0.856 | F1 0.283
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8612:                             pairs   44368 | in gold   7981 | P 0.180 | R 0.849 | F1 0.297
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8653:                             pairs   41479 | in gold   7903 | P 0.191 | R 0.841 | F1 0.311
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8694:                             pairs   38908 | in gold   7830 | P 0.201 | R 0.833 | F1 0.324
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8735:                             pairs   36491 | in gold   7757 | P 0.213 | R 0.826 | F1 0.338
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8776:                             pairs   34146 | in gold   7681 | P 0.225 | R 0.817 | F1 0.353
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8816:                             pairs   32062 | in gold   7622 | P 0.238 | R 0.811 | F1 0.368
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8857:                             pairs   30073 | in gold   7560 | P 0.251 | R 0.805 | F1 0.383
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8898:                             pairs   28233 | in gold   7486 | P 0.265 | R 0.797 | F1 0.398
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8939:                             pairs   26504 | in gold   7392 | P 0.279 | R 0.787 | F1 0.412
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.8980:                             pairs   24925 | in gold   7324 | P 0.294 | R 0.779 | F1 0.427
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9020:                             pairs   23555 | in gold   7236 | P 0.307 | R 0.770 | F1 0.439
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9061:                             pairs   22229 | in gold   7148 | P 0.322 | R 0.761 | F1 0.452
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9102:                             pairs   20914 | in gold   7066 | P 0.338 | R 0.752 | F1 0.466
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9143:                             pairs   19756 | in gold   6998 | P 0.354 | R 0.745 | F1 0.480
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9184:                             pairs   18685 | in gold   6907 | P 0.370 | R 0.735 | F1 0.492
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9224:                             pairs   17678 | in gold   6822 | P 0.386 | R 0.726 | F1 0.504
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9265:                             pairs   16735 | in gold   6727 | P 0.402 | R 0.716 | F1 0.515
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9306:                             pairs   15926 | in gold   6635 | P 0.417 | R 0.706 | F1 0.524
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9347:                             pairs   15119 | in gold   6536 | P 0.432 | R 0.696 | F1 0.533
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9388:                             pairs   14425 | in gold   6441 | P 0.447 | R 0.686 | F1 0.541
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9429:                             pairs   13769 | in gold   6332 | P 0.460 | R 0.674 | F1 0.547
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9469:                             pairs   13175 | in gold   6207 | P 0.471 | R 0.661 | F1 0.550
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9510:                             pairs   12606 | in gold   6094 | P 0.483 | R 0.649 | F1 0.554
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9551:                             pairs   12122 | in gold   5989 | P 0.494 | R 0.637 | F1 0.557
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9592:                             pairs   11656 | in gold   5875 | P 0.504 | R 0.625 | F1 0.558
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9633:                             pairs   11277 | in gold   5774 | P 0.512 | R 0.615 | F1 0.559
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9673:                             pairs   10860 | in gold   5647 | P 0.520 | R 0.601 | F1 0.558
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9714:                             pairs   10472 | in gold   5531 | P 0.528 | R 0.589 | F1 0.557
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9755:                             pairs   10089 | in gold   5401 | P 0.535 | R 0.575 | F1 0.554
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9796:                             pairs    9699 | in gold   5244 | P 0.541 | R 0.558 | F1 0.549
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9837:                             pairs    9378 | in gold   5136 | P 0.548 | R 0.547 | F1 0.547
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9878:                             pairs    9143 | in gold   5045 | P 0.552 | R 0.537 | F1 0.544
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9918:                             pairs    8935 | in gold   5006 | P 0.560 | R 0.533 | F1 0.546
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 0.9959:                             pairs    8689 | in gold   4975 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:48] (1 Minutes)   confidence ≥ 1.0000:                             pairs    8672 | in gold   4966 | P 0.573 | R 0.529 | F1 0.550
+[2026-10-29 07:57:48] (1 Minutes)   Best F1 0.559 at confidence ≥ 0.9633.
+[2026-10-29 07:57:48] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:48] (1 Minutes) -                 9. LLM-specific analysis                 -
+[2026-10-29 07:57:48] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:48] (1 Minutes) A. Overall LLM review:
+[2026-10-29 07:57:48] (1 Minutes)   Pairs reviewed: 16811, accepted: 9601 (57.11%), rejected or no valid answer: 7210 (42.89%).
+[2026-10-29 07:57:48] (1 Minutes)   LLM-accepted:                                    pairs    9601 | in gold   6650 | P 0.693 | R 0.708 | F1 0.700
+[2026-10-29 07:57:48] (1 Minutes) LLM decisions per pass (pairs, from llm_review.csv):
+[2026-10-29 07:57:48] (1 Minutes)   Pass 1: 12971 reviewed, 7356 ACCEPT, 5615 REJECT, 0 other decision; 0 without rationale (incl. unparsable or missing answers).
+[2026-10-29 07:57:48] (1 Minutes)   Pass 2: 3840 reviewed, 2245 ACCEPT, 1595 REJECT, 0 other decision; 1 without rationale (incl. unparsable or missing answers).
+[2026-10-29 07:57:48] (1 Minutes) B. Per review reason (original validity code):
+[2026-10-29 07:57:48] (1 Minutes)   validity=1 (HIERARCHY_REVERSAL_ANCHOR): 68 reviewed, 13 accepted (19.12%).
+[2026-10-29 07:57:48] (1 Minutes)     accepted:                                        pairs      13 | in gold      9 | P 0.692 | R 0.001 | F1 0.002
+[2026-10-29 07:57:48] (1 Minutes)   validity=2 (HIERARCHY_REVERSAL_EXACT_LEXICAL): 174 reviewed, 39 accepted (22.41%).
+[2026-10-29 07:57:48] (1 Minutes)     accepted:                                        pairs      39 | in gold     14 | P 0.359 | R 0.001 | F1 0.003
+[2026-10-29 07:57:49] (1 Minutes)   validity=3 (HIERARCHY_REVERSAL_HPO_XREF): 32 reviewed, 6 accepted (18.75%).
+[2026-10-29 07:57:49] (1 Minutes)     accepted:                                        pairs       6 | in gold      2 | P 0.333 | R 0.000 | F1 0.000
+[2026-10-29 07:57:49] (1 Minutes)   validity=4 (HIERARCHY_REVERSAL_UMLS_BRIDGE): 10 reviewed, 2 accepted (20.00%).
+[2026-10-29 07:57:49] (1 Minutes)     accepted:                                        pairs       2 | in gold      1 | P 0.500 | R 0.000 | F1 0.000
+[2026-10-29 07:57:49] (1 Minutes)   validity=5 (HIERARCHY_REVERSAL_UMLS_CUI): 15 reviewed, 2 accepted (13.33%).
+[2026-10-29 07:57:49] (1 Minutes)     accepted:                                        pairs       2 | in gold      1 | P 0.500 | R 0.000 | F1 0.000
+[2026-10-29 07:57:49] (1 Minutes)   validity=6 (HIERARCHY_REVERSAL_JACCARD_COSINE): no pairs reviewed.
+[2026-10-29 07:57:49] (1 Minutes)   validity=7 (HIERARCHY_REVERSAL_JACCARD_ONLY): 201 reviewed, 45 accepted (22.39%).
+[2026-10-29 07:57:49] (1 Minutes)     accepted:                                        pairs      45 | in gold     28 | P 0.622 | R 0.003 | F1 0.006
+[2026-10-29 07:57:49] (1 Minutes)   validity=8 (BEST_CANDIDATE_FALLBACK): no pairs reviewed.
+[2026-10-29 07:57:49] (1 Minutes)   validity=9 (LAST_RESORT): 8741 reviewed, 3272 accepted (37.43%).
+[2026-10-29 07:57:49] (1 Minutes)     accepted:                                        pairs    3272 | in gold   1975 | P 0.604 | R 0.210 | F1 0.312
+[2026-10-29 07:57:49] (1 Minutes)   validity=10 (ACCEPTED): 7570 reviewed, 6222 accepted (82.19%).
+[2026-10-29 07:57:49] (1 Minutes)     accepted:                                        pairs    6222 | in gold   4620 | P 0.743 | R 0.492 | F1 0.592
+[2026-10-29 07:57:49] (1 Minutes) C. LLM false positives (accepted but NOT in gold): 2951 pairs.
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000003 [Multicystic kidney dysplasia]  →  SNOMEDCT_US:204962002 [Multicystic kidney (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000010 [Recurrent urinary tract infections]  →  SNOMEDCT_US:315242001 [Recurrent urinary tract infections (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000012 [Urinary urgency]  →  SNOMEDCT_US:786457000 [Overactive bladder (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000013 [Hypoplasia of the uterus]  →  SNOMEDCT_US:314040008 [Very small uterus (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000014 [Abnormality of the bladder]  →  SNOMEDCT_US:205031009 [Unspecified anomaly of bladder (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000016 [Urinary retention]  →  SNOMEDCT_US:69792008 [Urinary retention (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000020 [Urinary incontinence]  →  SNOMEDCT_US:41840003 [Urinary incontinence (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000027 [Azoospermia]  →  SNOMEDCT_US:425558002 [Azoospermia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000028 [Cryptorchidism]  →  SNOMEDCT_US:204879009 [Cryptorchism (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000030 [Testicular gonadoblastoma]  →  SNOMEDCT_US:1162859004 [Gonadoblastoma of testis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000039 [Epispadias]  →  SNOMEDCT_US:18364005 [Epispadias (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000046 [Small scrotum]  →  SNOMEDCT_US:276332008 [Small scrotum (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000052 [Urethral atresia, male]  →  SNOMEDCT_US:253902002 [Atresia of urethra (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000053 [Macroorchidism]  →  SNOMEDCT_US:276412008 [Large testicle (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000054 [Micropenis]  →  SNOMEDCT_US:34911001 [Congenital hypoplasia of penis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000060 [Clitoral hypoplasia]  →  SNOMEDCT_US:248869003 [Small clitoris (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000065 [Labial hypertrophy]  →  SNOMEDCT_US:782873003 [Enlargement of labia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000069 [Abnormality of the ureter]  →  SNOMEDCT_US:205030005 [Unspecified anomaly of ureter (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000083 [Renal insufficiency]  →  SNOMEDCT_US:42399005 [Renal failure syndrome (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000103 [Polyuria]  →  SNOMEDCT_US:718402002 [Increased urine output (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 2931 more.
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -                 10. Mapping completeness                 -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) A. HPO concept coverage:
+[2026-10-29 07:57:49] (1 Minutes)   HPO concepts (HP: namespace):           19836
+[2026-10-29 07:57:49] (1 Minutes)   With ≥1 generated pair:                 15252 (76.89%)
+[2026-10-29 07:57:49] (1 Minutes)   With ≥1 final mapping:                   9044 (45.59%)
+[2026-10-29 07:57:49] (1 Minutes) B. HPO concepts with more than one final SCT target: 1345 (14.87% of mapped concepts). Examples with the most targets:
+[2026-10-29 07:57:49] (1 Minutes)   HP:0200040 [Epidermoid cyst]: 12 SCT targets, 1 in gold, 11 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:156420007 [Epidermoid cyst]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:189117002 [Dermoid cyst (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:201231006 [Epidermoid cyst (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:254672005 [Epidermal cyst (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:399999000 [Keratinizing cyst (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:418630001 [Keratinizing cyst (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:418930003 [Epidermal inclusion cyst (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:419603000 [Epidermoid cyst of skin (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:419670003 [Epidermoid cyst (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:87373006 [Sebaceous cyst (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:87595009 [Epithelial inclusion cyst (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0041159 [Fractured rib]: 10 SCT targets, 1 in gold, 9 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:1354711006 [Fracture of first rib (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:1354717005 [Fracture of third rib (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:14950009 [Fracture of six ribs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:20274005 [Fracture of one rib (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:31693001 [Fracture of two ribs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:46043003 [Fracture of eight OR more ribs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:51760006 [Fracture of four ribs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:57577003 [Fracture of three ribs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:68650003 [Fracture of five ribs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001259 [Coma]: 7 SCT targets, 1 in gold, 6 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:127379000 [Loss of consciousness (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:24473007 [Persistent vegetative state (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:418107008 [Unconscious (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:50061006 [Coma (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:69944003 [Unconscious (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:89458003 [Stupor (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003418 [Back pain]: 7 SCT targets, 1 in gold, 6 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:16986008 [Back pain (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:247414008 [After pains (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:373644009 [Back pain (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:399079008 [Back pain (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:419258005 [Back pain (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:81765008 [No pain (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0004431 [Reduced circulating complement concentration]: 7 SCT targets, 0 in gold, 7 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234599007 [Complement 2 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234600005 [Complement 4 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234603007 [Complement 3 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234609006 [Complement 5 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234611002 [Complement 6 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234612009 [Complement 7 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:234617003 [Complement 9 deficiency (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0012399 [Pressure ulcer]: 7 SCT targets, 0 in gold, 7 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:1163214006 [Pressure injury (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:225558004 [Pressure sore on back (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:28103007 [Decubitus ulcer (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:399912005 [Pressure sore (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:400192002 [Decubitus ulcer (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:418172001 [Decubitus ulcer (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:420226006 [Pressure ulcer (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001067 [Neurofibroma]: 6 SCT targets, 1 in gold, 5 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:404029005 [Neurofibroma (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:700060008 [Neurofibromatosis 2 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:700061007 [Neurofibromatosis 1 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:81669005 [Neurofibromatosis (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:89084002 [Neurofibroma (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003774 [Stage 5 chronic kidney disease]: 6 SCT targets, 1 in gold, 5 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:431855005 [Chronic kidney disease stage 1 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:431856006 [Chronic kidney disease stage 2 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:431857002 [Chronic kidney disease stage 4 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:433144002 [Chronic kidney disease stage 3 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:46177005 [End stage renal disease (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0004808 [Acute myeloid leukemia]: 6 SCT targets, 1 in gold, 5 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:103689001 [Acute myeloid leukemia, minimal differentiation (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:1162928000 [Acute myeloid leukemia (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:17788007 [Acute myeloid leukemia, no ICD-O subtype (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:277600006 [Acute myeloblastic leukemia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:413443009 [Acute myeloid leukemia - category (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0006699 [Premature atrial contractions]: 6 SCT targets, 1 in gold, 5 not in gold
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:287057009 [Atrial premature complex (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:406461004 [Ectopic atrial beats (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:60299007 [Supraventricular ectopic beats (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:63593006 [Supraventricular premature beats (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     not in gold: SNOMEDCT_US:73712003 [Wandering pacemaker (disorder)]
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -              11. Missed gold-pair diagnosis              -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) Missed gold pairs: 2600 of 9396.
+[2026-10-29 07:57:49] (1 Minutes) NOT_REACHED: 1327 pairs
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000012 [Urinary urgency]  →  SNOMEDCT_US:75088002 [Urgent desire to urinate (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000013 [Hypoplasia of the uterus]  →  SNOMEDCT_US:35850006 [Infantile uterus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000046 [Small scrotum]  →  SNOMEDCT_US:204912007 [Hypoplasia of scrotum (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000053 [Macroorchidism]  →  SNOMEDCT_US:93077001 [Congenital hypertrophy of testis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000059 [Hypoplastic labia majora]  →  SNOMEDCT_US:1144865006 [Congenital hypoplasia of genital labium (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 1322 more.
+[2026-10-29 07:57:49] (1 Minutes) NEVER_GENERATED: 745 pairs
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000002 [Abnormality of body height]  →  SNOMEDCT_US:248327008 [General finding of height (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000014 [Abnormality of the bladder]  →  SNOMEDCT_US:42643001 [Disease of bladder (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000021 [Megacystis]  →  SNOMEDCT_US:93052002 [Congenital dilatation of bladder (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000078 [Abnormality of the genital system]  →  SNOMEDCT_US:362968007 [Disorder of reproductive system (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000122 [Unilateral renal agenesis]  →  SNOMEDCT_US:762907005 [Agenesis of left kidney (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 740 more.
+[2026-10-29 07:57:49] (1 Minutes) FALLBACK_LLM_REJECTED: 383 pairs
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000009 [Functional abnormality of the bladder]  →  SNOMEDCT_US:236632007 [Functional disorder of bladder (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000113 [Polycystic kidney dysplasia]  →  SNOMEDCT_US:82525005 [Congenital cystic kidney disease (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000168 [Abnormality of the gingiva]  →  SNOMEDCT_US:18718003 [Gingival disease (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000363 [Abnormal earlobe morphology]  →  SNOMEDCT_US:840482005 [Congenital anomaly of lobe of ear (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000632 [Lacrimation abnormality]  →  SNOMEDCT_US:301973009 [Finding of lacrimation (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 378 more.
+[2026-10-29 07:57:49] (1 Minutes) HIERARCHY_REVERSAL_LLM_REJECTED: 145 pairs
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000027 [Azoospermia]  →  SNOMEDCT_US:48188009 [Azoospermia (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000107 [Renal cyst]  →  SNOMEDCT_US:722223000 [Cyst of kidney (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000133 [Gonadal dysgenesis]  →  SNOMEDCT_US:205681004 [Gonadal dysgenesis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000544 [External ophthalmoplegia]  →  SNOMEDCT_US:19373007 [External ophthalmoplegia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000704 [Periodontitis]  →  SNOMEDCT_US:41565005 [Periodontitis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 140 more.
+[2026-10-29 07:57:49] (1 Minutes) Best confidence of the 1855 generated-but-missed gold pairs (any generation method; cross-references have 1.0):
+[2026-10-29 07:57:49] (1 Minutes)   confidence ≥ 1.00:    388 pairs (20.92%)
+[2026-10-29 07:57:49] (1 Minutes)   confidence ≥ 0.99:    392 pairs (21.13%)
+[2026-10-29 07:57:49] (1 Minutes)   confidence ≥ 0.95:    568 pairs (30.62%)
+[2026-10-29 07:57:49] (1 Minutes)   confidence ≥ 0.90:    995 pairs (53.64%)
+[2026-10-29 07:57:49] (1 Minutes)   confidence ≥ 0.85:   1496 pairs (80.65%)
+[2026-10-29 07:57:49] (1 Minutes)   confidence ≥ 0.80:   1855 pairs (100.00%)
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -   12. Pairwise method overlap and unique contributions   -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) Pairwise overlap (pairs generated by both methods):
+[2026-10-29 07:57:49] (1 Minutes)   hpo_sct ∩ hpo_umls_sct:                          pairs    3913 | in gold   2688 | P 0.687 | R 0.286 | F1 0.404
+[2026-10-29 07:57:49] (1 Minutes)   hpo_sct ∩ umls_hpo_sct:                          pairs    3729 | in gold   2677 | P 0.718 | R 0.285 | F1 0.408
+[2026-10-29 07:57:49] (1 Minutes)   hpo_sct ∩ jaccard:                               pairs    3401 | in gold   2534 | P 0.745 | R 0.270 | F1 0.396
+[2026-10-29 07:57:49] (1 Minutes)   hpo_sct ∩ embedding:                             pairs    4314 | in gold   2801 | P 0.649 | R 0.298 | F1 0.409
+[2026-10-29 07:57:49] (1 Minutes)   hpo_sct ∩ exact_lexical:                         pairs    2892 | in gold   2180 | P 0.754 | R 0.232 | F1 0.355
+[2026-10-29 07:57:49] (1 Minutes)   hpo_umls_sct ∩ umls_hpo_sct:                     pairs    4602 | in gold   3379 | P 0.734 | R 0.360 | F1 0.483
+[2026-10-29 07:57:49] (1 Minutes)   hpo_umls_sct ∩ jaccard:                          pairs    3873 | in gold   3125 | P 0.807 | R 0.333 | F1 0.471
+[2026-10-29 07:57:49] (1 Minutes)   hpo_umls_sct ∩ embedding:                        pairs    4690 | in gold   3435 | P 0.732 | R 0.366 | F1 0.488
+[2026-10-29 07:57:49] (1 Minutes)   hpo_umls_sct ∩ exact_lexical:                    pairs    3119 | in gold   2533 | P 0.812 | R 0.270 | F1 0.405
+[2026-10-29 07:57:49] (1 Minutes)   umls_hpo_sct ∩ jaccard:                          pairs    5638 | in gold   4524 | P 0.802 | R 0.481 | F1 0.602
+[2026-10-29 07:57:49] (1 Minutes)   umls_hpo_sct ∩ embedding:                        pairs    6715 | in gold   4997 | P 0.744 | R 0.532 | F1 0.620
+[2026-10-29 07:57:49] (1 Minutes)   umls_hpo_sct ∩ exact_lexical:                    pairs    4536 | in gold   3656 | P 0.806 | R 0.389 | F1 0.525
+[2026-10-29 07:57:49] (1 Minutes)   jaccard ∩ embedding:                             pairs    8293 | in gold   4963 | P 0.598 | R 0.528 | F1 0.561
+[2026-10-29 07:57:49] (1 Minutes)   jaccard ∩ exact_lexical:                         pairs    6185 | in gold   3953 | P 0.639 | R 0.421 | F1 0.507
+[2026-10-29 07:57:49] (1 Minutes)   embedding ∩ exact_lexical:                       pairs    6187 | in gold   3953 | P 0.639 | R 0.421 | F1 0.507
+[2026-10-29 07:57:49] (1 Minutes) Unique gold contributions (gold pairs found by only this method):
+[2026-10-29 07:57:49] (1 Minutes)   hpo_sct: 1 gold pairs
+[2026-10-29 07:57:49] (1 Minutes)     HP:0001343 [Kernicterus]  →  SNOMEDCT_US:50143004 [Kernicterus of newborn (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   hpo_umls_sct: 0 gold pairs
+[2026-10-29 07:57:49] (1 Minutes)   umls_hpo_sct: 10 gold pairs
+[2026-10-29 07:57:49] (1 Minutes)     HP:0000376 [Incomplete partition of the cochlea type II]  →  SNOMEDCT_US:232302007 [Mondini defect (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0001139 [Chorioretinal scalloped atrophy]  →  SNOMEDCT_US:75241009 [Choroideremia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0001171 [Split hand]  →  SNOMEDCT_US:13624003 [Congenital cleft hand (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0009814 [Upper limb peromelia]  →  SNOMEDCT_US:3699000 [Transverse deficiency of upper limb (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0012399 [Pressure ulcer]  →  SNOMEDCT_US:1163215007 [Pressure injury (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     ... and 5 more.
+[2026-10-29 07:57:49] (1 Minutes)   jaccard: 1 gold pairs
+[2026-10-29 07:57:49] (1 Minutes)     HP:0033628 [Bowel irritability]  →  SNOMEDCT_US:10743008 [Irritable colon (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   embedding: 3149 gold pairs
+[2026-10-29 07:57:49] (1 Minutes)     HP:0000009 [Functional abnormality of the bladder]  →  SNOMEDCT_US:236632007 [Functional disorder of bladder (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0000050 [Hypoplastic male external genitalia]  →  SNOMEDCT_US:1144863004 [Congenital hypoplasia of male external genitalia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0000053 [Macroorchidism]  →  SNOMEDCT_US:93077001 [Congenital hypertrophy of testis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0000059 [Hypoplastic labia majora]  →  SNOMEDCT_US:1144865006 [Congenital hypoplasia of genital labium (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     HP:0000060 [Clitoral hypoplasia]  →  SNOMEDCT_US:1144867003 [Congenital hypoplasia of clitoris (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     ... and 3144 more.
+[2026-10-29 07:57:49] (1 Minutes)   exact_lexical: 0 gold pairs
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -               13. Hierarchy-depth analysis               -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) All HPO concepts: n=19836, mean=6.92, median=7.0, min=0, max=14
+[2026-10-29 07:57:49] (1 Minutes)   depth 0–2: 96
+[2026-10-29 07:57:49] (1 Minutes)   depth 3–5: 3837
+[2026-10-29 07:57:49] (1 Minutes)   depth 6–9: 14583
+[2026-10-29 07:57:49] (1 Minutes)   depth 10–14: 1320
+[2026-10-29 07:57:49] (1 Minutes)   depth 15–+: 0
+[2026-10-29 07:57:49] (1 Minutes) Gold-standard HPO concepts: n=9243, mean=6.87, median=7.0, min=2, max=12
+[2026-10-29 07:57:49] (1 Minutes)   depth 0–2: 16
+[2026-10-29 07:57:49] (1 Minutes)   depth 3–5: 1770
+[2026-10-29 07:57:49] (1 Minutes)   depth 6–9: 7035
+[2026-10-29 07:57:49] (1 Minutes)   depth 10–14: 422
+[2026-10-29 07:57:49] (1 Minutes)   depth 15–+: 0
+[2026-10-29 07:57:49] (1 Minutes) HPO concepts with ≥1 correct final mapping: n=6796, mean=6.92, median=7.0, min=2, max=12
+[2026-10-29 07:57:49] (1 Minutes)   depth 0–2: 1
+[2026-10-29 07:57:49] (1 Minutes)   depth 3–5: 1188
+[2026-10-29 07:57:49] (1 Minutes)   depth 6–9: 5285
+[2026-10-29 07:57:49] (1 Minutes)   depth 10–14: 322
+[2026-10-29 07:57:49] (1 Minutes)   depth 15–+: 0
+[2026-10-29 07:57:49] (1 Minutes) HPO concepts with ≥1 missed gold pair: n=2527, mean=6.75, median=7.0, min=2, max=12
+[2026-10-29 07:57:49] (1 Minutes)   depth 0–2: 15
+[2026-10-29 07:57:49] (1 Minutes)   depth 3–5: 590
+[2026-10-29 07:57:49] (1 Minutes)   depth 6–9: 1822
+[2026-10-29 07:57:49] (1 Minutes)   depth 10–14: 100
+[2026-10-29 07:57:49] (1 Minutes)   depth 15–+: 0
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -           14. Hierarchy-reversal quality check           -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes)   hierarchy reversals (validity=1–7):              pairs     500 | in gold    200 | P 0.400 | R 0.021 | F1 0.040
+[2026-10-29 07:57:49] (1 Minutes)   of which accepted by the LLM:                    pairs     107 | in gold     55 | P 0.514 | R 0.006 | F1 0.012
+[2026-10-29 07:57:49] (1 Minutes) Gold pairs among the hierarchy reversals that are not in the final set: 145.
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000027 [Azoospermia]  →  SNOMEDCT_US:48188009 [Azoospermia (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000107 [Renal cyst]  →  SNOMEDCT_US:722223000 [Cyst of kidney (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000133 [Gonadal dysgenesis]  →  SNOMEDCT_US:205681004 [Gonadal dysgenesis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000544 [External ophthalmoplegia]  →  SNOMEDCT_US:19373007 [External ophthalmoplegia (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000704 [Periodontitis]  →  SNOMEDCT_US:41565005 [Periodontitis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000786 [Primary amenorrhea]  →  SNOMEDCT_US:156035004 [Primary amenorrhoea]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000846 [Adrenal insufficiency]  →  SNOMEDCT_US:237785004 [Hypoadrenalism (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000869 [Secondary amenorrhea]  →  SNOMEDCT_US:156036003 [Secondary amenorrhoea]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000956 [Acanthosis nigricans]  →  SNOMEDCT_US:402599005 [Acanthosis nigricans (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000961 [Cyanosis]  →  SNOMEDCT_US:3415004 [Cyanosis (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001138 [Optic neuropathy]  →  SNOMEDCT_US:77157004 [Disorder of optic nerve (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001251 [Ataxia]  →  SNOMEDCT_US:20262006 [Ataxia (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001508 [Failure to thrive]  →  SNOMEDCT_US:54840006 [Failure to thrive (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001611 [Hypernasal speech]  →  SNOMEDCT_US:289190003 [Nasal voice (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001669 [Transposition of the great arteries]  →  SNOMEDCT_US:204296002 [Discordant ventriculoarterial connection (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001723 [Restrictive cardiomyopathy]  →  SNOMEDCT_US:415295002 [Restrictive cardiomyopathy (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001741 [Phimosis]  →  SNOMEDCT_US:449826002 [Phimosis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001809 [Split nail]  →  SNOMEDCT_US:247493001 [Splits in nails (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001857 [Short distal phalanx of toe]  →  SNOMEDCT_US:897457009 [Abnormally short distal phalanx of foot (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001880 [Increased total eosinophil count]  →  SNOMEDCT_US:386789004 [Eosinophil count raised (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 125 more.
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -                    15. Error analysis                    -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) A. Gold HPO concepts with no generated pair: 225
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000021 [Megacystis]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000339 [Pugilistic facies]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000743 [Frontal release signs]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001178 [Ulnar claw]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002038 [Protein avoidance]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002180 [Neurodegeneration]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003020 [Enlargement of the wrists]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003102 [Increased carrying angle]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003140 [T-wave inversion in the right precordial leads]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003305 [Block vertebrae]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003529 [Parathormone-independent increased renal tubular calcium reabsorption]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003564 [Folate-dependent fragile site at Xq28]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003612 [Positive ferric chloride test]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003642 [Type I transferrin isoform profile]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003716 [Generalized muscular appearance from birth]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003787 [Type 1 and type 2 muscle fiber minicore regions]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003894 [Delayed humeral epiphyseal ossification]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0003958 [Cross-fusion of the forearm bones]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0004342 [Abnormal galactosidase enyzme activity]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0004599 [Absent or minimally ossified vertebral bodies]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 205 more.
+[2026-10-29 07:57:49] (1 Minutes) B. Gold HPO concepts with generated pairs but no final mapping: 1251
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000002 [Abnormality of body height]  gold SCT(s): General finding of height (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000009 [Functional abnormality of the bladder]  gold SCT(s): Functional disorder of bladder (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000077 [Abnormality of the kidney]  gold SCT(s): Kidney disease (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000078 [Abnormality of the genital system]  gold SCT(s): Disorder of reproductive system (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000079 [Abnormality of the urinary system]  gold SCT(s): Disorder of the urinary system (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000113 [Polycystic kidney dysplasia]  gold SCT(s): Congenital cystic kidney disease (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000117 [Renal phosphate wasting]  gold SCT(s): Renal phosphaturia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000119 [Abnormality of the genitourinary system]  gold SCT(s): Disease of the genitourinary system (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000127 [Renal salt wasting]  gold SCT(s): Salt-losing nephropathy (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000130 [Abnormality of the uterus]  gold SCT(s): Disease of uterus (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000137 [Abnormality of the ovary]  gold SCT(s): Disease of ovary (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000153 [Abnormality of the mouth]  gold SCT(s): Disease of mouth (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000161 [Median cleft upper lip]  gold SCT(s): Central cleft lip (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000163 [Abnormal oral cavity morphology]  gold SCT(s): Oral cavity finding (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000164 [Abnormality of the dentition]  gold SCT(s): Tooth disorder (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000168 [Abnormality of the gingiva]  gold SCT(s): Gingival disease (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000182 [Movement abnormality of the tongue]  gold SCT(s): Finding related to ability to move tongue (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000187 [Broad alveolar ridges]  gold SCT(s): Broad alveolar housing (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000234 [Abnormality of the head]  gold SCT(s): Disease of head (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000240 [Abnormality of skull size]  gold SCT(s): Finding of size of the head (finding)
+[2026-10-29 07:57:49] (1 Minutes)   ... and 1231 more.
+[2026-10-29 07:57:49] (1 Minutes) C. HPO concepts with a final mapping but not in the gold standard (may be correct but unverifiable): 1277
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000030 [Testicular gonadoblastoma]  mapped to: Gonadoblastoma of testis (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000052 [Urethral atresia, male]  mapped to: Atresia of urethra (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000159 [Abnormal lip morphology]  mapped to: Lipping (morphologic abnormality)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000166 [Severe periodontitis]  mapped to: Prepubertal periodontitis (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000199 [Tongue nodules]  mapped to: Nodule of tongue (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000204 [Cleft upper lip]  mapped to: Cleft lip (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000232 [Everted lower lip vermilion]  mapped to: Eversion of lower lip (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000233 [Thin vermilion border]  mapped to: Thin lips (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000237 [Small anterior fontanelle]  mapped to: Small fontanelle (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000260 [Wide anterior fontanel]  mapped to: Large fontanelle (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000286 [Epicanthus]  mapped to: Epicanthal fold (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000308 [Microretrognathia]  mapped to: Mandibular retrognathism (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000331 [Short chin]  mapped to: Short lower third of face (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000377 [Abnormal pinna morphology]  mapped to: Deformity of ear (disorder), Congenital malformation of ear (disorder), Congenital anomaly of ear (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000419 [Abnormal nasal septum morphology]  mapped to: Nasal septum abnormality (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000457 [Depressed nasal ridge]  mapped to: Flattened nose (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000467 [Neck muscle weakness]  mapped to: Weakness of neck (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000511 [Vertical supranuclear gaze palsy]  mapped to: Vertical gaze palsy (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000514 [Slow saccadic eye movements]  mapped to: Slowed saccades (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000593 [Abnormal anterior chamber morphology]  mapped to: Anterior chamber anomalies (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   ... and 1257 more.
+[2026-10-29 07:57:49] (1 Minutes) D. HPO concepts in gold and the final set with entirely wrong SCT target(s): 971
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000012 [Urinary urgency]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Bladder muscle dysfunction - overactive (disorder), Overactive bladder (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Urgent desire to urinate (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000013 [Hypoplasia of the uterus]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Very small uterus (finding)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Infantile uterus (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000014 [Abnormality of the bladder]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Unspecified anomaly of bladder (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Disease of bladder (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000027 [Azoospermia]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Azoospermia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Azoospermia (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000046 [Small scrotum]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Small scrotum (finding)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Hypoplasia of scrotum (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000053 [Macroorchidism]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Large testicle (finding)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Congenital hypertrophy of testis (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000060 [Clitoral hypoplasia]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Small clitoris (finding)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Congenital hypoplasia of clitoris (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000065 [Labial hypertrophy]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Hypertrophy of vulva (disorder), Enlargement of labia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Hypertrophy of labia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000069 [Abnormality of the ureter]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Unspecified anomaly of ureter (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Disorder of ureter (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000107 [Renal cyst]
+[2026-10-29 07:57:49] (1 Minutes)     ours: Simple renal cyst (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     gold: Cyst of kidney (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   ... and 961 more.
+[2026-10-29 07:57:49] (1 Minutes) D. HPO concepts in gold and the final set with some gold SCT target(s) missing: 80
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000059 [Hypoplastic labia majora]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Small labia majora (finding)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Congenital hypoplasia of genital labium (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000064 [Hypoplastic labia minora]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Small labia minora (finding)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Congenital hypoplasia of genital labium (disorder)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001882 [Decreased total leukocyte count]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Leukopenia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Decreased blood leukocyte number (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001974 [Increased total leukocyte count]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Leukocytosis (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Increased blood leukocyte number (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002152 [Hyperproteinemia]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Hyperproteinemia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Increased serum protein level (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002153 [Hyperkalemia]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Hyperkalemia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Raised serum potassium level (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002155 [Hypertriglyceridemia]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Hypertriglyceridemia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Serum triglycerides raised (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002615 [Hypotension]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Low blood pressure (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Finding of decreased blood pressure (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002900 [Hypokalemia]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Hypokalemia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Low serum potassium level (finding)
+[2026-10-29 07:57:49] (1 Minutes)     extra:   Serum potassium level below reference range (finding)
+[2026-10-29 07:57:49] (1 Minutes)   HP:0002901 [Hypocalcemia]
+[2026-10-29 07:57:49] (1 Minutes)     correct: Hypocalcemia (disorder)
+[2026-10-29 07:57:49] (1 Minutes)     missing: Serum calcium below reference range (finding)
+[2026-10-29 07:57:49] (1 Minutes)   ... and 70 more.
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) -             16. Structural quality warnings              -
+[2026-10-29 07:57:49] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:49] (1 Minutes) WARNING A — Source collapse (HPO concept mapped to SCT concepts in an ancestor/descendant relationship): 123 related SCT pairs for 100 HPO concepts.
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000151 [Aplasia of the uterus]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:248942000 [Uterus absent (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:17142008 [Congenital absence of uterus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000175 [Cleft palate]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:87979003 [Cleft palate (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:63567004 [Uranostaphyloschisis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000402 [Stenosis of the external auditory canal]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:301061006 [Stenosis of external auditory canal (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:55989009 [Acquired stenosis of external ear canal (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000518 [Cataract]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:193570009 [Cataract (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:95722004 [Bilateral cataracts (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000585 [Band keratopathy]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:35055000 [Band-shaped keratopathy (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:420342002 [Calcific band keratopathy (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000695 [Natal tooth]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:21995002 [Natal tooth (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:1162501001 [Natal teeth (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000767 [Pectus excavatum]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:391987005 [Pectus excavatum (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:391982004 [Congenital pectus excavatum (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:391987005 [Pectus excavatum (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:391986001 [Acquired pectus excavatum (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000791 [Uric acid nephrolithiasis]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:267441009 [Uric acid urolithiasis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:274401005 [Uric acid renal calculus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000851 [Congenital hypothyroidism]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:190268003 [Congenital hypothyroidism (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:217710005 [Congenital iodine deficiency syndrome (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0000969 [Edema]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:79654002 [Edema (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:20741006 [Hydrops (morphologic abnormality)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001028 [Hemangioma]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:400210000 [Hemangioma (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:56975005 [Strawberry nevus of skin (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001065 [Striae distensae]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:201066002 [Skin striae (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:201067006 [Physiological striae (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001081 [Cholelithiasis]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:266474003 [Calculus in biliary tract (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:235919008 [Gallbladder calculus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001084 [Corneal arcus]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:231924000 [Arcus of cornea (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:111522004 [Arcus senilis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:231924000 [Arcus of cornea (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:8041000119108 [Congenital arcus juvenilis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001085 [Papilledema]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:423341008 [Optic disc edema (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:423488006 [Papilledema - optic disc edema due to raised intracranial pressure (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001114 [Xanthelasma]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:63103006 [Xanthomatosis (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:238951005 [Xanthelasma]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001119 [Keratoglobus]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:388840007 [Keratoglobus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:204118005 [Congenital keratoglobus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001177 [Preaxial hand polydactyly]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:205135003 [Radial polydactyly (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:890360000 [Polydactyly of bilateral thumbs (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001233 [2-3 finger cutaneous syndactyly]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:34048007 [Syndactyly of fingers (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:715725001 [Syndactyly type 3 (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)   HP:0001284 [Areflexia]
+[2026-10-29 07:57:49] (1 Minutes)     broader:  SNOMEDCT_US:37280007 [Absent reflex (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     narrower: SNOMEDCT_US:349006 [Absent tendon reflex (finding)]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 80 more HPO concepts.
+[2026-10-29 07:57:49] (1 Minutes) WARNING B — Target collapse (related HPO concepts mapped to the same SCT concept): 617 related HPO pairs for 476 SCT concepts.
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1002200006 [Osteolysis of carpus (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0001495 [Carpal osteolysis]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0004238 [Lytic defects of carpal bones]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1002205001 [Osteolysis of phalanx of thumb (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0009654 [Osteolytic defect of thumb phalanx]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0009645 [Osteolytic defect of the distal phalanx of the thumb]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1002206000 [Osteolysis of first metacarpal (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0001504 [Metacarpal osteolysis]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0010030 [Osteolytic defects of the 1st metacarpal]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1003586008 [Congenital synostosis of coronal suture of skull (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0004440 [Coronal craniosynostosis]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0011318 [Bicoronal synostosis]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1003651003 [Osteolysis of distal phalanx of foot (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0010189 [Osteolytic defects of the distal phalanges of the toes]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0001870 [Acroosteolysis of distal phalanges (feet)]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1004066007 [Flexion contracture of third toe (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0005830 [Flexion contracture of toe]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0010333 [Flexion contracture of 3rd toe]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1004067003 [Flexion contracture of great toe (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0005830 [Flexion contracture of toe]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0010212 [Flexion contracture of the hallux]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1004177004 [Increased aspartic acid level in urine (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0033096 [Increased aspartate family amino acid level in urine]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0032401 [Aspartic aciduria]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1004190006 [Osteolysis of phalanx of index finger (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0009550 [Osteolytic defects of the phalanges of the 2nd finger]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0009561 [Osteolytic defects of the distal phalanx of the 2nd finger]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1010505002 [Sclerosis of epiphysis of phalanx of index finger with increased radiopacity (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0009494 [Ivory epiphyses of the 2nd finger]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0009508 [Ivory epiphysis of the distal phalanx of the 2nd finger]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:103252009 [Abnormal ocular motility (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0000496 [Abnormality of eye movement]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0012547 [Abnormal involuntary eye movements]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:103278000 [Abnormal acoustic reflex (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0040121 [Abnormality of the acoustic reflex]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0040122 [Impairment of the the acoustic reflex]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:10362008 [Accessory spleen (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0009799 [Supernumerary spleens]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0001747 [Accessory spleen]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0009799 [Supernumerary spleens]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0001748 [Polysplenia]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1055242007 [Impaired tensor tympani muscle reflex (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0040120 [Abnormality of the reflex of the tensor tympani muscle]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0040123 [Impairment of the reflex of the tensor tympani muscle]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1055284004 [Multiple polyps of large intestine (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0030255 [Large intestinal polyposis]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0200063 [Colorectal polyposis]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1055331000 [Late eruption of permanent tooth (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0000696 [Delayed eruption of permanent teeth]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0006291 [Marked delay in eruption of permanent teeth]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1055339003 [Peg-shape of incisor tooth (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0011065 [Conical incisor]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0011082 [Conical primary incisor]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:111332007 [Male pseudohermaphroditism (disorder)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0000037 [Male pseudohermaphroditism]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0008656 [Incomplete male pseudohermaphroditism]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:1119507003 [Fatigable weakness of muscle (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0003473 [Fatigable weakness]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0030197 [Fatigable weakness of skeletal muscles]
+[2026-10-29 07:57:49] (1 Minutes)   SNOMEDCT_US:111975006 [Prolonged QT interval (finding)]
+[2026-10-29 07:57:49] (1 Minutes)     broader HPO:  HP:0001657 [Prolonged QT interval]
+[2026-10-29 07:57:49] (1 Minutes)     narrower HPO: HP:0005184 [Prolonged QTc interval]
+[2026-10-29 07:57:49] (1 Minutes)   ... and 456 more SCT concepts.
+[2026-10-29 07:57:53] (1 Minutes) WARNING C — Cross-pair hierarchy reversal (HPO hierarchy direction inverted in the SCT targets): 67 cases.
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0000104 [Renal agenesis]  →  SCT: SNOMEDCT_US:204942005 [Renal agenesis (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0000122 [Unilateral renal agenesis]  →  SCT: SNOMEDCT_US:249582007 [Absent kidney (finding)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0010946 [Dilatation of the renal pelvis]  →  SCT: SNOMEDCT_US:197820003 [Pyelectasia (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0000126 [Hydronephrosis]  →  SCT: SNOMEDCT_US:43064006 [Hydronephrosis (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0008684 [Aplasia/hypoplasia of the uterus]  →  SCT: SNOMEDCT_US:17142008 [Congenital absence of uterus (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0000151 [Aplasia of the uterus]  →  SCT: SNOMEDCT_US:248942000 [Uterus absent (finding)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0000175 [Cleft palate]  →  SCT: SNOMEDCT_US:63567004 [Uranostaphyloschisis (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0000185 [Cleft soft palate]  →  SCT: SNOMEDCT_US:253997002 [Cleft of soft palate (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001098 [Abnormal fundus morphology]  →  SCT: SNOMEDCT_US:896832004 [Structural abnormality of fundus of eye (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0000488 [Retinopathy]  →  SCT: SNOMEDCT_US:29555009 [Retinal disorder (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0000597 [Ophthalmoparesis]  →  SCT: SNOMEDCT_US:19373007 [External ophthalmoplegia (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0000602 [Ophthalmoplegia]  →  SCT: SNOMEDCT_US:16110005 [Ophthalmoplegia (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0006101 [Finger syndactyly]  →  SCT: SNOMEDCT_US:715725001 [Syndactyly type 3 (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001233 [2-3 finger cutaneous syndactyly]  →  SCT: SNOMEDCT_US:34048007 [Syndactyly of fingers (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001315 [Diminished deep tendon reflex]  →  SCT: SNOMEDCT_US:405946002 [Decreased tendon reflex (finding)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001265 [Hyporeflexia]  →  SCT: SNOMEDCT_US:835279003 [Reflex reduced (finding)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001332 [Dystonia]  →  SCT: SNOMEDCT_US:702448007 [Dystonia 6 (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001304 [Torsion dystonia]  →  SCT: SNOMEDCT_US:22451001 [Idiopathic torsion dystonia (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001332 [Dystonia]  →  SCT: SNOMEDCT_US:702448007 [Dystonia 6 (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001304 [Torsion dystonia]  →  SCT: SNOMEDCT_US:431034009 [Torsion dystonia (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0006706 [Cystic liver disease]  →  SCT: SNOMEDCT_US:72925005 [Congenital cystic disease of liver (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001407 [Hepatic cysts]  →  SCT: SNOMEDCT_US:85057007 [Liver cyst (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001508 [Failure to thrive]  →  SCT: SNOMEDCT_US:433476000 [Failure to thrive in infant (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001525 [Severe failure to thrive]  →  SCT: SNOMEDCT_US:54840006 [Failure to thrive (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001901 [Polycythemia]  →  SCT: SNOMEDCT_US:127062003 [Erythrocytosis (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0001898 [Increased red blood cell mass]  →  SCT: SNOMEDCT_US:165424007 [RBC count raised (finding)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0002017 [Nausea and vomiting]  →  SCT: SNOMEDCT_US:146291000119108 [Vomiting without nausea (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0002013 [Vomiting]  →  SCT: SNOMEDCT_US:422400008 [Vomiting (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0002017 [Nausea and vomiting]  →  SCT: SNOMEDCT_US:16932000 [Nausea and vomiting (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0002013 [Vomiting]  →  SCT: SNOMEDCT_US:422400008 [Vomiting (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0002017 [Nausea and vomiting]  →  SCT: SNOMEDCT_US:16932000 [Nausea and vomiting (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0002018 [Nausea]  →  SCT: SNOMEDCT_US:422587007 [Nausea (finding)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0002793 [Abnormal pattern of respiration]  →  SCT: SNOMEDCT_US:1397667005 [Breathing pattern disorder (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0002094 [Dyspnea]  →  SCT: SNOMEDCT_US:386813002 [Abnormal breathing (finding)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0001332 [Dystonia]  →  SCT: SNOMEDCT_US:715564000 [Paroxysmal dystonic choreoathetosis with episodic ataxia and spasticity (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0002268 [Paroxysmal dystonia]  →  SCT: SNOMEDCT_US:230310003 [Paroxysmal dystonia (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0007364 [Aplasia/Hypoplasia of the cerebrum]  →  SCT: SNOMEDCT_US:204040004 [Agenesis of cerebrum (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0002323 [Anencephaly]  →  SCT: SNOMEDCT_US:89369001 [Anencephalus (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   HPO parent: HP:0000764 [Peripheral axonal degeneration]  →  SCT: SNOMEDCT_US:1144332006 [Atrophy of axon of peripheral nerve structure (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)   HPO child:  HP:0003477 [Peripheral axonal neuropathy]  →  SCT: SNOMEDCT_US:128208007 [Peripheral axonal neuropathy (disorder)]
+[2026-10-29 07:57:53] (1 Minutes)     (the child's SCT target is an ancestor of the parent's SCT target)
+[2026-10-29 07:57:53] (1 Minutes)   ... and 47 more.
+[2026-10-29 07:57:53] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:53] (1 Minutes) -             17. Writing final evaluation CSV             -
+[2026-10-29 07:57:53] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:53] (1 Minutes) Rows to write: 46783 (32683 in gold) for 10949 final pairs.
+[2026-10-29 07:57:53] (1 Minutes) Writing in temporary file first...
+[2026-10-29 07:57:53] (1 Minutes) Writing file 'evaluation_final.csv.tmp'...
+[2026-10-29 07:57:53] (1 Minutes) Writing file 'evaluation_final.csv.tmp' completed.
+[2026-10-29 07:57:53] (1 Minutes) Replacing original data with temporary data...
+[2026-10-29 07:57:53] (1 Minutes) Replacing original data with temporary data completed.
+[2026-10-29 07:57:53] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:53] (1 Minutes) -                   18. Overall summary                    -
+[2026-10-29 07:57:53] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:53] (1 Minutes) Gold standard: 9396 pairs. Universe (generated pairs): 120118.
+[2026-10-29 07:57:53] (1 Minutes)   auto-accepted (before LLM review):               pairs    7570 | in gold   4766 | P 0.630 | R 0.507 | F1 0.562 | TP share 0.0397
+[2026-10-29 07:57:53] (1 Minutes)   LLM-accepted only:                               pairs    9601 | in gold   6650 | P 0.693 | R 0.708 | F1 0.700 | TP share 0.0554
+[2026-10-29 07:57:53] (1 Minutes)   final (auto-accepted + LLM-accepted):            pairs   10949 | in gold   6796 | P 0.621 | R 0.723 | F1 0.668 | TP share 0.0566
+[2026-10-29 07:57:53] (1 Minutes) ------------------------------------------------------------
+[2026-10-29 07:57:53] (1 Minutes) -                  Evaluation completed.                   -
+[2026-10-29 07:57:53] (1 Minutes) ------------------------------------------------------------

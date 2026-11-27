@@ -4,14 +4,15 @@ Maps concepts of the [Human Phenotype Ontology (HPO)](https://hpo.jax.org/) to [
 
 ## Pipeline
 
-The pipeline consists of four scripts in `src/`. They are run one after the other and pass their results on as CSV files. A fifth script, `MappingGoldCheck.py`, checks the gold standard with the LLM and runs on its own (see below).
+The pipeline consists of five scripts in `src/`. They are run one after the other and pass their results on as CSV files. A sixth script, `MappingGoldCheck.py`, checks the gold standard with the LLM and runs on its own (see below).
 
 | Step | Script | Input | Output |
 |---|---|---|---|
 | 1 | `MappingGeneration.py` | HPO, SNOMED CT, UMLS, gold standard | `data/output/mapped/mapping.csv` |
 | 2 | `MappingSetBuilder.py` | `mapping.csv` | `data/output/filtered/filtered.csv` |
 | 3 | `MappingLLM.py` | `filtered.csv` | `data/output/filtered/llm_filtered.csv`, `llm_review.csv` |
-| 4 | `MappingErrorAnalysis.py` | all of the above | `evaluation_final.csv`, `accepted_without_gold.csv`, `llm_disagreements.csv` in `data/output/evaluation/`, plots and their tables in `data/output/evaluation/plots/`, and the log |
+| 4 | `MappingEvaluation.py` | all of the above | `evaluation_final.csv`, `accepted_without_gold.csv`, `llm_disagreements.csv` in `data/output/evaluation/`, plots and their tables in `data/output/evaluation/plots/`, and the log |
+| 5 | `MappingErrorAnalysis.py` | HPO, SNOMED CT, UMLS, gold standard, `llm_filtered.csv`, `llm_review.csv` | Cases of the error analysis in `data/output/evaluation/error_analysis/`, and the log |
 
 Shared constants (file paths, method names, validity codes, thresholds) and helper functions live in `MappingUtils.py`.
 
@@ -62,7 +63,7 @@ Sends all pairs with a reviewable code (1–10) to a local LLM through the [`mod
 
 The model answers with a rationale, a decision (ACCEPT/REJECT) and a confidence from 1 to 5. Accepted pairs are added as `llm` rows. The final set is the union of the automatically accepted pairs (code 10) and the LLM-accepted pairs; both are also evaluated separately.
 
-### 4. Evaluation (`MappingErrorAnalysis.py`)
+### 4. Evaluation (`MappingEvaluation.py`)
 
 Compares every stage with the gold standard and logs precision, recall and F1 per stage, per validity code and per method. At concept level it logs how many gold HPO concepts have at least one, all, or exactly the gold SCT target(s) in the final set, and how many mapped HPO concepts are not in the gold standard and cannot be verified (every `evaluation()` log line in steps 1–3 also reports the gold HPO concepts with at least one gold target). It also logs method agreement, confidence thresholds and precision–recall curves, the LLM's decisions per review reason, the reasons gold pairs were missed, hierarchy-depth checks, and error examples. The structural checks (source collapse: an HPO concept mapped to an SCT concept and one of its ancestors; target collapse: related HPO concepts mapped to the same SCT concept; cross-pair hierarchy reversal: an HPO child mapped to an ancestor of its HPO parent's target) are run on the final set and on the gold standard. For HPO concepts in the gold standard it also logs how far each mapping is from the nearest gold target in the SNOMED CT is_a hierarchy (0 = correct, 1 = parent or child, 2 = sibling, grandparent or grandchild, ...), whether it is broader, narrower or lateral, and how close the missed gold pairs came. It writes three CSV files to `data/output/evaluation/`:
 
@@ -89,9 +90,46 @@ Section 19 of the log and `MappingPlots.py` write ten plots (PDF and PNG) and th
 
 The plots number the filter steps as in the paper (1–10: the sub-steps 2b and 2c count as steps 3 and 4); the log and the `step` column use the step ids of the code (see the table above). Pairs accepted in a step and demoted later count as conflicts of that step, so the per-step numbers describe the final state, not the state right after the step.
 
+### 5. Error analysis (`MappingErrorAnalysis.py`)
+
+Asks why the final alignment and the expert's judgment disagree. It compares the final pairs with the expert's direct correspondences ("One to one match" and "One to many"). It also reads the other match groups of the expert's file (post-coordinated expressions, parent matches, out of scope, clarification), all HPO synonyms, including the broad, narrow and related ones, and the HPO and SNOMED CT references of UMLS. The log has one section per group of questions:
+
+| Section | Questions |
+|---|---|
+| 3 | How many expert-judged HPO classes get exactly the expert's targets, extra targets, only some or only wrong targets, no target or no candidate? |
+| 4 | How do wrong targets relate to the expert's targets (is_a distance; broader, narrower or lateral), and which semantic tag, filter route, generation methods, LLM confidence and similarity produce them? |
+| 5 | Where was each missed correspondence lost (obsolete HPO class, inactive SCT concept, never generated, filter, LLM)? Were never-generated targets lexical variants, or worded differently? How do missed targets of 1:n classes relate to the found ones? |
+| 6 | How often does the alignment add a morphologic abnormality next to a disorder or finding, and which tag does it keep for same-name twins (e.g. "Azoospermia (finding)" and "Azoospermia disorder (disorder)") compared with the expert? |
+| 7 | For aligned classes without a direct correspondence: how does the target relate to the focus concept of the expert's expression or parent match? Which classes are not in the expert's file, and which were renamed or made obsolete since? |
+| 8 | Do the errors concentrate in HPO branches, in long labels, in shallow classes, or in targets shared by several HPO classes? |
+| 9 | Which reasons explain each disagreement (same-name twin, near miss, other tag, target used by the expert for a related class, changed label, lexical gap, filter, LLM)? Do expert-side indicators occur more often where the two disagree? |
+| 10 | How precise are exact lexical matches by matched term (label or synonym type, FSN or synonym), tag, number of targets, short terms and case? Why did the expert choose otherwise? |
+| 11 | Where do HPO cross-references and exact lexical matches disagree, and why (inactive or out-of-domain cross-reference, twin, broader or narrower, lexical variant or non-exact synonym, several cross-references, homonym, synonym match)? Whose target did the expert choose? |
+| 12 | For HPO classes with several cross-references: does the expert take one of them, does the pipeline take the same one, and how does the chosen one differ from the others (narrower, broader, twin, exact name, tag)? How precise are cross-references by their number per class? |
+| 13 | How well do the HPO cross-references and the cross-references over UMLS (HPO → UMLS → SNOMED CT) align? Why not (no or unloaded UMLS cross-reference, CUI without SCT concept, SCT concept not in UMLS or under another CUI, CUI with several SCT concepts, twin, broader or narrower)? Whose target did the expert choose? |
+| 14 | How well do the HPO cross-references and the cross-references with a shared CUI align? Why not (HPO class not in UMLS, UMLS puts it under another CUI than HPO's own UMLS cross-reference, CUI without SCT concept, SCT concept under another CUI, several CUIs or SCT concepts)? Whose target did the expert choose? |
+| 15 | How well do the auto-accepted set and the LLM's decision align (by filter step, LLM pass, number of candidates, tag, methods), how often does the expert confirm a rejection, and which reasons do the LLM's rationales give? |
+
+The cases are written to `data/output/evaluation/error_analysis/` with one boolean column per reason:
+
+| File | Content |
+|---|---|
+| `missed_targets.csv` | Missed expert correspondences with the stage where they were lost, lexical similarity and the LLM's decision |
+| `tag_twins.csv` | Same-name candidates with different semantic tags, with alignment, expert and LLM status |
+| `outside_gold.csv` | Final pairs of classes without a direct correspondence, with the expert's match group and focus concept |
+| `disagreements.csv` | Wrong targets and missed correspondences with their reason flags and a primary reason |
+| `exact_lexical_vs_gold.csv` | Exact lexical pairs the expert did not choose, with the matched terms and reason flags |
+| `xref_vs_exact_lexical.csv` | Cross-reference targets without an exact lexical match and the reverse, with reason flags |
+| `multiple_xrefs.csv` | Cross-references of HPO classes with several of them, with the expert's and the pipeline's choice |
+| `xref_vs_umls_bridge.csv` | Cross-reference targets without an HPO → UMLS → SNOMED CT target and the reverse, with reason flags |
+| `xref_vs_shared_cui.csv` | Cross-reference targets without a shared-CUI target and the reverse, with reason flags |
+| `llm_rejected_auto.csv` | Auto-accepted pairs the LLM rejected, with the filter step, pass, relation to the LLM-accepted targets, expert status and reason flags from the rationale |
+
+The reasons in the LLM's rationales are found with keyword patterns (`LLM_REASON_PATTERNS`); a rationale can match several, and the first match is its primary reason.
+
 ### Gold standard check (`MappingGoldCheck.py`)
 
-Checks the gold standard itself with the LLM. It is independent of the pipeline and can run before or after steps 1–4. Every unique pair of the gold standard is reviewed with the prompts of step 3, with the review reason always set to `ACCEPTED`, so the model judges each gold pair like a mapping the pipeline accepted:
+Checks the gold standard itself with the LLM. It is independent of the pipeline and can run before or after steps 1–5. Every unique pair of the gold standard is reviewed with the prompts of step 3, with the review reason always set to `ACCEPTED`, so the model judges each gold pair like a mapping the pipeline accepted:
 
 - **Pass 1** reviews HPO concepts with exactly one gold target, using `prompts/single_mapping.md`.
 - **Pass 2** reviews HPO concepts with several gold targets together, using `prompts/multiple_mapping.md`, so the model sees how the targets relate in the SNOMED CT hierarchy.
@@ -127,7 +165,8 @@ The columns from `n_sct` on are empty for pairs that were not reviewed. The log 
 │   ├── MappingGeneration.py   # Step 1: candidate generation
 │   ├── MappingSetBuilder.py   # Step 2: rule-based filter
 │   ├── MappingLLM.py          # Step 3: LLM review
-│   ├── MappingErrorAnalysis.py# Step 4: evaluation
+│   ├── MappingEvaluation.py   # Step 4: evaluation
+│   ├── MappingErrorAnalysis.py# Step 5: error analysis
 │   ├── MappingGoldCheck.py    # LLM check of the gold standard
 │   ├── MappingPlots.py        # Plots of step 4 (generation methods, filter steps)
 │   └── MappingUtils.py        # Shared constants and helpers
@@ -142,7 +181,7 @@ The columns from `n_sct` on are empty for pairs that were not reviewed. The log 
 ## Requirements & Installation
 
 - Python 3.10+
-- A CUDA GPU for the LLM review (step 3) and the gold standard check; steps 1, 2 and 4 run on the CPU
+- A CUDA GPU for the LLM review (step 3) and the gold standard check; steps 1, 2, 4 and 5 run on the CPU
 - The libraries [`logger`](https://github.com/Goldkugel/logger), [`adapter`](https://github.com/Goldkugel/adapter), [`embedder`](https://github.com/Goldkugel/embedder), [`model`](https://github.com/Goldkugel/model) and [`normalizer`](https://github.com/Goldkugel/normalizer), pinned to fixed versions in `pyproject.toml`
 - `faiss` (e.g. `faiss-cpu`) and `scipy`, which are imported by `MappingGeneration.py` but not declared in `pyproject.toml`
 
@@ -177,16 +216,20 @@ sbatch ./startLLM.sh
 ```
 
 ```bash
+python3 ./src/MappingEvaluation.py
+```
+
+```bash
 python3 ./src/MappingErrorAnalysis.py
 ```
 
-`start.sh` runs steps 1 and 2. `startLLM.sh` submits step 3 as a Slurm job on two A40 GPUs. Step 4 is run once the LLM review has finished.
+`start.sh` runs steps 1 and 2. `startLLM.sh` submits step 3 as a Slurm job on two A40 GPUs. Steps 4 and 5 are run once the LLM review has finished.
 
 ```bash
 sbatch ./startGoldCheck.sh
 ```
 
-`startGoldCheck.sh` submits the gold standard check as a Slurm job on two A40 GPUs, like `startLLM.sh`. It only needs the input data, not the outputs of steps 1–4.
+`startGoldCheck.sh` submits the gold standard check as a Slurm job on two A40 GPUs, like `startLLM.sh`. It only needs the input data, not the outputs of steps 1–5.
 
 The LLM review and the gold standard check store their answers after every chunk in `data/tmp/` (`prompt_<model>_<index>.json` and `gold_<model>_<index>.json`, with index 0 for pass 1 and 1 for pass 2, see `data/tmp/README.md`) and resume from them if the job is interrupted. Every answer is stored with its prompts and settings, so answers of other prompts, data or model settings are never reused.
 

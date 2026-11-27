@@ -43,7 +43,7 @@ import numpy                as np
 #
 # A pair keeps the first code it is given; only demotion (see
 # check_hierarchy) overwrites an accepted 10. Pairs not reached by any step
-# keep validity=NA and are written to filtered.csv too (MappingErrorAnalysis
+# keep validity=NA and are written to filtered.csv too (MappingEvaluation
 # uses all generated pairs); MappingLLM reviews validity 1-10.
 #
 # The step column holds the step that set the code (for accepted pairs the
@@ -655,7 +655,7 @@ if __name__ == "__main__":
 
     # Consistency check: no HPO concept should have two related accepted SCT
     # targets (source collapse); comparable to WARNING A in
-    # MappingErrorAnalysis.
+    # MappingEvaluation.
     collapsed_concepts = 0
     collapsed_pairs    = 0
     for hpo_id, sct_ids in accepted_by_hpo.items():
