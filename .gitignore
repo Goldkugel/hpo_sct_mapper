@@ -221,3 +221,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local files of earlier runs (not tracked)
+data/logs/output_old.log
+data/logs/output_old_old.log
+out.log
+data/output/evaluation/gold_check.csv
+data/output/evaluation/evaluation_final.tar.gz
+data/output/hpo_multiple_sct_xrefs_2026-06-23.csv
